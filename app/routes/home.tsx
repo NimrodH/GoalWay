@@ -1,22 +1,55 @@
+import { useState } from "react";
 import type { Route } from "./+types/home";
+import { instructions, type Instruction } from "~/data/instructions";
+import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
+import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
 import styles from "./home.module.css";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Empty Template" },
+    { title: "Instruction Guide - Clear Step-by-Step Guidance" },
     {
       name: "description",
-      content: "A welcoming empty template ready for content generation",
+      content:
+        "Browse and explore detailed instructions with text, images, and videos to guide you through every step.",
     },
   ];
 }
 
 export default function Home() {
+  const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
+
+  const handleInstructionClick = (instructionId: string) => {
+    // Toggle: if clicking the same instruction, deselect it
+    if (selectedInstructionId === instructionId) {
+      setSelectedInstructionId(null);
+    } else {
+      // Switch: select the new instruction
+      setSelectedInstructionId(instructionId);
+    }
+  };
+
+  const selectedInstruction = instructions.find((inst) => inst.id === selectedInstructionId) || null;
+
   return (
     <div className={styles.container}>
-      <div className={styles.content}>
-        <h1 className={styles.title}>I'm an empty template.</h1>
-      </div>
+      <section className={styles.instructionListSection}>
+        <h1 className={styles.sectionHeader}>Instructions</h1>
+        <div className={styles.instructionList}>
+          {instructions.map((instruction: Instruction) => (
+            <InstructionListItem
+              key={instruction.id}
+              title={instruction.title}
+              selected={selectedInstructionId === instruction.id}
+              onClick={() => handleInstructionClick(instruction.id)}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className={styles.explanationSection}>
+        <ExplanationDisplay instruction={selectedInstruction} className={styles.explanationContainer} />
+      </section>
     </div>
   );
 }
