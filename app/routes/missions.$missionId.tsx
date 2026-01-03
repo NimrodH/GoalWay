@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { data } from "react-router";
+import { data, Link } from "react-router";
 import type { Route } from "./+types/missions.$missionId";
 import { missions } from "~/data/missions";
 import { instructions } from "~/data/instructions";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
+import { BookOpen } from "lucide-react";
 import styles from "./home.module.css";
 
 export function meta({ params }: Route.MetaArgs) {
@@ -51,7 +52,13 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   return (
     <div className={styles.container}>
       <section className={styles.instructionListSection}>
-        <h1 className={styles.sectionHeader}>{mission.title}</h1>
+        <div className={styles.headerWrapper}>
+          <h1 className={styles.sectionHeader}>{mission.title}</h1>
+          <Link to="/" className={styles.menuLink}>
+            <BookOpen size={18} />
+            View All Missions
+          </Link>
+        </div>
         <p className={styles.missionDescription}>{mission.description}</p>
         <div className={styles.instructionList}>
           {missionInstructions.map((instruction) => (
