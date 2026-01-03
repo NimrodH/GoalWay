@@ -32,12 +32,12 @@ export const instructions: Instruction[] = [
   },
   {
     id: "2",
-    title: "Configuring Your Profile Settings",
+    title: "Configuring Your Profile Setting__s",
     explanation: [
       {
         type: "text",
         content:
-          "Your profile is the foundation of your personalized experience. Navigate to the settings panel by clicking on your avatar in the top-right corner. Here, you can customize various aspects of your account, including display preferences, notification settings, and privacy controls.",
+          "You__r profile is the foundation of your personalized experience. Navigate to the settings panel by clicking on your avatar in the top-right corner. Here, you can customize various aspects of your account, including display preferences, notification settings, and privacy controls.",
       },
       {
         type: "image",
