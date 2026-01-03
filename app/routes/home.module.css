@@ -1,7 +1,7 @@
 .container {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: 500px 1fr;
   gap: var(--space-6);
   padding: var(--space-6);
   background: linear-gradient(135deg, var(--color-neutral-1) 0%, var(--color-neutral-2) 100%);
