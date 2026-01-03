@@ -29,6 +29,18 @@
   margin: 0;
 }
 
+.missionDescription {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--color-neutral-11);
+  line-height: 1.6;
+  margin-bottom: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-neutral-2);
+  border-left: 3px solid var(--color-accent-9);
+  border-radius: var(--radius-2);
+}
+
 .menuLink {
   display: inline-flex;
   align-items: center;
@@ -107,5 +119,9 @@
     padding: var(--space-5);
     margin-top: var(--space-3);
     box-shadow: var(--inner-shadow-1);
+  }
+
+  .missionDescription {
+    margin-bottom: var(--space-4);
   }
 }

@@ -1,30 +1,40 @@
 import { useState } from "react";
-import { Link } from "react-router";
-import type { Route } from "./+types/home";
+import { data } from "react-router";
+import type { Route } from "./+types/missions.$missionId";
 import { missions } from "~/data/missions";
-import { instructions, type Instruction } from "~/data/instructions";
+import { instructions } from "~/data/instructions";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
-import { BookOpen } from "lucide-react";
 import styles from "./home.module.css";
 
-export function meta({}: Route.MetaArgs) {
+export function meta({ params }: Route.MetaArgs) {
+  const mission = missions.find((m) => m.id === params.missionId);
   return [
-    { title: "Beginner Setup Guide - Getting Started" },
+    { title: mission ? `${mission.title} - Missions` : "Mission Not Found" },
     {
       name: "description",
-      content:
-        "Complete walkthrough for new users to get started with the platform. Follow these five essential steps to set up your account and begin working effectively.",
+      content: mission?.description || "Mission details",
     },
   ];
 }
 
-export default function Home() {
-  // Get the beginner mission's instructions
-  const beginnerMission = missions.find((m) => m.id === "beginner-setup");
-  const filteredInstructions = beginnerMission
-    ? beginnerMission.instructionIds.map((id) => instructions.find((inst) => inst.id === id)).filter(Boolean)
-    : [];
+export async function loader({ params }: Route.LoaderArgs) {
+  const mission = missions.find((m) => m.id === params.missionId);
+  
+  if (!mission) {
+    throw data("Mission not found", { status: 404 });
+  }
+
+  return { mission };
+}
+
+export default function MissionPage({ loaderData }: Route.ComponentProps) {
+  const { mission } = loaderData;
+
+  // Get instructions for this mission in the specified order
+  const missionInstructions = mission.instructionIds
+    .map((id) => instructions.find((inst) => inst.id === id))
+    .filter(Boolean);
 
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
 
@@ -36,21 +46,15 @@ export default function Home() {
     }
   };
 
-  const selectedInstruction = filteredInstructions.find((inst) => inst?.id === selectedInstructionId) || null;
+  const selectedInstruction = missionInstructions.find((inst) => inst?.id === selectedInstructionId) || null;
 
   return (
     <div className={styles.container}>
       <section className={styles.instructionListSection}>
-        <div className={styles.headerWrapper}>
-          <h1 className={styles.sectionHeader}>{beginnerMission?.title || "Getting Started"}</h1>
-          <Link to="/missions" className={styles.menuLink}>
-            <BookOpen size={18} />
-            View All Missions
-          </Link>
-        </div>
-        {beginnerMission && <p className={styles.missionDescription}>{beginnerMission.description}</p>}
+        <h1 className={styles.sectionHeader}>{mission.title}</h1>
+        <p className={styles.missionDescription}>{mission.description}</p>
         <div className={styles.instructionList}>
-          {filteredInstructions.map((instruction) => (
+          {missionInstructions.map((instruction) => (
             <div key={instruction!.id} className={styles.instructionItem}>
               <InstructionListItem
                 title={instruction!.title}
