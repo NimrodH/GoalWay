@@ -29,6 +29,14 @@
   box-shadow: var(--shadow-1);
 }
 
+.instructionItem {
+  display: contents;
+}
+
+.mobileExplanation {
+  display: none;
+}
+
 .explanationSection {
   display: flex;
   flex-direction: column;
@@ -54,10 +62,20 @@
   }
 
   .explanationSection {
-    order: 2;
+    display: none;
   }
 
-  .explanationContainer {
+  .instructionItem {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobileExplanation {
+    display: block;
+    background-color: var(--color-neutral-1);
+    border-radius: var(--radius-3);
     padding: var(--space-5);
+    margin-top: var(--space-3);
+    box-shadow: var(--inner-shadow-1);
   }
 }

@@ -37,12 +37,18 @@ export default function Home() {
         <h1 className={styles.sectionHeader}>Instructions</h1>
         <div className={styles.instructionList}>
           {instructions.map((instruction: Instruction) => (
-            <InstructionListItem
-              key={instruction.id}
-              title={instruction.title}
-              selected={selectedInstructionId === instruction.id}
-              onClick={() => handleInstructionClick(instruction.id)}
-            />
+            <div key={instruction.id} className={styles.instructionItem}>
+              <InstructionListItem
+                title={instruction.title}
+                selected={selectedInstructionId === instruction.id}
+                onClick={() => handleInstructionClick(instruction.id)}
+              />
+              {selectedInstructionId === instruction.id && (
+                <div className={styles.mobileExplanation}>
+                  <ExplanationDisplay instruction={instruction} />
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </section>
