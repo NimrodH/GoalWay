@@ -13,11 +13,41 @@
   gap: var(--space-4);
 }
 
+.headerWrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: 0 var(--space-2);
+}
+
 .sectionHeader {
   font: var(--font-heading);
   color: var(--color-neutral-12);
-  margin: 0 0 var(--space-3) 0;
-  padding: 0 var(--space-2);
+  margin: 0;
+}
+
+.menuLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-accent-3);
+  color: var(--color-accent-11);
+  text-decoration: none;
+  border-radius: var(--radius-2);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s var(--ease-out);
+  border: 1px solid var(--color-accent-7);
+}
+
+.menuLink:hover {
+  background: var(--color-accent-4);
+  border-color: var(--color-accent-8);
 }
 
 .instructionList {

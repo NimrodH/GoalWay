@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import type { Route } from "./+types/home";
 import { instructions, type Instruction } from "~/data/instructions";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
+import { BookOpen } from "lucide-react";
 import styles from "./home.module.css";
 
 export function meta({}: Route.MetaArgs) {
@@ -34,7 +36,13 @@ export default function Home() {
   return (
     <div className={styles.container}>
       <section className={styles.instructionListSection}>
-        <h1 className={styles.sectionHeader}>Instructions</h1>
+        <div className={styles.headerWrapper}>
+          <h1 className={styles.sectionHeader}>Instructions</h1>
+          <Link to="/instructions" className={styles.menuLink}>
+            <BookOpen size={18} />
+            View All Instructions
+          </Link>
+        </div>
         <div className={styles.instructionList}>
           {instructions.map((instruction: Instruction) => (
             <div key={instruction.id} className={styles.instructionItem}>
