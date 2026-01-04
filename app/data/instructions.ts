@@ -211,4 +211,11 @@ export const instructions: Instruction[] = [
       }
     ]
   },
+  {
+    id: "10",
+    title: "Placeholder",
+    type: "link",
+    missionId: "beginner-setup",
+    explanation: [],
+  },
 ];
