@@ -11,7 +11,7 @@ export const missions: Mission[] = [
     title: "Beginner Setup Guide",
     description:
       "Complete walkthrough for new users to get started with the platform. Follow these five essential steps to set up your account and begin working effectively.",
-    instructionIds: ["1", "2", "3", "4", "5"],
+    instructionIds: ["11", "2", "3", "4", "5"],
   },
   {
     id: "advanced-config",
