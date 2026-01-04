@@ -1,0 +1,86 @@
+import { useState } from "react";
+import { data, Link } from "react-router";
+import type { Route } from "./+types/he.missions.$missionId";
+import { missionsHe } from "~/data/missions-he";
+import { instructionsHe } from "~/data/instructions-he";
+import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
+import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
+import { BookOpen } from "lucide-react";
+import styles from "./home.module.css";
+
+export function meta({ params }: Route.MetaArgs) {
+  const mission = missionsHe.find((m) => m.id === params.missionId);
+  return [
+    { title: mission ? `${mission.title} - משימות` : "משימה לא נמצאה" },
+    {
+      name: "description",
+      content: mission?.description || "פרטי משימה",
+    },
+  ];
+}
+
+export async function loader({ params }: Route.LoaderArgs) {
+  const mission = missionsHe.find((m) => m.id === params.missionId);
+  
+  if (!mission) {
+    throw data("משימה לא נמצאה", { status: 404 });
+  }
+
+  return { mission };
+}
+
+export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
+  const { mission } = loaderData;
+
+  // Get instructions for this mission in the specified order
+  const missionInstructions = mission.instructionIds
+    .map((id) => instructionsHe.find((inst) => inst.id === id))
+    .filter(Boolean);
+
+  const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
+
+  const handleInstructionClick = (instructionId: string) => {
+    if (selectedInstructionId === instructionId) {
+      setSelectedInstructionId(null);
+    } else {
+      setSelectedInstructionId(instructionId);
+    }
+  };
+
+  const selectedInstruction = missionInstructions.find((inst) => inst?.id === selectedInstructionId) || null;
+
+  return (
+    <div className={styles.container} dir="rtl">
+      <section className={styles.instructionListSection}>
+        <div className={styles.headerWrapper}>
+          <h1 className={styles.sectionHeader}>{mission.title}</h1>
+          <Link to="/he" className={styles.menuLink}>
+            <BookOpen size={18} />
+            צפה בכל המשימות
+          </Link>
+        </div>
+        <p className={styles.missionDescription}>{mission.description}</p>
+        <div className={styles.instructionList}>
+          {missionInstructions.map((instruction) => (
+            <div key={instruction!.id} className={styles.instructionItem}>
+              <InstructionListItem
+                title={instruction!.title}
+                selected={selectedInstructionId === instruction!.id}
+                onClick={() => handleInstructionClick(instruction!.id)}
+              />
+              {selectedInstructionId === instruction!.id && (
+                <div className={styles.mobileExplanation}>
+                  <ExplanationDisplay instruction={instruction!} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className={styles.explanationSection}>
+        <ExplanationDisplay instruction={selectedInstruction} className={styles.explanationContainer} />
+      </section>
+    </div>
+  );
+}
