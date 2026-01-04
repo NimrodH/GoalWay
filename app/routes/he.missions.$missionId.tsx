@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { data, Link, useNavigate } from "react-router";
+import { data, Link, useNavigate, useLocation } from "react-router";
 import type { Route } from "./+types/he.missions.$missionId";
 import { missionsHe } from "~/data/missions-he";
 import { instructionsHe } from "~/data/instructions-he";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
-import { BookOpen } from "lucide-react";
+import { BookOpen, ArrowLeft } from "lucide-react";
 import styles from "./home.module.css";
 
 export function meta({ params }: Route.MetaArgs) {
@@ -40,13 +40,19 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
 
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get the previous mission from location state or default to home
+  const previousMissionId = (location.state as { from?: string })?.from;
 
   const handleInstructionClick = (instructionId: string) => {
     const instruction = missionInstructions.find((inst) => inst?.id === instructionId);
     
     // If it's a link type instruction, navigate to the linked mission
     if (instruction?.type === "link" && instruction.missionId) {
-      navigate(`/he/missions/${instruction.missionId}`);
+      navigate(`/he/missions/${instruction.missionId}`, {
+        state: { from: mission.id },
+      });
       return;
     }
     
@@ -58,17 +64,29 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
     }
   };
 
+  const handleBackClick = () => {
+    if (previousMissionId) {
+      navigate(`/he/missions/${previousMissionId}`);
+    } else {
+      navigate("/he");
+    }
+  };
+
   const selectedInstruction = missionInstructions.find((inst) => inst?.id === selectedInstructionId) || null;
 
   return (
     <div className={styles.container} dir="rtl">
       <section className={styles.instructionListSection}>
         <div className={styles.headerWrapper}>
-          <h1 className={styles.sectionHeader}>{mission.title}</h1>
           <Link to="/he" className={styles.menuLink}>
             <BookOpen size={18} />
             צפה בכל המשימות
           </Link>
+          <h1 className={styles.sectionHeader}>{mission.title}</h1>
+          <button onClick={handleBackClick} className={styles.menuLink}>
+            <ArrowLeft size={18} />
+            {previousMissionId ? "חזור למשימה הקודמת" : "חזור לכל המשימות"}
+          </button>
         </div>
         <p className={styles.missionDescription}>{mission.description}</p>
         <div className={styles.instructionList}>
