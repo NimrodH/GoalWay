@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { data, Link } from "react-router";
+import { data, Link, useNavigate } from "react-router";
 import type { Route } from "./+types/missions.$missionId";
 import { missions } from "~/data/missions";
 import { instructions } from "~/data/instructions";
@@ -39,7 +39,18 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
 
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
 
+  const navigate = useNavigate();
+
   const handleInstructionClick = (instructionId: string) => {
+    const instruction = missionInstructions.find((inst) => inst?.id === instructionId);
+    
+    // If it's a link type instruction, navigate to the linked mission
+    if (instruction?.type === "link" && instruction.missionId) {
+      navigate(`/missions/${instruction.missionId}`);
+      return;
+    }
+    
+    // Otherwise, toggle selection as usual
     if (selectedInstructionId === instructionId) {
       setSelectedInstructionId(null);
     } else {
@@ -61,20 +72,27 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
         </div>
         <p className={styles.missionDescription}>{mission.description}</p>
         <div className={styles.instructionList}>
-          {missionInstructions.map((instruction) => (
-            <div key={instruction!.id} className={styles.instructionItem}>
-              <InstructionListItem
-                title={instruction!.title}
-                selected={selectedInstructionId === instruction!.id}
-                onClick={() => handleInstructionClick(instruction!.id)}
-              />
-              {selectedInstructionId === instruction!.id && (
-                <div className={styles.mobileExplanation}>
-                  <ExplanationDisplay instruction={instruction!} />
-                </div>
-              )}
-            </div>
-          ))}
+          {missionInstructions.map((instruction) => {
+            // For link type, get the mission title
+            const displayTitle = instruction!.type === "link" && instruction!.missionId
+              ? missions.find((m) => m.id === instruction!.missionId)?.title || instruction!.title
+              : instruction!.title;
+            
+            return (
+              <div key={instruction!.id} className={styles.instructionItem}>
+                <InstructionListItem
+                  title={displayTitle}
+                  selected={selectedInstructionId === instruction!.id}
+                  onClick={() => handleInstructionClick(instruction!.id)}
+                />
+                {selectedInstructionId === instruction!.id && instruction!.type !== "link" && (
+                  <div className={styles.mobileExplanation}>
+                    <ExplanationDisplay instruction={instruction!} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 

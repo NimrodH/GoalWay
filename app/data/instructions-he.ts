@@ -7,6 +7,8 @@ export interface Instruction {
   id: string;
   title: string;
   explanation: InstructionContent[];
+  type?: "default" | "link";
+  missionId?: string; // For link type instructions
 }
 
 export const instructionsHe: Instruction[] = [
