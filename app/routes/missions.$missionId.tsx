@@ -21,7 +21,7 @@ export function meta({ params }: Route.MetaArgs) {
 
 export async function loader({ params }: Route.LoaderArgs) {
   const mission = missions.find((m) => m.id === params.missionId);
-  
+
   if (!mission) {
     throw data("Mission not found", { status: 404 });
   }
@@ -41,13 +41,13 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
 
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Get the previous mission from location state or default to home
   const previousMissionId = (location.state as { from?: string })?.from;
 
   const handleInstructionClick = (instructionId: string) => {
     const instruction = missionInstructions.find((inst) => inst?.id === instructionId);
-    
+
     // If it's a link type instruction, navigate to the linked mission
     if (instruction?.type === "link" && instruction.missionId) {
       navigate(`/missions/${instruction.missionId}`, {
@@ -55,7 +55,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
       });
       return;
     }
-    
+
     // Otherwise, toggle selection as usual
     if (selectedInstructionId === instructionId) {
       setSelectedInstructionId(null);
@@ -82,20 +82,21 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
             <ArrowLeft size={18} />
             {previousMissionId ? "Back to Previous Mission" : "Back to All Missions"}
           </button>
-          <h1 className={styles.sectionHeader}>{mission.title}</h1>
           <Link to="/" className={styles.menuLink}>
             <BookOpen size={18} />
             View All Missions
           </Link>
+          <h1 className={styles.sectionHeader}>{mission.title}</h1>
         </div>
         <p className={styles.missionDescription}>{mission.description}</p>
         <div className={styles.instructionList}>
           {missionInstructions.map((instruction) => {
             // For link type, get the mission title
-            const displayTitle = instruction!.type === "link" && instruction!.missionId
-              ? missions.find((m) => m.id === instruction!.missionId)?.title || instruction!.title
-              : instruction!.title;
-            
+            const displayTitle =
+              instruction!.type === "link" && instruction!.missionId
+                ? missions.find((m) => m.id === instruction!.missionId)?.title || instruction!.title
+                : instruction!.title;
+
             return (
               <div key={instruction!.id} className={styles.instructionItem}>
                 <InstructionListItem
