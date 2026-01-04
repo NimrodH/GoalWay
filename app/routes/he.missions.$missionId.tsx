@@ -78,15 +78,17 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
     <div className={styles.container} dir="rtl">
       <section className={styles.instructionListSection}>
         <div className={styles.headerWrapper}>
+          {previousMissionId && (
+            <button onClick={handleBackClick} className={styles.menuLink}>
+              <ArrowLeft size={18} />
+              חזור למשימה הקודמת
+            </button>
+          )}
+          <h1 className={styles.sectionHeader}>{mission.title}</h1>
           <Link to="/he" className={styles.menuLink}>
             <BookOpen size={18} />
             צפה בכל המשימות
           </Link>
-          <h1 className={styles.sectionHeader}>{mission.title}</h1>
-          <button onClick={handleBackClick} className={styles.menuLink}>
-            <ArrowLeft size={18} />
-            {previousMissionId ? "חזור למשימה הקודמת" : "חזור לכל המשימות"}
-          </button>
         </div>
         <p className={styles.missionDescription}>{mission.description}</p>
         <div className={styles.instructionList}>

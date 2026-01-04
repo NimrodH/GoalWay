@@ -78,14 +78,16 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
     <div className={styles.container}>
       <section className={styles.instructionListSection}>
         <div className={styles.headerWrapper}>
-          <button onClick={handleBackClick} className={styles.menuLink}>
-            <ArrowLeft size={18} />
-            {previousMissionId ? "Back to Previous Mission" : "Back to All Missions"}
-          </button>
           <Link to="/" className={styles.menuLink}>
             <BookOpen size={18} />
             View All Missions
           </Link>
+          {previousMissionId && (
+            <button onClick={handleBackClick} className={styles.menuLink}>
+              <ArrowLeft size={18} />
+              Back to Previous Mission
+            </button>
+          )}
           <h1 className={styles.sectionHeader}>{mission.title}</h1>
         </div>
         <p className={styles.missionDescription}>{mission.description}</p>
