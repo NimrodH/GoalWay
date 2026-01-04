@@ -33,6 +33,8 @@ export default function AdminPage() {
 function InstructionForm() {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
+  const [type, setType] = useState<"default" | "link">("default");
+  const [missionId, setMissionId] = useState("");
   const [explanation, setExplanation] = useState<InstructionContent[]>([]);
 
   const addContent = (type: "text" | "image" | "video") => {
@@ -54,6 +56,7 @@ function InstructionForm() {
       id,
       title,
       explanation,
+      ...(type === "link" && { type, missionId }),
     };
 
     return JSON.stringify(instruction, null, 2);
@@ -85,13 +88,42 @@ function InstructionForm() {
               placeholder="e.g., Getting Started with Advanced Features"
             />
           </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Instruction Type</label>
+            <select
+              className={styles.input}
+              value={type}
+              onChange={(e) => setType(e.target.value as "default" | "link")}
+            >
+              <option value="default">Default (Standard Instruction)</option>
+              <option value="link">Link (Navigate to Another Mission)</option>
+            </select>
+          </div>
+
+          {type === "link" && (
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Target Mission ID</label>
+              <input
+                type="text"
+                className={styles.input}
+                value={missionId}
+                onChange={(e) => setMissionId(e.target.value)}
+                placeholder="e.g., beginner-setup"
+              />
+              <small style={{ color: "var(--color-neutral-11)", fontSize: "0.875rem", marginTop: "var(--space-1)" }}>
+                The mission ID to navigate to when this instruction is clicked
+              </small>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className={styles.formSection}>
-        <h2 className={styles.sectionTitle}>Explanation Content</h2>
-        
-        {explanation.map((item, index) => (
+      {type === "default" && (
+        <div className={styles.formSection}>
+          <h2 className={styles.sectionTitle}>Explanation Content</h2>
+          
+          {explanation.map((item, index) => (
           <div key={index} className={styles.contentItem}>
             <div className={styles.contentItemHeader}>
               <span className={styles.contentItemType}>{item.type}</span>
@@ -134,6 +166,7 @@ function InstructionForm() {
           </button>
         </div>
       </div>
+      )}
 
       <div className={styles.previewSection}>
         <h2 className={styles.previewTitle}>Generated Code</h2>
