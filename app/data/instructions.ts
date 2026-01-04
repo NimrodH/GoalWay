@@ -195,4 +195,18 @@ export const instructions: Instruction[] = [
       },
     ],
   },
+  {
+    "id": "9",
+    "title": "כותרת המשימ",
+    "explanation": [
+      {
+        "type": "text",
+        "content": "טקסט בעברית"
+      },
+      {
+        "type": "text",
+        "content": ""
+      }
+    ]
+  },
 ];
