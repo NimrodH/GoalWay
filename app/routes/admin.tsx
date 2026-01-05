@@ -15,11 +15,16 @@ export default function AdminPage() {
       <Tabs defaultValue="instruction" className={styles.tabs}>
         <TabsList>
           <TabsTrigger value="instruction">New Instruction</TabsTrigger>
+          <TabsTrigger value="edit-instruction">Edit Instruction</TabsTrigger>
           <TabsTrigger value="mission">New Mission</TabsTrigger>
         </TabsList>
 
         <TabsContent value="instruction">
           <InstructionForm />
+        </TabsContent>
+
+        <TabsContent value="edit-instruction">
+          <EditInstructionForm />
         </TabsContent>
 
         <TabsContent value="mission">
@@ -175,6 +180,196 @@ function InstructionForm() {
         </p>
         <pre className={styles.outputCode}>{generateCode()}</pre>
       </div>
+    </div>
+  );
+}
+
+function EditInstructionForm() {
+  const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
+  const [id, setId] = useState("");
+  const [title, setTitle] = useState("");
+  const [type, setType] = useState<"default" | "link">("default");
+  const [missionId, setMissionId] = useState("");
+  const [explanation, setExplanation] = useState<InstructionContent[]>([]);
+
+  const handleSelectInstruction = (instructionId: string) => {
+    setSelectedInstructionId(instructionId);
+    const instruction = instructions.find((i) => i.id === instructionId);
+    if (instruction) {
+      setId(instruction.id);
+      setTitle(instruction.title);
+      setType(instruction.type || "default");
+      setMissionId(instruction.missionId || "");
+      setExplanation(instruction.explanation || []);
+    }
+  };
+
+  const addContent = (type: "text" | "image" | "video") => {
+    setExplanation([...explanation, { type, content: "" }]);
+  };
+
+  const updateContent = (index: number, content: string) => {
+    const updated = [...explanation];
+    updated[index].content = content;
+    setExplanation(updated);
+  };
+
+  const removeContent = (index: number) => {
+    setExplanation(explanation.filter((_, i) => i !== index));
+  };
+
+  const generateCode = () => {
+    const instruction: Instruction = {
+      id,
+      title,
+      explanation,
+      ...(type === "link" && { type, missionId }),
+    };
+
+    return JSON.stringify(instruction, null, 2);
+  };
+
+  return (
+    <div>
+      <div className={styles.formSection}>
+        <h2 className={styles.sectionTitle}>Select Instruction to Edit</h2>
+        <div className={styles.instructionCheckboxList}>
+          {instructions.map((instruction) => (
+            <label
+              key={instruction.id}
+              className={styles.checkboxLabel}
+              style={{ cursor: "pointer" }}
+            >
+              <input
+                type="radio"
+                name="instruction"
+                value={instruction.id}
+                checked={selectedInstructionId === instruction.id}
+                onChange={() => handleSelectInstruction(instruction.id)}
+              />
+              <span>
+                {instruction.id} - {instruction.title}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {selectedInstructionId && (
+        <>
+          <div className={styles.formSection}>
+            <h2 className={styles.sectionTitle}>Instruction Details</h2>
+            <div className={styles.formGrid}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Instruction ID</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={id}
+                  onChange={(e) => setId(e.target.value)}
+                  placeholder="e.g., 9"
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Title</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g., Getting Started with Advanced Features"
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Instruction Type</label>
+                <select
+                  className={styles.input}
+                  value={type}
+                  onChange={(e) => setType(e.target.value as "default" | "link")}
+                >
+                  <option value="default">Default (Standard Instruction)</option>
+                  <option value="link">Link (Navigate to Another Mission)</option>
+                </select>
+              </div>
+
+              {type === "link" && (
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Target Mission ID</label>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={missionId}
+                    onChange={(e) => setMissionId(e.target.value)}
+                    placeholder="e.g., beginner-setup"
+                  />
+                  <small style={{ color: "var(--color-neutral-11)", fontSize: "0.875rem", marginTop: "var(--space-1)" }}>
+                    The mission ID to navigate to when this instruction is clicked
+                  </small>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {type === "default" && (
+            <div className={styles.formSection}>
+              <h2 className={styles.sectionTitle}>Explanation Content</h2>
+              
+              {explanation.map((item, index) => (
+              <div key={index} className={styles.contentItem}>
+                <div className={styles.contentItemHeader}>
+                  <span className={styles.contentItemType}>{item.type}</span>
+                  <button
+                    className={styles.removeButton}
+                    onClick={() => removeContent(index)}
+                  >
+                    Remove
+                  </button>
+                </div>
+                
+                {item.type === "text" ? (
+                  <textarea
+                    className={styles.textarea}
+                    value={item.content}
+                    onChange={(e) => updateContent(index, e.target.value)}
+                    placeholder="Enter text content..."
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={item.content}
+                    onChange={(e) => updateContent(index, e.target.value)}
+                    placeholder={`Enter ${item.type} URL...`}
+                  />
+                )}
+              </div>
+            ))}
+
+            <div className={styles.addContentButtons}>
+              <button className={styles.addButton} onClick={() => addContent("text")}>
+                + Add Text
+              </button>
+              <button className={styles.addButton} onClick={() => addContent("image")}>
+                + Add Image
+              </button>
+              <button className={styles.addButton} onClick={() => addContent("video")}>
+                + Add Video
+              </button>
+            </div>
+          </div>
+          )}
+
+          <div className={styles.previewSection}>
+            <h2 className={styles.previewTitle}>Updated Code</h2>
+            <p style={{ marginBottom: "var(--space-3)", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
+              Copy this object and replace the existing instruction with ID "{id}" in <code>app/data/instructions.ts</code>
+            </p>
+            <pre className={styles.outputCode}>{generateCode()}</pre>
+          </div>
+        </>
+      )}
     </div>
   );
 }
