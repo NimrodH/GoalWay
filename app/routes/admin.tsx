@@ -591,7 +591,7 @@ function EditInstructionForm({ actionData }: { actionData?: { success: boolean; 
             </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
             
-            <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} />
+            <AuthenticatedForm actionType="saveInstruction" id={id} data={generateCode()} disabled={!id || !title} />
             
             {actionData?.success && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
