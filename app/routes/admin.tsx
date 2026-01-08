@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { Form, useActionData } from "react-router";
-import { createClient } from '@supabase/supabase-js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs/tabs";
 import { instructions, type Instruction, type InstructionContent } from "~/data/instructions";
 import { missions, type Mission } from "~/data/missions";
 import { useAuth } from "~/hooks/use-auth";
-import { initSupabase } from "~/lib/supabase";
+import { initSupabase, getSupabase } from "~/lib/supabase";
 import type { Route } from "./+types/admin";
 import styles from "./admin.module.css";
 
@@ -22,26 +21,26 @@ export async function action({ request }: Route.ActionArgs) {
   const id = formData.get("id") as string;
   const dataEn = formData.get("dataEn") as string;
   const dataHe = formData.get("dataHe") as string | null;
+  const accessToken = formData.get("accessToken") as string | null;
 
-  // Create authenticated Supabase client using session from cookies
-  const cookieHeader = request.headers.get('Cookie') || '';
+  // Verify auth token is provided
+  if (!accessToken) {
+    return { success: false, error: 'Unauthorized: Authentication required' };
+  }
+
+  // Create authenticated Supabase client
+  const { createClient } = await import('@supabase/supabase-js');
   const supabase = createClient(
     process.env.SUPABASE_PROJECT_URL!,
     process.env.SUPABASE_API_KEY!,
     {
       global: {
         headers: {
-          cookie: cookieHeader,
+          Authorization: `Bearer ${accessToken}`,
         },
       },
     }
   );
-
-  // Verify the user is authenticated
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    return { success: false, error: 'Unauthorized: Please log in' };
-  }
 
   if (actionType === "saveInstruction") {
     const { error } = await supabase
@@ -76,6 +75,33 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   return { success: false, error: "Invalid action type" };
+}
+
+// Component to handle authenticated form submissions
+function AuthenticatedForm({ 
+  actionType, 
+  id, 
+  data, 
+  disabled 
+}: { 
+  actionType: string; 
+  id: string; 
+  data: string; 
+  disabled: boolean;
+}) {
+  const { session } = useAuth();
+  
+  return (
+    <Form method="post" style={{ marginTop: "var(--space-4)" }}>
+      <input type="hidden" name="actionType" value={actionType} />
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="dataEn" value={data} />
+      <input type="hidden" name="accessToken" value={session?.access_token || ""} />
+      <button type="submit" className={styles.submitButton} disabled={disabled || !session}>
+        Save to Database
+      </button>
+    </Form>
+  );
 }
 
 export default function AdminPage({ loaderData }: Route.ComponentProps) {
@@ -364,14 +390,7 @@ function InstructionForm({ actionData }: { actionData?: { success: boolean; mess
         </p>
         <pre className={styles.outputCode}>{generateCode()}</pre>
         
-        <Form method="post" style={{ marginTop: "var(--space-4)" }}>
-          <input type="hidden" name="actionType" value="saveInstruction" />
-          <input type="hidden" name="id" value={id} />
-          <input type="hidden" name="dataEn" value={generateCode()} />
-          <button type="submit" className={styles.submitButton} disabled={!id || !title}>
-            Save to Database
-          </button>
-        </Form>
+        <AuthenticatedForm actionType="saveInstruction" id={id} data={generateCode()} disabled={!id || !title} />
         
         {actionData?.success && (
           <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
@@ -572,14 +591,7 @@ function EditInstructionForm({ actionData }: { actionData?: { success: boolean; 
             </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
             
-            <Form method="post" style={{ marginTop: "var(--space-4)" }}>
-              <input type="hidden" name="actionType" value="saveInstruction" />
-              <input type="hidden" name="id" value={id} />
-              <input type="hidden" name="dataEn" value={generateCode()} />
-              <button type="submit" className={styles.submitButton} disabled={!id || !title}>
-                Save to Database
-              </button>
-            </Form>
+            <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} />
             
             {actionData?.success && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
@@ -725,14 +737,7 @@ function EditMissionForm({ actionData }: { actionData?: { success: boolean; mess
             </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
             
-            <Form method="post" style={{ marginTop: "var(--space-4)" }}>
-              <input type="hidden" name="actionType" value="saveMission" />
-              <input type="hidden" name="id" value={id} />
-              <input type="hidden" name="dataEn" value={generateCode()} />
-              <button type="submit" className={styles.submitButton} disabled={!id || !title}>
-                Save to Database
-              </button>
-            </Form>
+            <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} />
             
             {actionData?.success && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
@@ -840,14 +845,7 @@ function MissionForm({ actionData }: { actionData?: { success: boolean; message?
         </p>
         <pre className={styles.outputCode}>{generateCode()}</pre>
         
-        <Form method="post" style={{ marginTop: "var(--space-4)" }}>
-          <input type="hidden" name="actionType" value="saveMission" />
-          <input type="hidden" name="id" value={id} />
-          <input type="hidden" name="dataEn" value={generateCode()} />
-          <button type="submit" className={styles.submitButton} disabled={!id || !title}>
-            Save to Database
-          </button>
-        </Form>
+        <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} />
         
         {actionData?.success && (
           <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
