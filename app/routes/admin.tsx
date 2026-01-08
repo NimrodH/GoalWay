@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Form, useActionData } from "react-router";
+import { createClient } from '@supabase/supabase-js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs/tabs";
 import { instructions, type Instruction, type InstructionContent } from "~/data/instructions";
 import { missions, type Mission } from "~/data/missions";
 import { useAuth } from "~/hooks/use-auth";
-import { getSupabase, initSupabase } from "~/lib/supabase";
+import { initSupabase } from "~/lib/supabase";
 import type { Route } from "./+types/admin";
 import styles from "./admin.module.css";
 
@@ -22,7 +23,25 @@ export async function action({ request }: Route.ActionArgs) {
   const dataEn = formData.get("dataEn") as string;
   const dataHe = formData.get("dataHe") as string | null;
 
-  const supabase = getSupabase();
+  // Create authenticated Supabase client using session from cookies
+  const cookieHeader = request.headers.get('Cookie') || '';
+  const supabase = createClient(
+    process.env.SUPABASE_PROJECT_URL!,
+    process.env.SUPABASE_API_KEY!,
+    {
+      global: {
+        headers: {
+          cookie: cookieHeader,
+        },
+      },
+    }
+  );
+
+  // Verify the user is authenticated
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    return { success: false, error: 'Unauthorized: Please log in' };
+  }
 
   if (actionType === "saveInstruction") {
     const { error } = await supabase
