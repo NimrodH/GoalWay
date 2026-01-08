@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
+import { Form, useActionData } from "react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs/tabs";
 import { instructions, type Instruction, type InstructionContent } from "~/data/instructions";
 import { missions, type Mission } from "~/data/missions";
 import { useAuth } from "~/hooks/use-auth";
-import { initSupabase } from "~/lib/supabase";
+import { getSupabase, initSupabase } from "~/lib/supabase";
 import type { Route } from "./+types/admin";
 import styles from "./admin.module.css";
 
@@ -14,8 +15,53 @@ export async function loader() {
   };
 }
 
+export async function action({ request }: Route.ActionArgs) {
+  const formData = await request.formData();
+  const actionType = formData.get("actionType") as string;
+  const id = formData.get("id") as string;
+  const dataEn = formData.get("dataEn") as string;
+  const dataHe = formData.get("dataHe") as string | null;
+
+  const supabase = getSupabase();
+
+  if (actionType === "saveInstruction") {
+    const { error } = await supabase
+      .from("instructions")
+      .upsert({
+        id,
+        data_en: JSON.parse(dataEn),
+        data_he: dataHe ? JSON.parse(dataHe) : null,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, message: "Instruction saved successfully!" };
+  } else if (actionType === "saveMission") {
+    const { error } = await supabase
+      .from("missions")
+      .upsert({
+        id,
+        data_en: JSON.parse(dataEn),
+        data_he: dataHe ? JSON.parse(dataHe) : null,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, message: "Mission saved successfully!" };
+  }
+
+  return { success: false, error: "Invalid action type" };
+}
+
 export default function AdminPage({ loaderData }: Route.ComponentProps) {
   const { supabaseUrl, supabaseKey } = loaderData;
+  const actionData = useActionData<typeof action>();
   
   // Initialize Supabase on the client
   useEffect(() => {
@@ -135,26 +181,26 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
         </TabsList>
 
         <TabsContent value="instruction">
-          <InstructionForm />
+          <InstructionForm actionData={actionData} />
         </TabsContent>
 
         <TabsContent value="edit-instruction">
-          <EditInstructionForm />
+          <EditInstructionForm actionData={actionData} />
         </TabsContent>
 
         <TabsContent value="mission">
-          <MissionForm />
+          <MissionForm actionData={actionData} />
         </TabsContent>
 
         <TabsContent value="edit-mission">
-          <EditMissionForm />
+          <EditMissionForm actionData={actionData} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function InstructionForm() {
+function InstructionForm({ actionData }: { actionData?: { success: boolean; message?: string; error?: string } }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [type, setType] = useState<"default" | "link">("default");
@@ -298,12 +344,32 @@ function InstructionForm() {
           Copy this object and add it to the <code>instructions</code> array in <code>app/data/instructions.ts</code>
         </p>
         <pre className={styles.outputCode}>{generateCode()}</pre>
+        
+        <Form method="post" style={{ marginTop: "var(--space-4)" }}>
+          <input type="hidden" name="actionType" value="saveInstruction" />
+          <input type="hidden" name="id" value={id} />
+          <input type="hidden" name="dataEn" value={generateCode()} />
+          <button type="submit" className={styles.submitButton} disabled={!id || !title}>
+            Save to Database
+          </button>
+        </Form>
+        
+        {actionData?.success && (
+          <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
+            {actionData.message}
+          </div>
+        )}
+        {actionData?.error && (
+          <div className={styles.errorMessage} style={{ marginTop: "var(--space-3)" }}>
+            {actionData.error}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function EditInstructionForm() {
+function EditInstructionForm({ actionData }: { actionData?: { success: boolean; message?: string; error?: string } }) {
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -486,6 +552,26 @@ function EditInstructionForm() {
               Copy this object and replace the existing instruction with ID "{id}" in <code>app/data/instructions.ts</code>
             </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
+            
+            <Form method="post" style={{ marginTop: "var(--space-4)" }}>
+              <input type="hidden" name="actionType" value="saveInstruction" />
+              <input type="hidden" name="id" value={id} />
+              <input type="hidden" name="dataEn" value={generateCode()} />
+              <button type="submit" className={styles.submitButton} disabled={!id || !title}>
+                Save to Database
+              </button>
+            </Form>
+            
+            {actionData?.success && (
+              <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
+                {actionData.message}
+              </div>
+            )}
+            {actionData?.error && (
+              <div className={styles.errorMessage} style={{ marginTop: "var(--space-3)" }}>
+                {actionData.error}
+              </div>
+            )}
           </div>
         </>
       )}
@@ -493,7 +579,7 @@ function EditInstructionForm() {
   );
 }
 
-function EditMissionForm() {
+function EditMissionForm({ actionData }: { actionData?: { success: boolean; message?: string; error?: string } }) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -619,6 +705,26 @@ function EditMissionForm() {
               Copy this object and replace the existing mission with ID "{id}" in <code>app/data/missions.ts</code>
             </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
+            
+            <Form method="post" style={{ marginTop: "var(--space-4)" }}>
+              <input type="hidden" name="actionType" value="saveMission" />
+              <input type="hidden" name="id" value={id} />
+              <input type="hidden" name="dataEn" value={generateCode()} />
+              <button type="submit" className={styles.submitButton} disabled={!id || !title}>
+                Save to Database
+              </button>
+            </Form>
+            
+            {actionData?.success && (
+              <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
+                {actionData.message}
+              </div>
+            )}
+            {actionData?.error && (
+              <div className={styles.errorMessage} style={{ marginTop: "var(--space-3)" }}>
+                {actionData.error}
+              </div>
+            )}
           </div>
         </>
       )}
@@ -626,7 +732,7 @@ function EditMissionForm() {
   );
 }
 
-function MissionForm() {
+function MissionForm({ actionData }: { actionData?: { success: boolean; message?: string; error?: string } }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -714,6 +820,26 @@ function MissionForm() {
           Copy this object and add it to the <code>missions</code> array in <code>app/data/missions.ts</code>
         </p>
         <pre className={styles.outputCode}>{generateCode()}</pre>
+        
+        <Form method="post" style={{ marginTop: "var(--space-4)" }}>
+          <input type="hidden" name="actionType" value="saveMission" />
+          <input type="hidden" name="id" value={id} />
+          <input type="hidden" name="dataEn" value={generateCode()} />
+          <button type="submit" className={styles.submitButton} disabled={!id || !title}>
+            Save to Database
+          </button>
+        </Form>
+        
+        {actionData?.success && (
+          <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
+            {actionData.message}
+          </div>
+        )}
+        {actionData?.error && (
+          <div className={styles.errorMessage} style={{ marginTop: "var(--space-3)" }}>
+            {actionData.error}
+          </div>
+        )}
       </div>
     </div>
   );
