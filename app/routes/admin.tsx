@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Form, useActionData } from "react-router";
+import { Form, useActionData, useNavigate } from "react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs/tabs";
 import { instructions, type Instruction, type InstructionContent } from "~/data/instructions";
 import { missions, type Mission } from "~/data/missions";
@@ -107,11 +107,16 @@ function AuthenticatedForm({
 export default function AdminPage({ loaderData }: Route.ComponentProps) {
   const { supabaseUrl, supabaseKey } = loaderData;
   const actionData = useActionData<typeof action>();
+  const navigate = useNavigate();
   
   // Initialize Supabase on the client
   useEffect(() => {
     initSupabase(supabaseUrl, supabaseKey);
   }, [supabaseUrl, supabaseKey]);
+  
+  const clearActionData = () => {
+    navigate("/admin", { replace: true });
+  };
   
   const { user, loading, signIn, signOut } = useAuth();
   const [email, setEmail] = useState("");
@@ -219,33 +224,33 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
 
       <Tabs defaultValue="instruction" className={styles.tabs}>
         <TabsList>
-          <TabsTrigger value="instruction">New Instruction</TabsTrigger>
-          <TabsTrigger value="edit-instruction">Edit Instruction</TabsTrigger>
-          <TabsTrigger value="mission">New Mission</TabsTrigger>
-          <TabsTrigger value="edit-mission">Edit Mission</TabsTrigger>
+          <TabsTrigger value="instruction" onClick={() => clearActionData()}>New Instruction</TabsTrigger>
+          <TabsTrigger value="edit-instruction" onClick={() => clearActionData()}>Edit Instruction</TabsTrigger>
+          <TabsTrigger value="mission" onClick={() => clearActionData()}>New Mission</TabsTrigger>
+          <TabsTrigger value="edit-mission" onClick={() => clearActionData()}>Edit Mission</TabsTrigger>
         </TabsList>
 
         <TabsContent value="instruction">
-          <InstructionForm actionData={actionData} />
+          <InstructionForm actionData={actionData} clearActionData={clearActionData} />
         </TabsContent>
 
         <TabsContent value="edit-instruction">
-          <EditInstructionForm actionData={actionData} />
+          <EditInstructionForm actionData={actionData} clearActionData={clearActionData} />
         </TabsContent>
 
         <TabsContent value="mission">
-          <MissionForm actionData={actionData} />
+          <MissionForm actionData={actionData} clearActionData={clearActionData} />
         </TabsContent>
 
         <TabsContent value="edit-mission">
-          <EditMissionForm actionData={actionData} />
+          <EditMissionForm actionData={actionData} clearActionData={clearActionData} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function InstructionForm({ actionData }: { actionData?: { success: boolean; message?: string; error?: string } }) {
+function InstructionForm({ actionData, clearActionData }: { actionData?: { success: boolean; message?: string; error?: string }; clearActionData: () => void }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [type, setType] = useState<"default" | "link">("default");
@@ -407,7 +412,7 @@ function InstructionForm({ actionData }: { actionData?: { success: boolean; mess
   );
 }
 
-function EditInstructionForm({ actionData }: { actionData?: { success: boolean; message?: string; error?: string } }) {
+function EditInstructionForm({ actionData, clearActionData }: { actionData?: { success: boolean; message?: string; error?: string }; clearActionData: () => void }) {
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -416,6 +421,7 @@ function EditInstructionForm({ actionData }: { actionData?: { success: boolean; 
   const [explanation, setExplanation] = useState<InstructionContent[]>([]);
 
   const handleSelectInstruction = (instructionId: string) => {
+    clearActionData();
     setSelectedInstructionId(instructionId);
     const instruction = instructions.find((i) => i.id === instructionId);
     if (instruction) {
@@ -610,7 +616,7 @@ function EditInstructionForm({ actionData }: { actionData?: { success: boolean; 
   );
 }
 
-function EditMissionForm({ actionData }: { actionData?: { success: boolean; message?: string; error?: string } }) {
+function EditMissionForm({ actionData, clearActionData }: { actionData?: { success: boolean; message?: string; error?: string }; clearActionData: () => void }) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -618,6 +624,7 @@ function EditMissionForm({ actionData }: { actionData?: { success: boolean; mess
   const [selectedInstructions, setSelectedInstructions] = useState<string[]>([]);
 
   const handleSelectMission = (missionId: string) => {
+    clearActionData();
     setSelectedMissionId(missionId);
     const mission = missions.find((m) => m.id === missionId);
     if (mission) {
@@ -756,7 +763,7 @@ function EditMissionForm({ actionData }: { actionData?: { success: boolean; mess
   );
 }
 
-function MissionForm({ actionData }: { actionData?: { success: boolean; message?: string; error?: string } }) {
+function MissionForm({ actionData, clearActionData }: { actionData?: { success: boolean; message?: string; error?: string }; clearActionData: () => void }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
