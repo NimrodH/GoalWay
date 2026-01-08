@@ -2,14 +2,112 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs/tabs";
 import { instructions, type Instruction, type InstructionContent } from "~/data/instructions";
 import { missions, type Mission } from "~/data/missions";
+import { useAuth } from "~/hooks/use-auth";
 import styles from "./admin.module.css";
 
 export default function AdminPage() {
+  const { user, loading, signIn, signOut } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsSigningIn(true);
+
+    const { error } = await signIn(email, password);
+    
+    if (error) {
+      setError(error.message);
+    }
+    
+    setIsSigningIn(false);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  if (loading) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingState}>Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loginContainer}>
+          <div className={styles.loginCard}>
+            <h1 className={styles.loginTitle}>Admin Login</h1>
+            <p className={styles.loginSubtitle}>Sign in to access the admin panel</p>
+            
+            <form onSubmit={handleSignIn} className={styles.loginForm}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Email</label>
+                <input
+                  type="email"
+                  className={styles.input}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  required
+                  autoComplete="email"
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Password</label>
+                <input
+                  type="password"
+                  className={styles.input}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+
+              {error && (
+                <div className={styles.errorMessage}>
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className={styles.submitButton}
+                disabled={isSigningIn}
+              >
+                {isSigningIn ? "Signing in..." : "Sign In"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Developer Admin Panel</h1>
-        <p className={styles.subtitle}>Create and manage instructions and missions</p>
+        <div className={styles.headerContent}>
+          <div>
+            <h1 className={styles.title}>Developer Admin Panel</h1>
+            <p className={styles.subtitle}>Create and manage instructions and missions</p>
+          </div>
+          <div className={styles.userInfo}>
+            <span className={styles.userEmail}>{user.email}</span>
+            <button onClick={handleSignOut} className={styles.signOutButton}>
+              Sign Out
+            </button>
+          </div>
+        </div>
       </header>
 
       <Tabs defaultValue="instruction" className={styles.tabs}>
