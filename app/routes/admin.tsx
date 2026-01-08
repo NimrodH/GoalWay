@@ -5,6 +5,7 @@ import { instructions, type Instruction, type InstructionContent } from "~/data/
 import { missions, type Mission } from "~/data/missions";
 import { useAuth } from "~/hooks/use-auth";
 import { initSupabase, getSupabase } from "~/lib/supabase";
+import { uploadImage } from "~/lib/image-upload";
 import type { Route } from "./+types/admin";
 import styles from "./admin.module.css";
 
@@ -22,6 +23,7 @@ export async function action({ request }: Route.ActionArgs) {
   const dataEn = formData.get("dataEn") as string;
   const dataHe = formData.get("dataHe") as string | null;
   const accessToken = formData.get("accessToken") as string | null;
+  const imageFile = formData.get("imageFile") as File | null;
 
   // Verify auth token is provided
   if (!accessToken) {
@@ -42,6 +44,30 @@ export async function action({ request }: Route.ActionArgs) {
     }
   );
 
+  // Handle image upload if provided
+  let imageUrl = '';
+  if (imageFile && imageFile.size > 0) {
+    const fileExt = imageFile.name.split('.').pop();
+    const fileName = `missions/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('mission-images')
+      .upload(fileName, imageFile, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (uploadError) {
+      return { success: false, error: `Image upload failed: ${uploadError.message}` };
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('mission-images')
+      .getPublicUrl(fileName);
+
+    imageUrl = publicUrl;
+  }
+
   if (actionType === "saveInstruction") {
     const { error } = await supabase
       .from("instructions")
@@ -56,13 +82,24 @@ export async function action({ request }: Route.ActionArgs) {
       return { success: false, error: error.message };
     }
 
-    return { success: true, message: "Instruction saved successfully!" };
+    return { 
+      success: true, 
+      message: "Instruction saved successfully!",
+      imageUrl: imageUrl || undefined
+    };
   } else if (actionType === "saveMission") {
+    const missionData = JSON.parse(dataEn);
+    
+    // If an image was uploaded, add it to the mission data
+    if (imageUrl) {
+      missionData.imageUrl = imageUrl;
+    }
+    
     const { error } = await supabase
       .from("missions")
       .upsert({
         id,
-        data_en: JSON.parse(dataEn),
+        data_en: missionData,
         data_he: dataHe ? JSON.parse(dataHe) : null,
         updated_at: new Date().toISOString(),
       });
@@ -71,7 +108,11 @@ export async function action({ request }: Route.ActionArgs) {
       return { success: false, error: error.message };
     }
 
-    return { success: true, message: "Mission saved successfully!" };
+    return { 
+      success: true, 
+      message: "Mission saved successfully!",
+      imageUrl: imageUrl || undefined
+    };
   }
 
   return { success: false, error: "Invalid action type" };
@@ -82,17 +123,36 @@ function AuthenticatedForm({
   actionType, 
   id, 
   data, 
-  disabled 
+  disabled,
+  imageFile
 }: { 
   actionType: string; 
   id: string; 
   data: string; 
   disabled: boolean;
+  imageFile?: File | null;
 }) {
   const { session } = useAuth();
+  const [fileInputKey, setFileInputKey] = useState(Date.now());
+  
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    // If we have an image file, we need to add it to FormData
+    if (imageFile) {
+      e.preventDefault();
+      const formData = new FormData(e.currentTarget);
+      formData.set('imageFile', imageFile);
+      
+      fetch('/admin', {
+        method: 'POST',
+        body: formData,
+      }).then(() => {
+        window.location.reload();
+      });
+    }
+  };
   
   return (
-    <Form method="post" style={{ marginTop: "var(--space-4)" }}>
+    <Form method="post" encType="multipart/form-data" style={{ marginTop: "var(--space-4)" }} onSubmit={handleSubmit}>
       <input type="hidden" name="actionType" value={actionType} />
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="dataEn" value={data} />
@@ -616,12 +676,43 @@ function EditInstructionForm({ actionData, clearActionData }: { actionData?: { s
   );
 }
 
-function EditMissionForm({ actionData, clearActionData }: { actionData?: { success: boolean; message?: string; error?: string }; clearActionData: () => void }) {
+function EditMissionForm({ actionData, clearActionData }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void }) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedInstructions, setSelectedInstructions] = useState<string[]>([]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [isUploading, setIsUploading] = useState(false);
+  const { session } = useAuth();
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageUpload = async () => {
+    if (!imageFile) return;
+
+    setIsUploading(true);
+    const result = await uploadImage(imageFile, 'missions');
+    setIsUploading(false);
+
+    if ('error' in result) {
+      alert(`Upload failed: ${result.error}`);
+    } else {
+      setImagePreview(result.url);
+      alert(`Image uploaded successfully! URL: ${result.url}`);
+    }
+  };
 
   const handleSelectMission = (missionId: string) => {
     clearActionData();
@@ -720,6 +811,48 @@ function EditMissionForm({ actionData, clearActionData }: { actionData?: { succe
           </div>
 
           <div className={styles.formSection}>
+            <h2 className={styles.sectionTitle}>Mission Image (Optional)</h2>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Upload Image</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className={styles.input}
+              />
+              {imagePreview && (
+                <div style={{ marginTop: "var(--space-3)" }}>
+                  <img 
+                    src={imagePreview} 
+                    alt="Preview" 
+                    style={{ maxWidth: "300px", borderRadius: "var(--radius-3)" }}
+                  />
+                </div>
+              )}
+              {imageFile && !isUploading && (
+                <button
+                  type="button"
+                  onClick={handleImageUpload}
+                  className={styles.addButton}
+                  style={{ marginTop: "var(--space-3)" }}
+                >
+                  Upload Image to Supabase
+                </button>
+              )}
+              {isUploading && (
+                <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>
+                  Uploading...
+                </p>
+              )}
+              {actionData?.imageUrl && (
+                <p style={{ marginTop: "var(--space-2)", fontSize: "0.875rem", color: "var(--color-success-11)" }}>
+                  Image URL: {actionData.imageUrl}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className={styles.formSection}>
             <h2 className={styles.sectionTitle}>Select Instructions</h2>
             <div className={styles.instructionCheckboxList}>
               {instructions.map((instruction) => (
@@ -744,7 +877,7 @@ function EditMissionForm({ actionData, clearActionData }: { actionData?: { succe
             </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
             
-            <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} />
+            <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} imageFile={imageFile} />
             
             {actionData?.success && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
@@ -763,11 +896,42 @@ function EditMissionForm({ actionData, clearActionData }: { actionData?: { succe
   );
 }
 
-function MissionForm({ actionData, clearActionData }: { actionData?: { success: boolean; message?: string; error?: string }; clearActionData: () => void }) {
+function MissionForm({ actionData, clearActionData }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedInstructions, setSelectedInstructions] = useState<string[]>([]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [isUploading, setIsUploading] = useState(false);
+  const { session } = useAuth();
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageUpload = async () => {
+    if (!imageFile) return;
+
+    setIsUploading(true);
+    const result = await uploadImage(imageFile, 'missions');
+    setIsUploading(false);
+
+    if ('error' in result) {
+      alert(`Upload failed: ${result.error}`);
+    } else {
+      setImagePreview(result.url);
+      alert(`Image uploaded successfully! URL: ${result.url}`);
+    }
+  };
 
   const toggleInstruction = (instructionId: string) => {
     if (selectedInstructions.includes(instructionId)) {
@@ -828,6 +992,48 @@ function MissionForm({ actionData, clearActionData }: { actionData?: { success: 
       </div>
 
       <div className={styles.formSection}>
+        <h2 className={styles.sectionTitle}>Mission Image (Optional)</h2>
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Upload Image</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            className={styles.input}
+          />
+          {imagePreview && (
+            <div style={{ marginTop: "var(--space-3)" }}>
+              <img 
+                src={imagePreview} 
+                alt="Preview" 
+                style={{ maxWidth: "300px", borderRadius: "var(--radius-3)" }}
+              />
+            </div>
+          )}
+          {imageFile && !isUploading && (
+            <button
+              type="button"
+              onClick={handleImageUpload}
+              className={styles.addButton}
+              style={{ marginTop: "var(--space-3)" }}
+            >
+              Upload Image to Supabase
+            </button>
+          )}
+          {isUploading && (
+            <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>
+              Uploading...
+            </p>
+          )}
+          {actionData?.imageUrl && (
+            <p style={{ marginTop: "var(--space-2)", fontSize: "0.875rem", color: "var(--color-success-11)" }}>
+              Image URL: {actionData.imageUrl}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.formSection}>
         <h2 className={styles.sectionTitle}>Select Instructions</h2>
         <div className={styles.instructionCheckboxList}>
           {instructions.map((instruction) => (
@@ -852,7 +1058,7 @@ function MissionForm({ actionData, clearActionData }: { actionData?: { success: 
         </p>
         <pre className={styles.outputCode}>{generateCode()}</pre>
         
-        <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} />
+        <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} imageFile={imageFile} />
         
         {actionData?.success && (
           <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
