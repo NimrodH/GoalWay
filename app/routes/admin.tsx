@@ -131,6 +131,7 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
           <TabsTrigger value="instruction">New Instruction</TabsTrigger>
           <TabsTrigger value="edit-instruction">Edit Instruction</TabsTrigger>
           <TabsTrigger value="mission">New Mission</TabsTrigger>
+          <TabsTrigger value="edit-mission">Edit Mission</TabsTrigger>
         </TabsList>
 
         <TabsContent value="instruction">
@@ -143,6 +144,10 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
 
         <TabsContent value="mission">
           <MissionForm />
+        </TabsContent>
+
+        <TabsContent value="edit-mission">
+          <EditMissionForm />
         </TabsContent>
       </Tabs>
     </div>
@@ -479,6 +484,139 @@ function EditInstructionForm() {
             <h2 className={styles.previewTitle}>Updated Code</h2>
             <p style={{ marginBottom: "var(--space-3)", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
               Copy this object and replace the existing instruction with ID "{id}" in <code>app/data/instructions.ts</code>
+            </p>
+            <pre className={styles.outputCode}>{generateCode()}</pre>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function EditMissionForm() {
+  const [selectedMissionId, setSelectedMissionId] = useState<string>("");
+  const [id, setId] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [selectedInstructions, setSelectedInstructions] = useState<string[]>([]);
+
+  const handleSelectMission = (missionId: string) => {
+    setSelectedMissionId(missionId);
+    const mission = missions.find((m) => m.id === missionId);
+    if (mission) {
+      setId(mission.id);
+      setTitle(mission.title);
+      setDescription(mission.description);
+      setSelectedInstructions(mission.instructionIds);
+    }
+  };
+
+  const toggleInstruction = (instructionId: string) => {
+    if (selectedInstructions.includes(instructionId)) {
+      setSelectedInstructions(selectedInstructions.filter((id) => id !== instructionId));
+    } else {
+      setSelectedInstructions([...selectedInstructions, instructionId]);
+    }
+  };
+
+  const generateCode = () => {
+    const mission: Mission = {
+      id,
+      title,
+      description,
+      instructionIds: selectedInstructions,
+    };
+
+    return JSON.stringify(mission, null, 2);
+  };
+
+  return (
+    <div>
+      <div className={styles.formSection}>
+        <h2 className={styles.sectionTitle}>Select Mission to Edit</h2>
+        <div className={styles.instructionCheckboxList}>
+          {missions.map((mission) => (
+            <label
+              key={mission.id}
+              className={styles.checkboxLabel}
+              style={{ cursor: "pointer" }}
+            >
+              <input
+                type="radio"
+                name="mission"
+                value={mission.id}
+                checked={selectedMissionId === mission.id}
+                onChange={() => handleSelectMission(mission.id)}
+              />
+              <span>
+                {mission.id} - {mission.title}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {selectedMissionId && (
+        <>
+          <div className={styles.formSection}>
+            <h2 className={styles.sectionTitle}>Mission Details</h2>
+            <div className={styles.formGrid}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Mission ID</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={id}
+                  onChange={(e) => setId(e.target.value)}
+                  placeholder="e.g., security-basics"
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Title</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g., Security Fundamentals"
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Description</label>
+                <textarea
+                  className={styles.textarea}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Enter mission description..."
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.formSection}>
+            <h2 className={styles.sectionTitle}>Select Instructions</h2>
+            <div className={styles.instructionCheckboxList}>
+              {instructions.map((instruction) => (
+                <label key={instruction.id} className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={selectedInstructions.includes(instruction.id)}
+                    onChange={() => toggleInstruction(instruction.id)}
+                  />
+                  <span>
+                    {instruction.id} - {instruction.title}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.previewSection}>
+            <h2 className={styles.previewTitle}>Updated Code</h2>
+            <p style={{ marginBottom: "var(--space-3)", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
+              Copy this object and replace the existing mission with ID "{id}" in <code>app/data/missions.ts</code>
             </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
           </div>
