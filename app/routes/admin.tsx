@@ -1,11 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs/tabs";
 import { instructions, type Instruction, type InstructionContent } from "~/data/instructions";
 import { missions, type Mission } from "~/data/missions";
 import { useAuth } from "~/hooks/use-auth";
+import { initSupabase } from "~/lib/supabase";
+import type { Route } from "./+types/admin";
 import styles from "./admin.module.css";
 
-export default function AdminPage() {
+export async function loader() {
+  return {
+    supabaseUrl: process.env.SUPABASE_PROJECT_URL!,
+    supabaseKey: process.env.SUPABASE_API_KEY!,
+  };
+}
+
+export default function AdminPage({ loaderData }: Route.ComponentProps) {
+  const { supabaseUrl, supabaseKey } = loaderData;
+  
+  // Initialize Supabase on the client
+  useEffect(() => {
+    initSupabase(supabaseUrl, supabaseKey);
+  }, [supabaseUrl, supabaseKey]);
+  
   const { user, loading, signIn, signOut } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
