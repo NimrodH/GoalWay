@@ -50,11 +50,20 @@ export async function translateText(
       const errorText = await response.text();
       return { 
         translatedText: '', 
-        error: `DeepL API error: ${response.status} - ${errorText}` 
+        error: `DeepL API error (${response.status}): ${errorText.substring(0, 200)}` 
       };
     }
 
-    const data = await response.json();
+    const responseText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      return {
+        translatedText: '',
+        error: `Invalid API response. Received: ${responseText.substring(0, 100)}...`
+      };
+    }
     
     if (data.translations && data.translations.length > 0) {
       return { translatedText: data.translations[0].text };

@@ -48,10 +48,34 @@ DeepL supports Hebrew (added in 2024) with the following capabilities:
 
 ## Troubleshooting
 
-If translation fails, check:
-- ✅ API key is correctly set in `.env` file
-- ✅ You have remaining quota on your DeepL account
-- ✅ The text fields are not empty
-- ✅ Your internet connection is working
+### Common Issues:
+
+**"Invalid API response" or "not valid JSON" errors:**
+- This usually means the API returned HTML (an error page) instead of JSON
+- Most common cause: **Using a Pro API key with the Free endpoint (or vice versa)**
+- Solution: Check your API key type:
+  - Free API keys typically end with `:fx`
+  - If you have a Pro key, update `app/lib/translate.ts` to use `https://api.deepl.com/v2/translate` instead of `https://api-free.deepl.com/v2/translate`
+
+**"DeepL API key not configured":**
+- API key is not set in `.env` file
+- Make sure the key doesn't have quotes around it
+- Restart your development server after adding the key
+
+**Translation takes long time or times out:**
+- Check your internet connection
+- Verify you have remaining quota on your DeepL account
+- Try translating smaller amounts of text
+
+**Testing your API key:**
+You can test your API key directly with curl:
+```bash
+curl -X POST 'https://api-free.deepl.com/v2/translate' \
+  -H 'Authorization: DeepL-Auth-Key YOUR_KEY_HERE' \
+  -d 'text=Hello, world!' \
+  -d 'target_lang=HE'
+```
+
+If this returns HTML or an error, your API key or endpoint is incorrect.
 
 Error messages will appear in alerts to help diagnose issues.
