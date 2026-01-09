@@ -130,3 +130,18 @@ export async function getInstructionsByIdsHe(instructionIds: string[]): Promise<
     .map((id) => instructionsMap.get(id))
     .filter((inst): inst is Instruction => inst !== undefined);
 }
+
+export async function getAllInstructionIds(): Promise<string[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("instructions")
+    .select("id")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching instruction IDs:", error);
+    return [];
+  }
+
+  return (data || []).map((row: any) => row.id as string);
+}

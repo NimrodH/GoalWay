@@ -72,3 +72,18 @@ export async function getMissionByIdHe(missionId: string): Promise<Mission | nul
 
   return data.data_he as Mission;
 }
+
+export async function getAllMissionIds(): Promise<string[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("missions")
+    .select("id")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching mission IDs:", error);
+    return [];
+  }
+
+  return (data || []).map((row: any) => row.id as string);
+}

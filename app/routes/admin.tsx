@@ -6,17 +6,19 @@ import { initSupabase, getSupabase } from "~/lib/supabase";
 import { uploadImage } from "~/lib/image-upload";
 import type { Route } from "./+types/admin";
 import styles from "./admin.module.css";
-import { getAllInstructions, getAllInstructionsHe, type Instruction, type InstructionContent } from "~/services/instructions.server";
-import { getAllMissions, getAllMissionsHe, type Mission } from "~/services/missions.server";
+import { getAllInstructions, getAllInstructionsHe, getAllInstructionIds, type Instruction, type InstructionContent } from "~/services/instructions.server";
+import { getAllMissions, getAllMissionsHe, getAllMissionIds, type Mission } from "~/services/missions.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const language = url.searchParams.get('lang') || 'en';
   const tab = url.searchParams.get('tab') || 'instruction';
   
-  const [instructions, missions] = await Promise.all([
+  const [instructions, missions, allInstructionIds, allMissionIds] = await Promise.all([
     language === 'he' ? getAllInstructionsHe() : getAllInstructions(),
-    language === 'he' ? getAllMissionsHe() : getAllMissions()
+    language === 'he' ? getAllMissionsHe() : getAllMissions(),
+    getAllInstructionIds(),
+    getAllMissionIds()
   ]);
   
   return {
@@ -24,6 +26,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     supabaseKey: process.env.SUPABASE_API_KEY!,
     instructions,
     missions,
+    allInstructionIds,
+    allMissionIds,
     language,
     tab,
   };
@@ -269,7 +273,7 @@ function AuthenticatedForm({
 }
 
 export default function AdminPage({ loaderData }: Route.ComponentProps) {
-  const { supabaseUrl, supabaseKey, instructions, missions, language, tab } = loaderData;
+  const { supabaseUrl, supabaseKey, instructions, missions, allInstructionIds, allMissionIds, language, tab } = loaderData;
   const actionData = useActionData<typeof action>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -438,7 +442,7 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
         </TabsContent>
 
         <TabsContent value="edit-instruction">
-          <EditInstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} language={language} />
+          <EditInstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} allInstructionIds={allInstructionIds} language={language} />
         </TabsContent>
 
         <TabsContent value="mission">
@@ -446,7 +450,7 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
         </TabsContent>
 
         <TabsContent value="edit-mission">
-          <EditMissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} language={language} />
+          <EditMissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} allMissionIds={allMissionIds} language={language} />
         </TabsContent>
       </Tabs>
     </div>
@@ -595,7 +599,7 @@ function InstructionForm({ actionData, clearActionData, instructions, language }
   );
 }
 
-function EditInstructionForm({ actionData, clearActionData, instructions, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; language: string }) {
+function EditInstructionForm({ actionData, clearActionData, instructions, allInstructionIds, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; allInstructionIds: string[]; language: string }) {
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -614,6 +618,13 @@ function EditInstructionForm({ actionData, clearActionData, instructions, langua
       setType(instruction.type || "default");
       setMissionId(instruction.missionId || "");
       setExplanation(instruction.explanation || []);
+    } else {
+      // No data for this language, start with empty fields
+      setId(instructionId);
+      setTitle("");
+      setType("default");
+      setMissionId("");
+      setExplanation([]);
     }
   };
 
@@ -647,24 +658,27 @@ function EditInstructionForm({ actionData, clearActionData, instructions, langua
       <div className={styles.formSection}>
         <h2 className={styles.sectionTitle}>Select Instruction to Edit</h2>
         <div className={styles.instructionCheckboxList}>
-          {instructions.map((instruction) => (
-            <label
-              key={instruction.id}
-              className={styles.checkboxLabel}
-              style={{ cursor: "pointer" }}
-            >
-              <input
-                type="radio"
-                name="instruction"
-                value={instruction.id}
-                checked={selectedInstructionId === instruction.id}
-                onChange={() => handleSelectInstruction(instruction.id)}
-              />
-              <span>
-                {instruction.id} - {instruction.title}
-              </span>
-            </label>
-          ))}
+          {allInstructionIds.map((id) => {
+            const instruction = instructions.find((i) => i.id === id);
+            return (
+              <label
+                key={id}
+                className={styles.checkboxLabel}
+                style={{ cursor: "pointer" }}
+              >
+                <input
+                  type="radio"
+                  name="instruction"
+                  value={id}
+                  checked={selectedInstructionId === id}
+                  onChange={() => handleSelectInstruction(id)}
+                />
+                <span>
+                  {id}{instruction ? ` - ${instruction.title}` : ' (No data for this language)'}
+                </span>
+              </label>
+            );
+          })}
         </div>
       </div>
 
@@ -779,7 +793,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions, langua
   );
 }
 
-function EditMissionForm({ actionData, clearActionData, instructions, missions, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; language: string }) {
+function EditMissionForm({ actionData, clearActionData, instructions, missions, allMissionIds, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; allMissionIds: string[]; language: string }) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -826,6 +840,12 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
       setTitle(mission.title);
       setDescription(mission.description);
       setSelectedInstructions(mission.instructionIds);
+    } else {
+      // No data for this language, start with empty fields
+      setId(missionId);
+      setTitle("");
+      setDescription("");
+      setSelectedInstructions([]);
     }
   };
 
@@ -853,24 +873,27 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
       <div className={styles.formSection}>
         <h2 className={styles.sectionTitle}>Select Mission to Edit</h2>
         <div className={styles.instructionCheckboxList}>
-          {missions.map((mission) => (
-            <label
-              key={mission.id}
-              className={styles.checkboxLabel}
-              style={{ cursor: "pointer" }}
-            >
-              <input
-                type="radio"
-                name="mission"
-                value={mission.id}
-                checked={selectedMissionId === mission.id}
-                onChange={() => handleSelectMission(mission.id)}
-              />
-              <span>
-                {mission.id} - {mission.title}
-              </span>
-            </label>
-          ))}
+          {allMissionIds.map((id) => {
+            const mission = missions.find((m) => m.id === id);
+            return (
+              <label
+                key={id}
+                className={styles.checkboxLabel}
+                style={{ cursor: "pointer" }}
+              >
+                <input
+                  type="radio"
+                  name="mission"
+                  value={id}
+                  checked={selectedMissionId === id}
+                  onChange={() => handleSelectMission(id)}
+                />
+                <span>
+                  {id}{mission ? ` - ${mission.title}` : ' (No data for this language)'}
+                </span>
+              </label>
+            );
+          })}
         </div>
       </div>
 
