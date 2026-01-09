@@ -42,7 +42,29 @@ export async function action({ request }: Route.ActionArgs) {
   const language = formData.get("language") as string;
   const accessToken = formData.get("accessToken") as string | null;
 
-  // Verify auth token is provided
+  // Handle translation action (no auth required for translation)
+  if (actionType === "translate") {
+    const { translateText } = await import('~/lib/translate');
+    const sourceLang = formData.get("sourceLang") as 'en' | 'he';
+    const targetLang = formData.get("targetLang") as 'en' | 'he';
+    const textToTranslate = formData.get("text") as string;
+
+    const result = await translateText(textToTranslate, sourceLang, targetLang);
+    
+    if (result.error) {
+      return { 
+        success: false, 
+        error: result.error
+      };
+    }
+
+    return { 
+      success: true, 
+      translatedText: result.translatedText
+    };
+  }
+
+  // Verify auth token is provided for save operations
   if (!accessToken) {
     return { success: false, error: 'Unauthorized: Authentication required' };
   }
@@ -826,7 +848,7 @@ function InstructionForm({ actionData, clearActionData, instructions, language }
   );
 }
 
-function EditInstructionForm({ actionData, clearActionData, instructions, allInstructionIds, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; allInstructionIds: string[]; language: string }) {
+function EditInstructionForm({ actionData, clearActionData, instructions, allInstructionIds, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translatedText?: string | null }; clearActionData: () => void; instructions: Instruction[]; allInstructionIds: string[]; language: string }) {
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -834,6 +856,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
   const [type, setType] = useState<"default" | "link">("default");
   const [missionId, setMissionId] = useState("");
   const [explanation, setExplanation] = useState<InstructionContent[]>([]);
+  const [isTranslating, setIsTranslating] = useState(false);
   const { session } = useAuth();
 
   const handleSelectInstruction = (instructionId: string) => {
@@ -884,7 +907,70 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
     return JSON.stringify(instruction, null, 2);
   };
 
+  const handleTranslateAndSwitch = async () => {
+    if (!title) {
+      alert('Please fill in at least the title before translating');
+      return;
+    }
 
+    setIsTranslating(true);
+
+    try {
+      const sourceLang = language === 'en' ? 'en' : 'he';
+      const targetLang = language === 'en' ? 'he' : 'en';
+
+      const textsToTranslate = [
+        title,
+        description || '',
+        ...explanation.filter(e => e.type === 'text').map(e => e.content)
+      ].filter(Boolean);
+
+      const translationPromises = textsToTranslate.map(async (text) => {
+        const formData = new FormData();
+        formData.append('actionType', 'translate');
+        formData.append('text', text);
+        formData.append('sourceLang', sourceLang);
+        formData.append('targetLang', targetLang);
+
+        const response = await fetch('/admin', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.error || 'Translation failed');
+        }
+        return result.translatedText;
+      });
+
+      const translations = await Promise.all(translationPromises);
+
+      let index = 0;
+      const translatedTitle = translations[index++];
+      const translatedDescription = description ? translations[index++] : '';
+      
+      const translatedExplanation = explanation.map(item => {
+        if (item.type === 'text' && item.content) {
+          return { ...item, content: translations[index++] };
+        }
+        return item;
+      });
+
+      setTitle(translatedTitle);
+      setDescription(translatedDescription);
+      setExplanation(translatedExplanation);
+
+      alert(`Translation successful! Fields updated to ${targetLang === 'he' ? 'Hebrew' : 'English'}`);
+      
+      window.location.href = `/admin?tab=edit-instruction&lang=${targetLang}`;
+    } catch (error) {
+      console.error('Translation error:', error);
+      alert(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   return (
     <div>
@@ -1018,9 +1104,24 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
             </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
             
+            <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-4)" }}>
+              <button
+                type="button"
+                onClick={handleTranslateAndSwitch}
+                className={styles.addButton}
+                disabled={isTranslating || !title}
+                style={{ flex: 1 }}
+              >
+                {isTranslating 
+                  ? 'Translating...' 
+                  : `Translate to ${language === 'en' ? 'Hebrew' : 'English'} & Switch`
+                }
+              </button>
+            </div>
+            
             <AuthenticatedForm actionType="saveInstruction" id={id} data={generateCode()} disabled={!id || !title} language={language} />
             
-            {actionData?.success && (
+            {actionData?.success && actionData.message && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
                 {actionData.message}
               </div>
@@ -1037,7 +1138,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
   );
 }
 
-function EditMissionForm({ actionData, clearActionData, instructions, missions, allMissionIds, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; allMissionIds: string[]; language: string }) {
+function EditMissionForm({ actionData, clearActionData, instructions, missions, allMissionIds, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translatedText?: string | null }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; allMissionIds: string[]; language: string }) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -1046,6 +1147,7 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
   const { session } = useAuth();
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1163,7 +1265,63 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
     return JSON.stringify(mission, null, 2);
   };
 
+  const handleTranslateAndSwitch = async () => {
+    if (!title || !description) {
+      alert('Please fill in the title and description before translating');
+      return;
+    }
 
+    setIsTranslating(true);
+
+    try {
+      const sourceLang = language === 'en' ? 'en' : 'he';
+      const targetLang = language === 'en' ? 'he' : 'en';
+
+      const titleFormData = new FormData();
+      titleFormData.append('actionType', 'translate');
+      titleFormData.append('text', title);
+      titleFormData.append('sourceLang', sourceLang);
+      titleFormData.append('targetLang', targetLang);
+
+      const titleResponse = await fetch('/admin', {
+        method: 'POST',
+        body: titleFormData,
+      });
+      const titleResult = await titleResponse.json();
+
+      if (!titleResult.success) {
+        throw new Error(titleResult.error || 'Title translation failed');
+      }
+
+      const descFormData = new FormData();
+      descFormData.append('actionType', 'translate');
+      descFormData.append('text', description);
+      descFormData.append('sourceLang', sourceLang);
+      descFormData.append('targetLang', targetLang);
+
+      const descResponse = await fetch('/admin', {
+        method: 'POST',
+        body: descFormData,
+      });
+      const descResult = await descResponse.json();
+
+      if (!descResult.success) {
+        throw new Error(descResult.error || 'Description translation failed');
+      }
+
+      setTitle(titleResult.translatedText);
+      setDescription(descResult.translatedText);
+
+      alert(`Translation successful! Fields updated to ${targetLang === 'he' ? 'Hebrew' : 'English'}`);
+      
+      window.location.href = `/admin?tab=edit-mission&lang=${targetLang}`;
+    } catch (error) {
+      console.error('Translation error:', error);
+      alert(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   return (
     <div>
@@ -1309,9 +1467,24 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
             </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
             
+            <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-4)" }}>
+              <button
+                type="button"
+                onClick={handleTranslateAndSwitch}
+                className={styles.addButton}
+                disabled={isTranslating || !title || !description}
+                style={{ flex: 1 }}
+              >
+                {isTranslating 
+                  ? 'Translating...' 
+                  : `Translate to ${language === 'en' ? 'Hebrew' : 'English'} & Switch`
+                }
+              </button>
+            </div>
+            
             <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} language={language} />
             
-            {actionData?.success && (
+            {actionData?.success && actionData.message && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
                 {actionData.message}
               </div>
