@@ -6,13 +6,16 @@ import { initSupabase, getSupabase } from "~/lib/supabase";
 import { uploadImage } from "~/lib/image-upload";
 import type { Route } from "./+types/admin";
 import styles from "./admin.module.css";
-import { getAllInstructions, type Instruction, type InstructionContent } from "~/services/instructions.server";
-import { getAllMissions, type Mission } from "~/services/missions.server";
+import { getAllInstructions, getAllInstructionsHe, type Instruction, type InstructionContent } from "~/services/instructions.server";
+import { getAllMissions, getAllMissionsHe, type Mission } from "~/services/missions.server";
 
-export async function loader() {
+export async function loader({ request }: Route.LoaderArgs) {
+  const url = new URL(request.url);
+  const language = url.searchParams.get('lang') || 'en';
+  
   const [instructions, missions] = await Promise.all([
-    getAllInstructions(),
-    getAllMissions()
+    language === 'he' ? getAllInstructionsHe() : getAllInstructions(),
+    language === 'he' ? getAllMissionsHe() : getAllMissions()
   ]);
   
   return {
@@ -20,6 +23,7 @@ export async function loader() {
     supabaseKey: process.env.SUPABASE_API_KEY!,
     instructions,
     missions,
+    language,
   };
 }
 
@@ -29,6 +33,7 @@ export async function action({ request }: Route.ActionArgs) {
   const id = formData.get("id") as string;
   const dataEn = formData.get("dataEn") as string;
   const dataHe = formData.get("dataHe") as string | null;
+  const language = formData.get("language") as string;
   const accessToken = formData.get("accessToken") as string | null;
 
   // Verify auth token is provided
@@ -53,14 +58,21 @@ export async function action({ request }: Route.ActionArgs) {
   if (actionType === "saveInstruction") {
     const instructionData = JSON.parse(dataEn);
     
+    // Determine which column to update based on language
+    const updateData: any = {
+      id,
+      updated_at: new Date().toISOString(),
+    };
+    
+    if (language === 'he') {
+      updateData.data_he = instructionData;
+    } else {
+      updateData.data_en = instructionData;
+    }
+    
     const { error } = await supabase
       .from("instructions")
-      .upsert({
-        id,
-        data_en: instructionData,
-        data_he: dataHe ? JSON.parse(dataHe) : null,
-        updated_at: new Date().toISOString(),
-      });
+      .upsert(updateData);
 
     if (error) {
       return { success: false, error: error.message };
@@ -73,14 +85,21 @@ export async function action({ request }: Route.ActionArgs) {
   } else if (actionType === "saveMission") {
     const missionData = JSON.parse(dataEn);
     
+    // Determine which column to update based on language
+    const updateData: any = {
+      id,
+      updated_at: new Date().toISOString(),
+    };
+    
+    if (language === 'he') {
+      updateData.data_he = missionData;
+    } else {
+      updateData.data_en = missionData;
+    }
+    
     const { error } = await supabase
       .from("missions")
-      .upsert({
-        id,
-        data_en: missionData,
-        data_he: dataHe ? JSON.parse(dataHe) : null,
-        updated_at: new Date().toISOString(),
-      });
+      .upsert(updateData);
 
     if (error) {
       return { success: false, error: error.message };
@@ -222,12 +241,14 @@ function AuthenticatedForm({
   actionType, 
   id, 
   data, 
-  disabled
+  disabled,
+  language
 }: { 
   actionType: string; 
   id: string; 
   data: string; 
   disabled: boolean;
+  language: string;
 }) {
   const { session } = useAuth();
   
@@ -236,16 +257,17 @@ function AuthenticatedForm({
       <input type="hidden" name="actionType" value={actionType} />
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="dataEn" value={data} />
+      <input type="hidden" name="language" value={language} />
       <input type="hidden" name="accessToken" value={session?.access_token || ""} />
       <button type="submit" className={styles.submitButton} disabled={disabled || !session}>
-        Save to Database
+        Save to Database ({language === 'he' ? 'Hebrew' : 'English'})
       </button>
     </Form>
   );
 }
 
 export default function AdminPage({ loaderData }: Route.ComponentProps) {
-  const { supabaseUrl, supabaseKey, instructions, missions } = loaderData;
+  const { supabaseUrl, supabaseKey, instructions, missions, language } = loaderData;
   const actionData = useActionData<typeof action>();
   const navigate = useNavigate();
   
@@ -354,6 +376,21 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
             <p className={styles.subtitle}>Create and manage instructions and missions</p>
           </div>
           <div className={styles.userInfo}>
+            <div className={styles.languageToggle}>
+              <a 
+                href="/admin?lang=en" 
+                className={language === 'en' ? styles.languageActive : styles.languageInactive}
+              >
+                English
+              </a>
+              <span className={styles.languageSeparator}>|</span>
+              <a 
+                href="/admin?lang=he" 
+                className={language === 'he' ? styles.languageActive : styles.languageInactive}
+              >
+                Hebrew
+              </a>
+            </div>
             <span className={styles.userEmail}>{user.email}</span>
             <button onClick={handleSignOut} className={styles.signOutButton}>
               Sign Out
@@ -371,26 +408,26 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
         </TabsList>
 
         <TabsContent value="instruction">
-          <InstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} />
+          <InstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} language={language} />
         </TabsContent>
 
         <TabsContent value="edit-instruction">
-          <EditInstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} />
+          <EditInstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} language={language} />
         </TabsContent>
 
         <TabsContent value="mission">
-          <MissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} />
+          <MissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} language={language} />
         </TabsContent>
 
         <TabsContent value="edit-mission">
-          <EditMissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} />
+          <EditMissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} language={language} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function InstructionForm({ actionData, clearActionData, instructions }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[] }) {
+function InstructionForm({ actionData, clearActionData, instructions, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; language: string }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [type, setType] = useState<"default" | "link">("default");
@@ -515,7 +552,7 @@ function InstructionForm({ actionData, clearActionData, instructions }: { action
         </p>
         <pre className={styles.outputCode}>{generateCode()}</pre>
         
-        <AuthenticatedForm actionType="saveInstruction" id={id} data={generateCode()} disabled={!id || !title} />
+        <AuthenticatedForm actionType="saveInstruction" id={id} data={generateCode()} disabled={!id || !title} language={language} />
         
         {actionData?.success && (
           <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
@@ -532,7 +569,7 @@ function InstructionForm({ actionData, clearActionData, instructions }: { action
   );
 }
 
-function EditInstructionForm({ actionData, clearActionData, instructions }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[] }) {
+function EditInstructionForm({ actionData, clearActionData, instructions, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; language: string }) {
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -697,7 +734,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions }: { ac
             </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
             
-            <AuthenticatedForm actionType="saveInstruction" id={id} data={generateCode()} disabled={!id || !title} />
+            <AuthenticatedForm actionType="saveInstruction" id={id} data={generateCode()} disabled={!id || !title} language={language} />
             
             {actionData?.success && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
@@ -716,7 +753,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions }: { ac
   );
 }
 
-function EditMissionForm({ actionData, clearActionData, instructions, missions }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[] }) {
+function EditMissionForm({ actionData, clearActionData, instructions, missions, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; language: string }) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -917,7 +954,7 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions }
             </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
             
-            <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} />
+            <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} language={language} />
             
             {actionData?.success && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
@@ -936,7 +973,7 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions }
   );
 }
 
-function MissionForm({ actionData, clearActionData, instructions, missions }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[] }) {
+function MissionForm({ actionData, clearActionData, instructions, missions, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; language: string }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -1098,7 +1135,7 @@ function MissionForm({ actionData, clearActionData, instructions, missions }: { 
         </p>
         <pre className={styles.outputCode}>{generateCode()}</pre>
         
-        <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} />
+        <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} language={language} />
         
         {actionData?.success && (
           <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
