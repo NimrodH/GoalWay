@@ -8,6 +8,10 @@ interface InstructionListItemProps {
    */
   title: string;
   /**
+   * Optional description of the instruction
+   */
+  description?: string;
+  /**
    * Whether this instruction is currently selected
    */
   selected: boolean;
@@ -18,10 +22,11 @@ interface InstructionListItemProps {
   className?: string;
 }
 
-export function InstructionListItem({ title, selected, onClick, className }: InstructionListItemProps) {
+export function InstructionListItem({ title, description, selected, onClick, className }: InstructionListItemProps) {
   return (
     <div className={classNames(styles.item, { [styles.selected]: selected }, className)} onClick={onClick}>
       <h3 className={styles.title}>{title}</h3>
+      {description && <p className={styles.description}>{description}</p>}
     </div>
   );
 }

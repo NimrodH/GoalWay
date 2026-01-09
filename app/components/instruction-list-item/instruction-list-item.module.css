@@ -30,3 +30,14 @@
   color: var(--color-accent-11);
   font-weight: 600;
 }
+
+.description {
+  font: var(--font-caption);
+  color: var(--color-neutral-11);
+  margin: var(--space-1) 0 0 0;
+  line-height: var(--font-lineheight-2);
+}
+
+.item.selected .description {
+  color: var(--color-accent-10);
+}

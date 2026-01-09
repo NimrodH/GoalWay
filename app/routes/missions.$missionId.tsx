@@ -103,6 +103,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
               <div key={instruction.id} className={styles.instructionItem}>
                 <InstructionListItem
                   title={displayTitle}
+                  description={instruction.description}
                   selected={selectedInstructionId === instruction.id}
                   onClick={() => handleInstructionClick(instruction.id)}
                 />

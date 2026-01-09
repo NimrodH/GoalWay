@@ -6,6 +6,7 @@ export interface InstructionContent {
 export interface Instruction {
   id: string;
   title: string;
+  description?: string;
   explanation: InstructionContent[];
   type?: "default" | "link";
   missionId?: string; // For link type instructions

@@ -609,6 +609,7 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
 function InstructionForm({ actionData, clearActionData, instructions, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; language: string }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [type, setType] = useState<"default" | "link">("default");
   const [missionId, setMissionId] = useState("");
   const [explanation, setExplanation] = useState<InstructionContent[]>([]);
@@ -632,6 +633,7 @@ function InstructionForm({ actionData, clearActionData, instructions, language }
     const instruction: Instruction = {
       id,
       title,
+      ...(description && { description }),
       explanation,
       ...(type === "link" && { type, missionId }),
     };
@@ -663,6 +665,17 @@ function InstructionForm({ actionData, clearActionData, instructions, language }
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Getting Started with Advanced Features"
+            />
+          </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Description</label>
+            <input
+              type="text"
+              className={styles.input}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g., Brief description of the instruction"
             />
           </div>
 
@@ -752,6 +765,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [type, setType] = useState<"default" | "link">("default");
   const [missionId, setMissionId] = useState("");
   const [explanation, setExplanation] = useState<InstructionContent[]>([]);
@@ -764,6 +778,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
     if (instruction) {
       setId(instruction.id);
       setTitle(instruction.title);
+      setDescription(instruction.description || "");
       setType(instruction.type || "default");
       setMissionId(instruction.missionId || "");
       setExplanation(instruction.explanation || []);
@@ -771,6 +786,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
       // No data for this language, start with empty fields
       setId(instructionId);
       setTitle("");
+      setDescription("");
       setType("default");
       setMissionId("");
       setExplanation([]);
@@ -795,6 +811,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
     const instruction: Instruction = {
       id,
       title,
+      ...(description && { description }),
       explanation,
       ...(type === "link" && { type, missionId }),
     };
@@ -855,6 +872,17 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g., Getting Started with Advanced Features"
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Description</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="e.g., Brief description of the instruction"
                 />
               </div>
 
