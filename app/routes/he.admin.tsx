@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs/tabs";
 import { instructionsHe, type Instruction, type InstructionContent } from "~/data/instructions-he";
 import { missionsHe, type Mission } from "~/data/missions-he";
+import { uploadImage } from "~/lib/image-upload";
 import styles from "./admin.module.css";
 
 export default function HeAdminPage() {
@@ -34,6 +35,36 @@ function InstructionForm() {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [explanation, setExplanation] = useState<InstructionContent[]>([]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageUpload = async () => {
+    if (!imageFile) return;
+
+    setIsUploading(true);
+    const result = await uploadImage(imageFile, 'instructions');
+    setIsUploading(false);
+
+    if ('error' in result) {
+      alert(`העלאה נכשלה: ${result.error}`);
+    } else {
+      setImagePreview(result.url);
+      alert(`התמונה הועלתה בהצלחה! URL: ${result.url}`);
+    }
+  };
 
   const addContent = (type: "text" | "image" | "video") => {
     setExplanation([...explanation, { type, content: "" }]);
@@ -85,6 +116,43 @@ function InstructionForm() {
               placeholder="לדוגמה: תחילת העבודה עם תכונות מתקדמות"
             />
           </div>
+        </div>
+      </div>
+
+      <div className={styles.formSection}>
+        <h2 className={styles.sectionTitle}>תמונת הוראה (אופציונלי)</h2>
+        <div className={styles.formGroup}>
+          <label className={styles.label}>העלה תמונה</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            className={styles.input}
+          />
+          {imagePreview && (
+            <div style={{ marginTop: "var(--space-3)" }}>
+              <img 
+                src={imagePreview} 
+                alt="תצוגה מקדימה" 
+                style={{ maxWidth: "300px", borderRadius: "var(--radius-3)" }}
+              />
+            </div>
+          )}
+          {imageFile && !isUploading && (
+            <button
+              type="button"
+              onClick={handleImageUpload}
+              className={styles.addButton}
+              style={{ marginTop: "var(--space-3)" }}
+            >
+              העלה תמונה ל-Supabase
+            </button>
+          )}
+          {isUploading && (
+            <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>
+              מעלה...
+            </p>
+          )}
         </div>
       </div>
 
@@ -151,6 +219,36 @@ function MissionForm() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedInstructions, setSelectedInstructions] = useState<string[]>([]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageUpload = async () => {
+    if (!imageFile) return;
+
+    setIsUploading(true);
+    const result = await uploadImage(imageFile, 'missions');
+    setIsUploading(false);
+
+    if ('error' in result) {
+      alert(`העלאה נכשלה: ${result.error}`);
+    } else {
+      setImagePreview(result.url);
+      alert(`התמונה הועלתה בהצלחה! URL: ${result.url}`);
+    }
+  };
 
   const toggleInstruction = (instructionId: string) => {
     if (selectedInstructions.includes(instructionId)) {
@@ -207,6 +305,43 @@ function MissionForm() {
               placeholder="הזן תיאור משימה..."
             />
           </div>
+        </div>
+      </div>
+
+      <div className={styles.formSection}>
+        <h2 className={styles.sectionTitle}>תמונת משימה (אופציונלי)</h2>
+        <div className={styles.formGroup}>
+          <label className={styles.label}>העלה תמונה</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            className={styles.input}
+          />
+          {imagePreview && (
+            <div style={{ marginTop: "var(--space-3)" }}>
+              <img 
+                src={imagePreview} 
+                alt="תצוגה מקדימה" 
+                style={{ maxWidth: "300px", borderRadius: "var(--radius-3)" }}
+              />
+            </div>
+          )}
+          {imageFile && !isUploading && (
+            <button
+              type="button"
+              onClick={handleImageUpload}
+              className={styles.addButton}
+              style={{ marginTop: "var(--space-3)" }}
+            >
+              העלה תמונה ל-Supabase
+            </button>
+          )}
+          {isUploading && (
+            <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>
+              מעלה...
+            </p>
+          )}
         </div>
       </div>
 
