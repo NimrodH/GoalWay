@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { data, Link, useNavigate, useLocation } from "react-router";
 import type { Route } from "./+types/he.missions.$missionId";
-import { missionsHe } from "~/data/missions-he";
-import { instructionsHe } from "~/data/instructions-he";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
 import { BookOpen, ArrowLeft } from "lucide-react";
 import styles from "./home.module.css";
+import { getMissionByIdHe, getAllMissionsHe } from "~/services/missions.server";
+import { getInstructionsByIdsHe } from "~/services/instructions.server";
 
-export function meta({ params }: Route.MetaArgs) {
-  const mission = missionsHe.find((m) => m.id === params.missionId);
+export function meta({ data }: Route.MetaArgs) {
+  const mission = data?.mission;
   return [
     { title: mission ? `${mission.title} - משימות` : "משימה לא נמצאה" },
     {
@@ -20,22 +20,22 @@ export function meta({ params }: Route.MetaArgs) {
 }
 
 export async function loader({ params }: Route.LoaderArgs) {
-  const mission = missionsHe.find((m) => m.id === params.missionId);
+  const mission = await getMissionByIdHe(params.missionId);
+  const allMissions = await getAllMissionsHe();
   
   if (!mission) {
     throw data("משימה לא נמצאה", { status: 404 });
   }
 
-  return { mission };
+  const instructions = await getInstructionsByIdsHe(mission.instructionIds);
+
+  return { mission, instructions, allMissions };
 }
 
 export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
-  const { mission } = loaderData;
+  const { mission, instructions, allMissions } = loaderData;
 
-  // Get instructions for this mission in the specified order
-  const missionInstructions = mission.instructionIds
-    .map((id) => instructionsHe.find((inst) => inst.id === id))
-    .filter(Boolean);
+  const missionInstructions = instructions;
 
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
 
@@ -94,20 +94,20 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
         <div className={styles.instructionList}>
           {missionInstructions.map((instruction) => {
             // For link type, get the mission title
-            const displayTitle = instruction!.type === "link" && instruction!.missionId
-              ? missionsHe.find((m) => m.id === instruction!.missionId)?.title || instruction!.title
-              : instruction!.title;
+            const displayTitle = instruction.type === "link" && instruction.missionId
+              ? allMissions.find((m) => m.id === instruction.missionId)?.title || instruction.title
+              : instruction.title;
             
             return (
-              <div key={instruction!.id} className={styles.instructionItem}>
+              <div key={instruction.id} className={styles.instructionItem}>
                 <InstructionListItem
                   title={displayTitle}
-                  selected={selectedInstructionId === instruction!.id}
-                  onClick={() => handleInstructionClick(instruction!.id)}
+                  selected={selectedInstructionId === instruction.id}
+                  onClick={() => handleInstructionClick(instruction.id)}
                 />
-                {selectedInstructionId === instruction!.id && instruction!.type !== "link" && (
+                {selectedInstructionId === instruction.id && instruction.type !== "link" && (
                   <div className={styles.mobileExplanation}>
-                    <ExplanationDisplay instruction={instruction!} />
+                    <ExplanationDisplay instruction={instruction} />
                   </div>
                 )}
               </div>

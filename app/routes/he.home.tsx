@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/he.home";
-import { missionsHe } from "~/data/missions-he";
-import { BookOpen, Settings } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import styles from "./instructions.module.css";
+import { getAllMissionsHe } from "~/services/missions.server";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -14,7 +14,13 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-export default function HeHome() {
+export async function loader({}: Route.LoaderArgs) {
+  const missionsHe = await getAllMissionsHe();
+  return { missionsHe };
+}
+
+export default function HeHome({ loaderData }: Route.ComponentProps) {
+  const { missionsHe } = loaderData;
   return (
     <div className={styles.menuContainer} dir="rtl">
       <div className={styles.menuContent}>
@@ -25,26 +31,7 @@ export default function HeHome() {
               ברוכים הבאים למרכז הבקרה. כל משימה מכילה סט מאורגן של הוראות שנועדו לעזור לכם לשלוט בהיבטים ספציפיים של הפלטפורמה. בחרו משימה למטה כדי להתחיל את מסע הלמידה שלכם. משימות יכולות לחלוק הוראות משותפות, ומאפשרות לכם לבנות ידע באופן הדרגתי.
             </p>
           </div>
-          <Link
-            to="/he/admin"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "var(--space-2)",
-              padding: "var(--space-2) var(--space-3)",
-              background: "var(--color-accent-4)",
-              color: "var(--color-accent-11)",
-              border: "1px solid var(--color-accent-7)",
-              borderRadius: "var(--radius-2)",
-              textDecoration: "none",
-              fontWeight: 500,
-              fontSize: "0.875rem",
-              transition: "background 0.2s",
-            }}
-          >
-            <Settings size={16} />
-            פאנל ניהול
-          </Link>
+
         </div>
 
         <div className={styles.missionsGrid}>

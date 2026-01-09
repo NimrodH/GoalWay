@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/home";
-import { missions } from "~/data/missions";
 import { BookOpen } from "lucide-react";
 import styles from "./instructions.module.css";
+import { getAllMissions } from "~/services/missions.server";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -14,7 +14,13 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-export default function Home() {
+export async function loader({}: Route.LoaderArgs) {
+  const missions = await getAllMissions();
+  return { missions };
+}
+
+export default function Home({ loaderData }: Route.ComponentProps) {
+  const { missions } = loaderData;
   return (
     <div className={styles.menuContainer}>
       <div className={styles.menuContent}>

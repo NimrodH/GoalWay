@@ -1,18 +1,25 @@
 import { useState, useEffect } from "react";
 import { Form, useActionData, useNavigate } from "react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs/tabs";
-import { instructions, type Instruction, type InstructionContent } from "~/data/instructions";
-import { missions, type Mission } from "~/data/missions";
 import { useAuth } from "~/hooks/use-auth";
 import { initSupabase, getSupabase } from "~/lib/supabase";
 import { uploadImage } from "~/lib/image-upload";
 import type { Route } from "./+types/admin";
 import styles from "./admin.module.css";
+import { getAllInstructions, type Instruction, type InstructionContent } from "~/services/instructions.server";
+import { getAllMissions, type Mission } from "~/services/missions.server";
 
 export async function loader() {
+  const [instructions, missions] = await Promise.all([
+    getAllInstructions(),
+    getAllMissions()
+  ]);
+  
   return {
     supabaseUrl: process.env.SUPABASE_PROJECT_URL!,
     supabaseKey: process.env.SUPABASE_API_KEY!,
+    instructions,
+    missions,
   };
 }
 
@@ -238,7 +245,7 @@ function AuthenticatedForm({
 }
 
 export default function AdminPage({ loaderData }: Route.ComponentProps) {
-  const { supabaseUrl, supabaseKey } = loaderData;
+  const { supabaseUrl, supabaseKey, instructions, missions } = loaderData;
   const actionData = useActionData<typeof action>();
   const navigate = useNavigate();
   
@@ -364,26 +371,26 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
         </TabsList>
 
         <TabsContent value="instruction">
-          <InstructionForm actionData={actionData} clearActionData={clearActionData} />
+          <InstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} />
         </TabsContent>
 
         <TabsContent value="edit-instruction">
-          <EditInstructionForm actionData={actionData} clearActionData={clearActionData} />
+          <EditInstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} />
         </TabsContent>
 
         <TabsContent value="mission">
-          <MissionForm actionData={actionData} clearActionData={clearActionData} />
+          <MissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} />
         </TabsContent>
 
         <TabsContent value="edit-mission">
-          <EditMissionForm actionData={actionData} clearActionData={clearActionData} />
+          <EditMissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function InstructionForm({ actionData, clearActionData }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void }) {
+function InstructionForm({ actionData, clearActionData, instructions }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[] }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [type, setType] = useState<"default" | "link">("default");
@@ -525,7 +532,7 @@ function InstructionForm({ actionData, clearActionData }: { actionData?: { succe
   );
 }
 
-function EditInstructionForm({ actionData, clearActionData }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void }) {
+function EditInstructionForm({ actionData, clearActionData, instructions }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[] }) {
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -709,7 +716,7 @@ function EditInstructionForm({ actionData, clearActionData }: { actionData?: { s
   );
 }
 
-function EditMissionForm({ actionData, clearActionData }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void }) {
+function EditMissionForm({ actionData, clearActionData, instructions, missions }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[] }) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -929,7 +936,7 @@ function EditMissionForm({ actionData, clearActionData }: { actionData?: { succe
   );
 }
 
-function MissionForm({ actionData, clearActionData }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void }) {
+function MissionForm({ actionData, clearActionData, instructions, missions }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[] }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
