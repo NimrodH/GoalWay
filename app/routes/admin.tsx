@@ -23,7 +23,6 @@ export async function action({ request }: Route.ActionArgs) {
   const dataEn = formData.get("dataEn") as string;
   const dataHe = formData.get("dataHe") as string | null;
   const accessToken = formData.get("accessToken") as string | null;
-  const imageFile = formData.get("imageFile") as File | null;
 
   // Verify auth token is provided
   if (!accessToken) {
@@ -44,38 +43,8 @@ export async function action({ request }: Route.ActionArgs) {
     }
   );
 
-  // Handle image upload if provided
-  let imageUrl = '';
-  if (imageFile && imageFile.size > 0) {
-    const fileExt = imageFile.name.split('.').pop();
-    const folder = actionType === 'saveInstruction' ? 'instructions' : 'missions';
-    const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    
-    const { error: uploadError } = await supabase.storage
-      .from('mission-images')
-      .upload(fileName, imageFile, {
-        cacheControl: '3600',
-        upsert: false
-      });
-
-    if (uploadError) {
-      return { success: false, error: `Image upload failed: ${uploadError.message}` };
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('mission-images')
-      .getPublicUrl(fileName);
-
-    imageUrl = publicUrl;
-  }
-
   if (actionType === "saveInstruction") {
     const instructionData = JSON.parse(dataEn);
-    
-    // If an image was uploaded, add it to the instruction data
-    if (imageUrl) {
-      instructionData.imageUrl = imageUrl;
-    }
     
     const { error } = await supabase
       .from("instructions")
@@ -83,7 +52,6 @@ export async function action({ request }: Route.ActionArgs) {
         id,
         data_en: instructionData,
         data_he: dataHe ? JSON.parse(dataHe) : null,
-        image_url: imageUrl || null,
         updated_at: new Date().toISOString(),
       });
 
@@ -93,16 +61,10 @@ export async function action({ request }: Route.ActionArgs) {
 
     return { 
       success: true, 
-      message: "Instruction saved successfully!",
-      imageUrl: imageUrl || undefined
+      message: "Instruction saved successfully!"
     };
   } else if (actionType === "saveMission") {
     const missionData = JSON.parse(dataEn);
-    
-    // If an image was uploaded, add it to the mission data
-    if (imageUrl) {
-      missionData.imageUrl = imageUrl;
-    }
     
     const { error } = await supabase
       .from("missions")
@@ -119,12 +81,133 @@ export async function action({ request }: Route.ActionArgs) {
 
     return { 
       success: true, 
-      message: "Mission saved successfully!",
-      imageUrl: imageUrl || undefined
+      message: "Mission saved successfully!"
     };
   }
 
   return { success: false, error: "Invalid action type" };
+}
+
+// Component for individual explanation content items with image upload
+function ExplanationContentItem({
+  item,
+  index,
+  onUpdate,
+  onRemove,
+}: {
+  item: InstructionContent;
+  index: number;
+  onUpdate: (index: number, content: string) => void;
+  onRemove: (index: number) => void;
+}) {
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>(item.type === "image" ? item.content : "");
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageUpload = async () => {
+    if (!imageFile) return;
+
+    setIsUploading(true);
+    const result = await uploadImage(imageFile, 'instructions');
+    setIsUploading(false);
+
+    if ('error' in result) {
+      alert(`Upload failed: ${result.error}`);
+    } else {
+      setImagePreview(result.url);
+      onUpdate(index, result.url);
+      alert('Image uploaded successfully!');
+    }
+  };
+
+  return (
+    <div className={styles.contentItem}>
+      <div className={styles.contentItemHeader}>
+        <span className={styles.contentItemType}>{item.type}</span>
+        <button
+          className={styles.removeButton}
+          onClick={() => onRemove(index)}
+        >
+          Remove
+        </button>
+      </div>
+      
+      {item.type === "text" ? (
+        <textarea
+          className={styles.textarea}
+          value={item.content}
+          onChange={(e) => onUpdate(index, e.target.value)}
+          placeholder="Enter text content..."
+        />
+      ) : item.type === "image" ? (
+        <div>
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Image URL</label>
+            <input
+              type="text"
+              className={styles.input}
+              value={item.content}
+              onChange={(e) => onUpdate(index, e.target.value)}
+              placeholder="Enter image URL or upload below..."
+            />
+          </div>
+          <div className={styles.formGroup} style={{ marginTop: "var(--space-3)" }}>
+            <label className={styles.label}>Or Upload Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className={styles.input}
+            />
+            {imagePreview && (
+              <div style={{ marginTop: "var(--space-2)" }}>
+                <img 
+                  src={imagePreview} 
+                  alt="Preview" 
+                  style={{ maxWidth: "200px", borderRadius: "var(--radius-2)" }}
+                />
+              </div>
+            )}
+            {imageFile && !isUploading && (
+              <button
+                type="button"
+                onClick={handleImageUpload}
+                className={styles.addButton}
+                style={{ marginTop: "var(--space-2)" }}
+              >
+                Upload to Supabase
+              </button>
+            )}
+            {isUploading && (
+              <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>
+                Uploading...
+              </p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <input
+          type="text"
+          className={styles.input}
+          value={item.content}
+          onChange={(e) => onUpdate(index, e.target.value)}
+          placeholder={`Enter ${item.type} URL...`}
+        />
+      )}
+    </div>
+  );
 }
 
 // Component to handle authenticated form submissions
@@ -132,36 +215,17 @@ function AuthenticatedForm({
   actionType, 
   id, 
   data, 
-  disabled,
-  imageFile
+  disabled
 }: { 
   actionType: string; 
   id: string; 
   data: string; 
   disabled: boolean;
-  imageFile?: File | null;
 }) {
   const { session } = useAuth();
-  const [fileInputKey, setFileInputKey] = useState(Date.now());
-  
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    // If we have an image file, we need to add it to FormData
-    if (imageFile) {
-      e.preventDefault();
-      const formData = new FormData(e.currentTarget);
-      formData.set('imageFile', imageFile);
-      
-      fetch('/admin', {
-        method: 'POST',
-        body: formData,
-      }).then(() => {
-        window.location.reload();
-      });
-    }
-  };
   
   return (
-    <Form method="post" encType="multipart/form-data" style={{ marginTop: "var(--space-4)" }} onSubmit={handleSubmit}>
+    <Form method="post" style={{ marginTop: "var(--space-4)" }}>
       <input type="hidden" name="actionType" value={actionType} />
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="dataEn" value={data} />
@@ -325,37 +389,7 @@ function InstructionForm({ actionData, clearActionData }: { actionData?: { succe
   const [type, setType] = useState<"default" | "link">("default");
   const [missionId, setMissionId] = useState("");
   const [explanation, setExplanation] = useState<InstructionContent[]>([]);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
-  const [isUploading, setIsUploading] = useState(false);
   const { session } = useAuth();
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleImageUpload = async () => {
-    if (!imageFile) return;
-
-    setIsUploading(true);
-    const result = await uploadImage(imageFile, 'instructions');
-    setIsUploading(false);
-
-    if ('error' in result) {
-      alert(`Upload failed: ${result.error}`);
-    } else {
-      setImagePreview(result.url);
-      alert(`Image uploaded successfully! URL: ${result.url}`);
-    }
-  };
 
   const addContent = (type: "text" | "image" | "video") => {
     setExplanation([...explanation, { type, content: "" }]);
@@ -439,81 +473,18 @@ function InstructionForm({ actionData, clearActionData }: { actionData?: { succe
         </div>
       </div>
 
-      <div className={styles.formSection}>
-        <h2 className={styles.sectionTitle}>Instruction Image (Optional)</h2>
-        <div className={styles.formGroup}>
-          <label className={styles.label}>Upload Image</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageChange}
-            className={styles.input}
-          />
-          {imagePreview && (
-            <div style={{ marginTop: "var(--space-3)" }}>
-              <img 
-                src={imagePreview} 
-                alt="Preview" 
-                style={{ maxWidth: "300px", borderRadius: "var(--radius-3)" }}
-              />
-            </div>
-          )}
-          {imageFile && !isUploading && (
-            <button
-              type="button"
-              onClick={handleImageUpload}
-              className={styles.addButton}
-              style={{ marginTop: "var(--space-3)" }}
-            >
-              Upload Image to Supabase
-            </button>
-          )}
-          {isUploading && (
-            <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>
-              Uploading...
-            </p>
-          )}
-          {actionData?.imageUrl && (
-            <p style={{ marginTop: "var(--space-2)", fontSize: "0.875rem", color: "var(--color-success-11)" }}>
-              Image URL: {actionData.imageUrl}
-            </p>
-          )}
-        </div>
-      </div>
-
       {type === "default" && (
         <div className={styles.formSection}>
           <h2 className={styles.sectionTitle}>Explanation Content</h2>
           
           {explanation.map((item, index) => (
-          <div key={index} className={styles.contentItem}>
-            <div className={styles.contentItemHeader}>
-              <span className={styles.contentItemType}>{item.type}</span>
-              <button
-                className={styles.removeButton}
-                onClick={() => removeContent(index)}
-              >
-                Remove
-              </button>
-            </div>
-            
-            {item.type === "text" ? (
-              <textarea
-                className={styles.textarea}
-                value={item.content}
-                onChange={(e) => updateContent(index, e.target.value)}
-                placeholder="Enter text content..."
-              />
-            ) : (
-              <input
-                type="text"
-                className={styles.input}
-                value={item.content}
-                onChange={(e) => updateContent(index, e.target.value)}
-                placeholder={`Enter ${item.type} URL...`}
-              />
-            )}
-          </div>
+          <ExplanationContentItem
+            key={index}
+            item={item}
+            index={index}
+            onUpdate={updateContent}
+            onRemove={removeContent}
+          />
         ))}
 
         <div className={styles.addContentButtons}>
@@ -537,7 +508,7 @@ function InstructionForm({ actionData, clearActionData }: { actionData?: { succe
         </p>
         <pre className={styles.outputCode}>{generateCode()}</pre>
         
-        <AuthenticatedForm actionType="saveInstruction" id={id} data={generateCode()} disabled={!id || !title} imageFile={imageFile} />
+        <AuthenticatedForm actionType="saveInstruction" id={id} data={generateCode()} disabled={!id || !title} />
         
         {actionData?.success && (
           <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
@@ -561,37 +532,7 @@ function EditInstructionForm({ actionData, clearActionData }: { actionData?: { s
   const [type, setType] = useState<"default" | "link">("default");
   const [missionId, setMissionId] = useState("");
   const [explanation, setExplanation] = useState<InstructionContent[]>([]);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
-  const [isUploading, setIsUploading] = useState(false);
   const { session } = useAuth();
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleImageUpload = async () => {
-    if (!imageFile) return;
-
-    setIsUploading(true);
-    const result = await uploadImage(imageFile, 'instructions');
-    setIsUploading(false);
-
-    if ('error' in result) {
-      alert(`Upload failed: ${result.error}`);
-    } else {
-      setImagePreview(result.url);
-      alert(`Image uploaded successfully! URL: ${result.url}`);
-    }
-  };
 
   const handleSelectInstruction = (instructionId: string) => {
     clearActionData();
@@ -714,81 +655,18 @@ function EditInstructionForm({ actionData, clearActionData }: { actionData?: { s
             </div>
           </div>
 
-          <div className={styles.formSection}>
-            <h2 className={styles.sectionTitle}>Instruction Image (Optional)</h2>
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Upload Image</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className={styles.input}
-              />
-              {imagePreview && (
-                <div style={{ marginTop: "var(--space-3)" }}>
-                  <img 
-                    src={imagePreview} 
-                    alt="Preview" 
-                    style={{ maxWidth: "300px", borderRadius: "var(--radius-3)" }}
-                  />
-                </div>
-              )}
-              {imageFile && !isUploading && (
-                <button
-                  type="button"
-                  onClick={handleImageUpload}
-                  className={styles.addButton}
-                  style={{ marginTop: "var(--space-3)" }}
-                >
-                  Upload Image to Supabase
-                </button>
-              )}
-              {isUploading && (
-                <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>
-                  Uploading...
-                </p>
-              )}
-              {actionData?.imageUrl && (
-                <p style={{ marginTop: "var(--space-2)", fontSize: "0.875rem", color: "var(--color-success-11)" }}>
-                  Image URL: {actionData.imageUrl}
-                </p>
-              )}
-            </div>
-          </div>
-
           {type === "default" && (
             <div className={styles.formSection}>
               <h2 className={styles.sectionTitle}>Explanation Content</h2>
               
               {explanation.map((item, index) => (
-              <div key={index} className={styles.contentItem}>
-                <div className={styles.contentItemHeader}>
-                  <span className={styles.contentItemType}>{item.type}</span>
-                  <button
-                    className={styles.removeButton}
-                    onClick={() => removeContent(index)}
-                  >
-                    Remove
-                  </button>
-                </div>
-                
-                {item.type === "text" ? (
-                  <textarea
-                    className={styles.textarea}
-                    value={item.content}
-                    onChange={(e) => updateContent(index, e.target.value)}
-                    placeholder="Enter text content..."
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    className={styles.input}
-                    value={item.content}
-                    onChange={(e) => updateContent(index, e.target.value)}
-                    placeholder={`Enter ${item.type} URL...`}
-                  />
-                )}
-              </div>
+              <ExplanationContentItem
+                key={index}
+                item={item}
+                index={index}
+                onUpdate={updateContent}
+                onRemove={removeContent}
+              />
             ))}
 
             <div className={styles.addContentButtons}>
@@ -812,7 +690,7 @@ function EditInstructionForm({ actionData, clearActionData }: { actionData?: { s
             </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
             
-            <AuthenticatedForm actionType="saveInstruction" id={id} data={generateCode()} disabled={!id || !title} imageFile={imageFile} />
+            <AuthenticatedForm actionType="saveInstruction" id={id} data={generateCode()} disabled={!id || !title} />
             
             {actionData?.success && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
@@ -1032,7 +910,7 @@ function EditMissionForm({ actionData, clearActionData }: { actionData?: { succe
             </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
             
-            <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} imageFile={imageFile} />
+            <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} />
             
             {actionData?.success && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
@@ -1213,7 +1091,7 @@ function MissionForm({ actionData, clearActionData }: { actionData?: { success: 
         </p>
         <pre className={styles.outputCode}>{generateCode()}</pre>
         
-        <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} imageFile={imageFile} />
+        <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} />
         
         {actionData?.success && (
           <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
