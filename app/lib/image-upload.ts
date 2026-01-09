@@ -54,3 +54,88 @@ export async function deleteImage(path: string): Promise<{ success: boolean; err
     };
   }
 }
+
+export async function listImages(folder?: string): Promise<{ images: Array<{ name: string; url: string; path: string }>; error?: string }> {
+  try {
+    const supabase = getSupabase();
+    
+    // List all files in the bucket
+    const { data, error } = await supabase.storage
+      .from('mission-images')
+      .list(folder, {
+        limit: 100,
+        offset: 0,
+        sortBy: { column: 'created_at', order: 'desc' }
+      });
+
+    if (error) {
+      return { images: [], error: error.message };
+    }
+
+    // Get public URLs for all files
+    const images = data
+      .filter(file => !file.id) // Filter out folders
+      .map(file => {
+        const path = folder ? `${folder}/${file.name}` : file.name;
+        const { data: { publicUrl } } = supabase.storage
+          .from('mission-images')
+          .getPublicUrl(path);
+        
+        return {
+          name: file.name,
+          url: publicUrl,
+          path: path
+        };
+      });
+
+    return { images };
+  } catch (error) {
+    return { 
+      images: [], 
+      error: error instanceof Error ? error.message : 'Failed to list images' 
+    };
+  }
+}
+
+export async function listAllImages(): Promise<{ images: Array<{ name: string; url: string; path: string }>; error?: string }> {
+  try {
+    const supabase = getSupabase();
+    
+    // First list all folders
+    const { data: folders, error: foldersError } = await supabase.storage
+      .from('mission-images')
+      .list('', {
+        limit: 100,
+        offset: 0
+      });
+
+    if (foldersError) {
+      return { images: [], error: foldersError.message };
+    }
+
+    const allImages: Array<{ name: string; url: string; path: string }> = [];
+
+    // Get images from root
+    const rootResult = await listImages();
+    if (rootResult.images) {
+      allImages.push(...rootResult.images);
+    }
+
+    // Get images from each folder
+    for (const folder of folders) {
+      if (folder.id) { // It's a folder
+        const folderResult = await listImages(folder.name);
+        if (folderResult.images) {
+          allImages.push(...folderResult.images);
+        }
+      }
+    }
+
+    return { images: allImages };
+  } catch (error) {
+    return { 
+      images: [], 
+      error: error instanceof Error ? error.message : 'Failed to list images' 
+    };
+  }
+}

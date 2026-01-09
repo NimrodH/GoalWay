@@ -3,7 +3,7 @@ import { Form, useActionData, useNavigate, useSearchParams } from "react-router"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs/tabs";
 import { useAuth } from "~/hooks/use-auth";
 import { initSupabase, getSupabase } from "~/lib/supabase";
-import { uploadImage } from "~/lib/image-upload";
+import { uploadImage, listAllImages } from "~/lib/image-upload";
 import type { Route } from "./+types/admin";
 import styles from "./admin.module.css";
 import { getAllInstructions, getAllInstructionsHe, getAllInstructionIds, type Instruction, type InstructionContent } from "~/services/instructions.server";
@@ -170,6 +170,85 @@ export async function action({ request }: Route.ActionArgs) {
   return { success: false, error: "Invalid action type" };
 }
 
+// Image Library Dialog Component
+function ImageLibraryDialog({ 
+  isOpen, 
+  onClose, 
+  onSelectImage 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onSelectImage: (url: string) => void; 
+}) {
+  const [images, setImages] = useState<Array<{ name: string; url: string; path: string }>>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadImages();
+    }
+  }, [isOpen]);
+
+  const loadImages = async () => {
+    setIsLoading(true);
+    setError(null);
+    const result = await listAllImages();
+    setIsLoading(false);
+
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setImages(result.images);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className={styles.dialogOverlay} onClick={onClose}>
+      <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.dialogHeader}>
+          <h2 className={styles.dialogTitle}>Select Image from Library</h2>
+          <button className={styles.dialogClose} onClick={onClose}>
+            ✕
+          </button>
+        </div>
+        
+        {isLoading && (
+          <div className={styles.dialogLoading}>Loading images...</div>
+        )}
+        
+        {error && (
+          <div className={styles.errorMessage}>{error}</div>
+        )}
+        
+        {!isLoading && !error && images.length === 0 && (
+          <div className={styles.dialogEmpty}>No images found in storage</div>
+        )}
+        
+        {!isLoading && !error && images.length > 0 && (
+          <div className={styles.imageGrid}>
+            {images.map((image) => (
+              <div 
+                key={image.path} 
+                className={styles.imageGridItem}
+                onClick={() => {
+                  onSelectImage(image.url);
+                  onClose();
+                }}
+              >
+                <img src={image.url} alt={image.name} className={styles.imageGridThumb} />
+                <div className={styles.imageGridName}>{image.name}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Component for individual explanation content items with image upload
 function ExplanationContentItem({
   item,
@@ -185,6 +264,7 @@ function ExplanationContentItem({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>(item.type === "image" ? item.content : "");
   const [isUploading, setIsUploading] = useState(false);
+  const [showImageLibrary, setShowImageLibrary] = useState(false);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -212,6 +292,11 @@ function ExplanationContentItem({
       onUpdate(index, result.url);
       alert('Image uploaded successfully!');
     }
+  };
+
+  const handleSelectFromLibrary = (url: string) => {
+    setImagePreview(url);
+    onUpdate(index, url);
   };
 
   return (
@@ -246,7 +331,16 @@ function ExplanationContentItem({
             />
           </div>
           <div className={styles.formGroup} style={{ marginTop: "var(--space-3)" }}>
-            <label className={styles.label}>Or Upload Image</label>
+            <label className={styles.label}>Upload New Image or Select from Library</label>
+            <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+              <button
+                type="button"
+                onClick={() => setShowImageLibrary(true)}
+                className={styles.addButton}
+              >
+                📚 Select from Library
+              </button>
+            </div>
             <input
               type="file"
               accept="image/*"
@@ -278,6 +372,11 @@ function ExplanationContentItem({
               </p>
             )}
           </div>
+          <ImageLibraryDialog 
+            isOpen={showImageLibrary} 
+            onClose={() => setShowImageLibrary(false)} 
+            onSelectImage={handleSelectFromLibrary} 
+          />
         </div>
       ) : (
         <input

@@ -384,3 +384,108 @@
 .signOutButton:hover {
   background: var(--color-neutral-5);
 }
+
+.dialogOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+}
+
+.dialogContent {
+  background: var(--color-neutral-1);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-3);
+  max-width: 900px;
+  width: 100%;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dialogHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-neutral-6);
+}
+
+.dialogTitle {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-neutral-12);
+  margin: 0;
+}
+
+.dialogClose {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--color-neutral-11);
+  cursor: pointer;
+  padding: var(--space-1);
+  transition: color 0.2s;
+}
+
+.dialogClose:hover {
+  color: var(--color-neutral-12);
+}
+
+.dialogLoading,
+.dialogEmpty {
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--color-neutral-11);
+  font-family: var(--font-body);
+}
+
+.imageGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-3);
+  padding: var(--space-4);
+  overflow-y: auto;
+}
+
+.imageGridItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  cursor: pointer;
+  border: 2px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  padding: var(--space-2);
+  transition: all 0.2s;
+  background: var(--color-neutral-2);
+}
+
+.imageGridItem:hover {
+  border-color: var(--color-accent-8);
+  background: var(--color-neutral-3);
+  transform: scale(1.02);
+}
+
+.imageGridThumb {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius-2);
+}
+
+.imageGridName {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--color-neutral-11);
+  word-break: break-all;
+  text-align: center;
+}
