@@ -91,11 +91,19 @@ export async function translateText(
     return { translatedText: '', error };
   }
 
+  // Check if response is JSON before parsing
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    const error = `DeepL API returned non-JSON response (${contentType || 'unknown'}). This usually means the API key is invalid or missing. Status: ${response.status}. Response: ${responseText.substring(0, 200)}`;
+    console.error('[DEEPL INVALID RESPONSE TYPE]', error);
+    return { translatedText: '', error };
+  }
+
   let data: any;
   try {
     data = JSON.parse(responseText);
   } catch (parseError) {
-    const error = `Invalid API response - not JSON. Status: ${response.status}. Response: ${responseText.substring(0, 200)}`;
+    const error = `Invalid API response - failed to parse JSON. Status: ${response.status}. Response: ${responseText.substring(0, 200)}`;
     console.error('[DEEPL JSON PARSE ERROR]', error, parseError);
     return { translatedText: '', error };
   }
