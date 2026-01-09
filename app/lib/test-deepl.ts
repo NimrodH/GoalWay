@@ -35,17 +35,35 @@ export async function testDeepLConnection() {
 
     const responseText = await response.text();
     
+    // Try to parse as JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      // Not JSON - probably an error page
+      return {
+        success: false,
+        error: 'DeepL API returned HTML instead of JSON',
+        details: `Status: ${response.status}, Response preview: ${responseText.substring(0, 500)}`,
+        responsePreview: responseText.substring(0, 500),
+        statusCode: response.status,
+        apiEndpoint: baseUrl,
+        keyType: isFreeKey ? 'Free' : 'Pro',
+        apiKeyLength: apiKey.length,
+        apiKeyPrefix: apiKey.substring(0, 8) + '...',
+      };
+    }
+    
     if (!response.ok) {
       return {
         success: false,
         error: `DeepL API returned status ${response.status}`,
-        details: responseText,
+        details: data.message || responseText,
+        statusCode: response.status,
         apiEndpoint: baseUrl,
         keyType: isFreeKey ? 'Free' : 'Pro'
       };
     }
-
-    const data = JSON.parse(responseText);
     
     return {
       success: true,
@@ -59,6 +77,7 @@ export async function testDeepLConnection() {
       success: false,
       error: error instanceof Error ? error.message : String(error),
       details: 'Network or parsing error occurred',
+      stack: error instanceof Error ? error.stack : undefined,
       apiEndpoint: baseUrl,
       keyType: isFreeKey ? 'Free' : 'Pro'
     };
