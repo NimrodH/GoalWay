@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Form, useActionData, useNavigate } from "react-router";
+import { Form, useActionData, useNavigate, useSearchParams } from "react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs/tabs";
 import { useAuth } from "~/hooks/use-auth";
 import { initSupabase, getSupabase } from "~/lib/supabase";
@@ -12,6 +12,7 @@ import { getAllMissions, getAllMissionsHe, type Mission } from "~/services/missi
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const language = url.searchParams.get('lang') || 'en';
+  const tab = url.searchParams.get('tab') || 'instruction';
   
   const [instructions, missions] = await Promise.all([
     language === 'he' ? getAllInstructionsHe() : getAllInstructions(),
@@ -24,6 +25,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     instructions,
     missions,
     language,
+    tab,
   };
 }
 
@@ -267,17 +269,39 @@ function AuthenticatedForm({
 }
 
 export default function AdminPage({ loaderData }: Route.ComponentProps) {
-  const { supabaseUrl, supabaseKey, instructions, missions, language } = loaderData;
+  const { supabaseUrl, supabaseKey, instructions, missions, language, tab } = loaderData;
   const actionData = useActionData<typeof action>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [currentTab, setCurrentTab] = useState(tab);
   
   // Initialize Supabase on the client
   useEffect(() => {
     initSupabase(supabaseUrl, supabaseKey);
   }, [supabaseUrl, supabaseKey]);
   
+  // Update URL when tab changes
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', currentTab);
+    if (language) {
+      params.set('lang', language);
+    }
+    navigate(`/admin?${params.toString()}`, { replace: true });
+  }, [currentTab, language]);
+  
   const clearActionData = () => {
-    navigate("/admin", { replace: true });
+    const params = new URLSearchParams();
+    params.set('tab', currentTab);
+    params.set('lang', language);
+    navigate(`/admin?${params.toString()}`, { replace: true });
+  };
+  
+  const switchLanguage = (newLang: string) => {
+    const params = new URLSearchParams();
+    params.set('tab', currentTab);
+    params.set('lang', newLang);
+    navigate(`/admin?${params.toString()}`);
   };
   
   const { user, loading, signIn, signOut } = useAuth();
@@ -377,19 +401,21 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
           </div>
           <div className={styles.userInfo}>
             <div className={styles.languageToggle}>
-              <a 
-                href="/admin?lang=en" 
+              <button 
+                type="button"
+                onClick={() => switchLanguage('en')}
                 className={language === 'en' ? styles.languageActive : styles.languageInactive}
               >
                 English
-              </a>
+              </button>
               <span className={styles.languageSeparator}>|</span>
-              <a 
-                href="/admin?lang=he" 
+              <button 
+                type="button"
+                onClick={() => switchLanguage('he')}
                 className={language === 'he' ? styles.languageActive : styles.languageInactive}
               >
                 Hebrew
-              </a>
+              </button>
             </div>
             <span className={styles.userEmail}>{user.email}</span>
             <button onClick={handleSignOut} className={styles.signOutButton}>
@@ -399,12 +425,12 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
         </div>
       </header>
 
-      <Tabs defaultValue="instruction" className={styles.tabs}>
+      <Tabs value={currentTab} onValueChange={setCurrentTab} className={styles.tabs}>
         <TabsList>
-          <TabsTrigger value="instruction" onClick={() => clearActionData()}>New Instruction</TabsTrigger>
-          <TabsTrigger value="edit-instruction" onClick={() => clearActionData()}>Edit Instruction</TabsTrigger>
-          <TabsTrigger value="mission" onClick={() => clearActionData()}>New Mission</TabsTrigger>
-          <TabsTrigger value="edit-mission" onClick={() => clearActionData()}>Edit Mission</TabsTrigger>
+          <TabsTrigger value="instruction">New Instruction</TabsTrigger>
+          <TabsTrigger value="edit-instruction">Edit Instruction</TabsTrigger>
+          <TabsTrigger value="mission">New Mission</TabsTrigger>
+          <TabsTrigger value="edit-mission">Edit Mission</TabsTrigger>
         </TabsList>
 
         <TabsContent value="instruction">
