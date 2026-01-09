@@ -64,24 +64,49 @@ export async function action({ request }: Route.ActionArgs) {
   if (actionType === "saveInstruction") {
     const instructionData = JSON.parse(dataEn);
     
-    // Determine which column to update based on language
-    const updateData: any = {
-      id,
-      updated_at: new Date().toISOString(),
-    };
-    
-    if (language === 'he') {
-      updateData.data_he = instructionData;
-    } else {
-      updateData.data_en = instructionData;
-    }
-    
-    const { error } = await supabase
+    // Check if the row exists
+    const { data: existingData } = await supabase
       .from("instructions")
-      .upsert(updateData);
+      .select("id")
+      .eq("id", id)
+      .single();
+    
+    if (!existingData) {
+      // Row doesn't exist, we need to insert with data_en at minimum
+      const insertData: any = {
+        id,
+        data_en: language === 'en' ? instructionData : {},
+        data_he: language === 'he' ? instructionData : null,
+        updated_at: new Date().toISOString(),
+      };
+      
+      const { error } = await supabase
+        .from("instructions")
+        .insert(insertData);
 
-    if (error) {
-      return { success: false, error: error.message };
+      if (error) {
+        return { success: false, error: error.message };
+      }
+    } else {
+      // Row exists, update only the relevant language column
+      const updateData: any = {
+        updated_at: new Date().toISOString(),
+      };
+      
+      if (language === 'he') {
+        updateData.data_he = instructionData;
+      } else {
+        updateData.data_en = instructionData;
+      }
+      
+      const { error } = await supabase
+        .from("instructions")
+        .update(updateData)
+        .eq("id", id);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
     }
 
     return { 
@@ -91,24 +116,49 @@ export async function action({ request }: Route.ActionArgs) {
   } else if (actionType === "saveMission") {
     const missionData = JSON.parse(dataEn);
     
-    // Determine which column to update based on language
-    const updateData: any = {
-      id,
-      updated_at: new Date().toISOString(),
-    };
-    
-    if (language === 'he') {
-      updateData.data_he = missionData;
-    } else {
-      updateData.data_en = missionData;
-    }
-    
-    const { error } = await supabase
+    // Check if the row exists
+    const { data: existingData } = await supabase
       .from("missions")
-      .upsert(updateData);
+      .select("id")
+      .eq("id", id)
+      .single();
+    
+    if (!existingData) {
+      // Row doesn't exist, we need to insert with data_en at minimum
+      const insertData: any = {
+        id,
+        data_en: language === 'en' ? missionData : {},
+        data_he: language === 'he' ? missionData : null,
+        updated_at: new Date().toISOString(),
+      };
+      
+      const { error } = await supabase
+        .from("missions")
+        .insert(insertData);
 
-    if (error) {
-      return { success: false, error: error.message };
+      if (error) {
+        return { success: false, error: error.message };
+      }
+    } else {
+      // Row exists, update only the relevant language column
+      const updateData: any = {
+        updated_at: new Date().toISOString(),
+      };
+      
+      if (language === 'he') {
+        updateData.data_he = missionData;
+      } else {
+        updateData.data_en = missionData;
+      }
+      
+      const { error } = await supabase
+        .from("missions")
+        .update(updateData)
+        .eq("id", id);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
     }
 
     return { 
