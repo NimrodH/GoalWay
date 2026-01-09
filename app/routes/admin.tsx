@@ -278,6 +278,42 @@ function ExplanationContentItem({
     }
   };
 
+  const handlePasteFromClipboard = async () => {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      
+      for (const item of clipboardItems) {
+        // Look for image types
+        const imageType = item.types.find(type => type.startsWith('image/'));
+        
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          
+          // Convert blob to File object
+          const timestamp = Date.now();
+          const file = new File([blob], `pasted-image-${timestamp}.png`, { type: blob.type });
+          
+          setImageFile(file);
+          
+          // Create preview
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setImagePreview(reader.result as string);
+          };
+          reader.readAsDataURL(blob);
+          
+          return; // Exit after finding first image
+        }
+      }
+      
+      // No image found in clipboard
+      alert('No image found in clipboard. Please copy an image first.');
+    } catch (error) {
+      console.error('Failed to read clipboard:', error);
+      alert('Failed to read clipboard. Make sure you have copied an image.');
+    }
+  };
+
   const handleImageUpload = async () => {
     if (!imageFile) return;
 
@@ -339,6 +375,13 @@ function ExplanationContentItem({
                 className={styles.addButton}
               >
                 📚 Select from Library
+              </button>
+              <button
+                type="button"
+                onClick={handlePasteFromClipboard}
+                className={styles.addButton}
+              >
+                📋 Paste from Clipboard
               </button>
             </div>
             <input
@@ -993,6 +1036,37 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
     }
   };
 
+  const handlePasteFromClipboard = async () => {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      
+      for (const item of clipboardItems) {
+        const imageType = item.types.find(type => type.startsWith('image/'));
+        
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const timestamp = Date.now();
+          const file = new File([blob], `pasted-image-${timestamp}.png`, { type: blob.type });
+          
+          setImageFile(file);
+          
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setImagePreview(reader.result as string);
+          };
+          reader.readAsDataURL(blob);
+          
+          return;
+        }
+      }
+      
+      alert('No image found in clipboard. Please copy an image first.');
+    } catch (error) {
+      console.error('Failed to read clipboard:', error);
+      alert('Failed to read clipboard. Make sure you have copied an image.');
+    }
+  };
+
   const handleImageUpload = async () => {
     if (!imageFile) return;
 
@@ -1117,6 +1191,15 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
             <h2 className={styles.sectionTitle}>Mission Image (Optional)</h2>
             <div className={styles.formGroup}>
               <label className={styles.label}>Upload Image</label>
+              <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+                <button
+                  type="button"
+                  onClick={handlePasteFromClipboard}
+                  className={styles.addButton}
+                >
+                  📋 Paste from Clipboard
+                </button>
+              </div>
               <input
                 type="file"
                 accept="image/*"
@@ -1221,6 +1304,37 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
     }
   };
 
+  const handlePasteFromClipboard = async () => {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      
+      for (const item of clipboardItems) {
+        const imageType = item.types.find(type => type.startsWith('image/'));
+        
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const timestamp = Date.now();
+          const file = new File([blob], `pasted-image-${timestamp}.png`, { type: blob.type });
+          
+          setImageFile(file);
+          
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setImagePreview(reader.result as string);
+          };
+          reader.readAsDataURL(blob);
+          
+          return;
+        }
+      }
+      
+      alert('No image found in clipboard. Please copy an image first.');
+    } catch (error) {
+      console.error('Failed to read clipboard:', error);
+      alert('Failed to read clipboard. Make sure you have copied an image.');
+    }
+  };
+
   const handleImageUpload = async () => {
     if (!imageFile) return;
 
@@ -1298,6 +1412,15 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
         <h2 className={styles.sectionTitle}>Mission Image (Optional)</h2>
         <div className={styles.formGroup}>
           <label className={styles.label}>Upload Image</label>
+          <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+            <button
+              type="button"
+              onClick={handlePasteFromClipboard}
+              className={styles.addButton}
+            >
+              📋 Paste from Clipboard
+            </button>
+          </div>
           <input
             type="file"
             accept="image/*"
