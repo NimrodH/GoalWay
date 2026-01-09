@@ -945,6 +945,8 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
 
       const result = await response.json();
 
+      console.log('[CLIENT INSTRUCTION] Translation response:', result);
+
       if (result.success && result.translations) {
         // Switch language and populate fields
         const params = new URLSearchParams(searchParams);
@@ -972,7 +974,9 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
           setExplanation(updatedExplanation);
         }, 100);
       } else {
-        alert(result.error || 'Translation failed');
+        const errorMessage = result.error || 'Translation failed';
+        console.error('[CLIENT INSTRUCTION] Translation error:', errorMessage);
+        alert(`Translation Error:\n\n${errorMessage}\n\nPlease check:\n1. Your server terminal/console for detailed error logs\n2. That your DeepL API key is correct in the .env file\n3. That the key matches the correct endpoint (free vs pro)`);
       }
     } catch (error) {
       alert(`Translation failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -1302,6 +1306,8 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
 
       const result = await response.json();
 
+      console.log('[CLIENT MISSION] Translation response:', result);
+
       if (result.success && result.translations) {
         // Switch language and populate fields
         const params = new URLSearchParams(searchParams);
@@ -1315,7 +1321,9 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
           setDescription(result.translations[1] || '');
         }, 100);
       } else {
-        alert(result.error || 'Translation failed');
+        const errorMessage = result.error || 'Translation failed';
+        console.error('[CLIENT MISSION] Translation error:', errorMessage);
+        alert(`Translation Error:\n\n${errorMessage}\n\nPlease check:\n1. Your server terminal/console for detailed error logs\n2. That your DeepL API key is correct in the .env file\n3. That the key matches the correct endpoint (free vs pro)`);
       }
     } catch (error) {
       alert(`Translation failed: ${error instanceof Error ? error.message : String(error)}`);
