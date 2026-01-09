@@ -72,9 +72,9 @@ export async function listImages(folder?: string): Promise<{ images: Array<{ nam
       return { images: [], error: error.message };
     }
 
-    // Get public URLs for all files
+    // Get public URLs for all files (files have an id, folders have id=null)
     const images = data
-      .filter(file => !file.id) // Filter out folders
+      .filter(file => file.id !== null) // Filter out folders
       .map(file => {
         const path = folder ? `${folder}/${file.name}` : file.name;
         const { data: { publicUrl } } = supabase.storage
@@ -121,9 +121,9 @@ export async function listAllImages(): Promise<{ images: Array<{ name: string; u
       allImages.push(...rootResult.images);
     }
 
-    // Get images from each folder
+    // Get images from each folder (folders have id=null)
     for (const folder of folders) {
-      if (folder.id) { // It's a folder
+      if (folder.id === null) { // It's a folder
         const folderResult = await listImages(folder.name);
         if (folderResult.images) {
           allImages.push(...folderResult.images);
