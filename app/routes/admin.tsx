@@ -42,42 +42,6 @@ export async function action({ request }: Route.ActionArgs) {
   const language = formData.get("language") as string;
   const accessToken = formData.get("accessToken") as string | null;
 
-  // Handle DeepL test action
-  if (actionType === "testDeepL") {
-    const { testDeepLConnection } = await import('~/lib/test-deepl');
-    const result = await testDeepLConnection();
-    return result;
-  }
-
-  // Handle translation action
-  if (actionType === "translate") {
-    console.log('[ADMIN ACTION] Translation request received');
-    const textsToTranslate = formData.get("texts") as string;
-    const sourceLang = formData.get("sourceLang") as 'en' | 'he';
-    const targetLang = formData.get("targetLang") as 'en' | 'he';
-
-    console.log('[ADMIN ACTION] Params:', { sourceLang, targetLang, textsCount: textsToTranslate?.length });
-
-    const { translateMultipleTexts } = await import('~/lib/translate');
-    const texts = JSON.parse(textsToTranslate);
-    console.log('[ADMIN ACTION] Texts to translate:', texts.length, 'items');
-    
-    const result = await translateMultipleTexts(texts, sourceLang, targetLang);
-    console.log('[ADMIN ACTION] Translation result:', result);
-
-    if (result.error) {
-      console.error('[ADMIN ACTION] Translation error:', result.error);
-      return { success: false, error: result.error };
-    }
-
-    console.log('[ADMIN ACTION] Translation successful');
-    return { 
-      success: true, 
-      translations: result.translations,
-      targetLang
-    };
-  }
-
   // Verify auth token is provided
   if (!accessToken) {
     return { success: false, error: 'Unauthorized: Authentication required' };
@@ -490,105 +454,7 @@ function ExplanationContentItem({
   );
 }
 
-// Component to test DeepL connection
-function DeepLTestButton() {
-  const [isTestung, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<any>(null);
 
-  const handleTest = async () => {
-    setIsTesting(true);
-    setTestResult(null);
-
-    try {
-      const formData = new FormData();
-      formData.append('actionType', 'testDeepL');
-
-      const response = await fetch('/admin', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await response.json();
-      setTestResult(result);
-    } catch (error) {
-      setTestResult({
-        success: false,
-        error: error instanceof Error ? error.message : String(error)
-      });
-    } finally {
-      setIsTesting(false);
-    }
-  };
-
-  return (
-    <div style={{ marginRight: 'var(--space-4)' }}>
-      <button
-        type="button"
-        onClick={handleTest}
-        disabled={isTestung}
-        className={styles.addButton}
-        style={{ fontSize: '0.875rem', padding: 'var(--space-2) var(--space-3)' }}
-      >
-        {isTestung ? 'Testing...' : '🔧 Test DeepL API'}
-      </button>
-      {testResult && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            background: 'var(--color-neutral-2)',
-            border: '1px solid var(--color-neutral-6)',
-            borderRadius: 'var(--radius-3)',
-            padding: 'var(--space-5)',
-            maxWidth: '600px',
-            maxHeight: '80vh',
-            overflow: 'auto',
-            zIndex: 1000,
-            boxShadow: 'var(--shadow-4)'
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 'var(--space-3)' }}>
-            <h3 style={{ margin: 0, color: testResult.success ? 'var(--color-success-11)' : 'var(--color-error-11)' }}>
-              {testResult.success ? '✅ DeepL API Test Passed' : '❌ DeepL API Test Failed'}
-            </h3>
-            <button
-              onClick={() => setTestResult(null)}
-              style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', padding: 0 }}
-            >
-              ✕
-            </button>
-          </div>
-          <pre style={{ 
-            background: 'var(--color-neutral-3)', 
-            padding: 'var(--space-3)', 
-            borderRadius: 'var(--radius-2)', 
-            overflow: 'auto',
-            fontSize: '0.875rem',
-            lineHeight: 1.5
-          }}>
-            {JSON.stringify(testResult, null, 2)}
-          </pre>
-        </div>
-      )}
-      {testResult && (
-        <div
-          onClick={() => setTestResult(null)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 999
-          }}
-        />
-      )}
-    </div>
-  );
-}
 
 // Component to handle authenticated form submissions
 function AuthenticatedForm({ 
@@ -752,7 +618,6 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
             <p className={styles.subtitle}>Create and manage instructions and missions</p>
           </div>
           <div className={styles.userInfo}>
-            <DeepLTestButton />
             <div className={styles.languageToggle}>
               <button 
                 type="button"
@@ -961,7 +826,7 @@ function InstructionForm({ actionData, clearActionData, instructions, language }
   );
 }
 
-function EditInstructionForm({ actionData, clearActionData, instructions, allInstructionIds, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translations?: string[]; targetLang?: string }; clearActionData: () => void; instructions: Instruction[]; allInstructionIds: string[]; language: string }) {
+function EditInstructionForm({ actionData, clearActionData, instructions, allInstructionIds, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; allInstructionIds: string[]; language: string }) {
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -969,10 +834,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
   const [type, setType] = useState<"default" | "link">("default");
   const [missionId, setMissionId] = useState("");
   const [explanation, setExplanation] = useState<InstructionContent[]>([]);
-  const [isTranslating, setIsTranslating] = useState(false);
   const { session } = useAuth();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
   const handleSelectInstruction = (instructionId: string) => {
     clearActionData();
@@ -1022,76 +884,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
     return JSON.stringify(instruction, null, 2);
   };
 
-  const handleTranslate = async () => {
-    if (!title) {
-      alert('Please enter a title first');
-      return;
-    }
 
-    setIsTranslating(true);
-    const sourceLang = language as 'en' | 'he';
-    const targetLang = language === 'en' ? 'he' : 'en';
-
-    // Collect all text fields
-    const texts = [
-      title,
-      description || '',
-      ...explanation.filter(item => item.type === 'text').map(item => item.content)
-    ];
-
-    try {
-      const formData = new FormData();
-      formData.append('actionType', 'translate');
-      formData.append('texts', JSON.stringify(texts));
-      formData.append('sourceLang', sourceLang);
-      formData.append('targetLang', targetLang);
-
-      const response = await fetch('/admin', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      console.log('[CLIENT INSTRUCTION] Translation response:', result);
-
-      if (result.success && result.translations) {
-        // Switch language and populate fields
-        const params = new URLSearchParams(searchParams);
-        params.set('lang', targetLang);
-        params.set('tab', 'edit-instruction');
-        navigate(`/admin?${params.toString()}`);
-
-        // Update fields with translations after language switch
-        setTimeout(() => {
-          setTitle(result.translations[0] || '');
-          setDescription(result.translations[1] || '');
-          
-          // Update text explanations
-          const translatedTexts = result.translations.slice(2);
-          const updatedExplanation = [...explanation];
-          let textIndex = 0;
-          
-          updatedExplanation.forEach((item, index) => {
-            if (item.type === 'text' && textIndex < translatedTexts.length) {
-              updatedExplanation[index] = { ...item, content: translatedTexts[textIndex] };
-              textIndex++;
-            }
-          });
-          
-          setExplanation(updatedExplanation);
-        }, 100);
-      } else {
-        const errorMessage = result.error || 'Translation failed';
-        console.error('[CLIENT INSTRUCTION] Translation error:', errorMessage);
-        alert(`Translation Error:\n\n${errorMessage}\n\nPlease check:\n1. Your server terminal/console for detailed error logs\n2. That your DeepL API key is correct in the .env file\n3. That the key matches the correct endpoint (free vs pro)`);
-      }
-    } catch (error) {
-      alert(`Translation failed: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setIsTranslating(false);
-    }
-  };
 
   return (
     <div>
@@ -1219,18 +1012,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
           )}
 
           <div className={styles.previewSection}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
-              <h2 className={styles.previewTitle}>Updated Code</h2>
-              <button
-                type="button"
-                onClick={handleTranslate}
-                className={styles.addButton}
-                disabled={isTranslating || !title}
-                style={{ marginTop: 0 }}
-              >
-                {isTranslating ? '🔄 Translating...' : `🌐 Translate to ${language === 'en' ? 'Hebrew' : 'English'}`}
-              </button>
-            </div>
+            <h2 className={styles.previewTitle}>Updated Code</h2>
             <p style={{ marginBottom: "var(--space-3)", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
               Copy this object and replace the existing instruction with ID "{id}" in <code>app/data/instructions.ts</code>
             </p>
@@ -1255,7 +1037,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
   );
 }
 
-function EditMissionForm({ actionData, clearActionData, instructions, missions, allMissionIds, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translations?: string[]; targetLang?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; allMissionIds: string[]; language: string }) {
+function EditMissionForm({ actionData, clearActionData, instructions, missions, allMissionIds, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; allMissionIds: string[]; language: string }) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -1264,10 +1046,7 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
-  const [isTranslating, setIsTranslating] = useState(false);
   const { session } = useAuth();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1384,61 +1163,7 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
     return JSON.stringify(mission, null, 2);
   };
 
-  const handleTranslate = async () => {
-    if (!title) {
-      alert('Please enter a title first');
-      return;
-    }
 
-    setIsTranslating(true);
-    const sourceLang = language as 'en' | 'he';
-    const targetLang = language === 'en' ? 'he' : 'en';
-
-    // Collect all text fields
-    const texts = [
-      title,
-      description || ''
-    ];
-
-    try {
-      const formData = new FormData();
-      formData.append('actionType', 'translate');
-      formData.append('texts', JSON.stringify(texts));
-      formData.append('sourceLang', sourceLang);
-      formData.append('targetLang', targetLang);
-
-      const response = await fetch('/admin', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      console.log('[CLIENT MISSION] Translation response:', result);
-
-      if (result.success && result.translations) {
-        // Switch language and populate fields
-        const params = new URLSearchParams(searchParams);
-        params.set('lang', targetLang);
-        params.set('tab', 'edit-mission');
-        navigate(`/admin?${params.toString()}`);
-
-        // Update fields with translations after language switch
-        setTimeout(() => {
-          setTitle(result.translations[0] || '');
-          setDescription(result.translations[1] || '');
-        }, 100);
-      } else {
-        const errorMessage = result.error || 'Translation failed';
-        console.error('[CLIENT MISSION] Translation error:', errorMessage);
-        alert(`Translation Error:\n\n${errorMessage}\n\nPlease check:\n1. Your server terminal/console for detailed error logs\n2. That your DeepL API key is correct in the .env file\n3. That the key matches the correct endpoint (free vs pro)`);
-      }
-    } catch (error) {
-      alert(`Translation failed: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setIsTranslating(false);
-    }
-  };
 
   return (
     <div>
@@ -1578,18 +1303,7 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
           </div>
 
           <div className={styles.previewSection}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
-              <h2 className={styles.previewTitle}>Updated Code</h2>
-              <button
-                type="button"
-                onClick={handleTranslate}
-                className={styles.addButton}
-                disabled={isTranslating || !title}
-                style={{ marginTop: 0 }}
-              >
-                {isTranslating ? '🔄 Translating...' : `🌐 Translate to ${language === 'en' ? 'Hebrew' : 'English'}`}
-              </button>
-            </div>
+            <h2 className={styles.previewTitle}>Updated Code</h2>
             <p style={{ marginBottom: "var(--space-3)", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
               Copy this object and replace the existing mission with ID "{id}" in <code>app/data/missions.ts</code>
             </p>
