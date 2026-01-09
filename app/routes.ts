@@ -8,5 +8,4 @@ export default [
   // Hebrew routes
   route("he", "routes/he.home.tsx"),
   route("he/missions/:missionId", "routes/he.missions.$missionId.tsx"),
-  route("he/admin", "routes/he.admin.tsx"),
 ] satisfies RouteConfig;
