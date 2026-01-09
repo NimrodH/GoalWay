@@ -44,18 +44,26 @@ export async function action({ request }: Route.ActionArgs) {
 
   // Handle translation action
   if (actionType === "translate") {
+    console.log('[ADMIN ACTION] Translation request received');
     const textsToTranslate = formData.get("texts") as string;
     const sourceLang = formData.get("sourceLang") as 'en' | 'he';
     const targetLang = formData.get("targetLang") as 'en' | 'he';
 
+    console.log('[ADMIN ACTION] Params:', { sourceLang, targetLang, textsCount: textsToTranslate?.length });
+
     const { translateMultipleTexts } = await import('~/lib/translate');
     const texts = JSON.parse(textsToTranslate);
+    console.log('[ADMIN ACTION] Texts to translate:', texts.length, 'items');
+    
     const result = await translateMultipleTexts(texts, sourceLang, targetLang);
+    console.log('[ADMIN ACTION] Translation result:', result);
 
     if (result.error) {
+      console.error('[ADMIN ACTION] Translation error:', result.error);
       return { success: false, error: result.error };
     }
 
+    console.log('[ADMIN ACTION] Translation successful');
     return { 
       success: true, 
       translations: result.translations,
