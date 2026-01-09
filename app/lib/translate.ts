@@ -35,8 +35,16 @@ export async function translateText(
   formData.append('source_lang', sourceCode);
   formData.append('target_lang', targetCode);
 
+  // Determine API endpoint based on key type
+  // Free API keys end with ':fx', Pro keys don't
+  const isFreeAccount = deeplApiKey.endsWith(':fx');
+  const apiEndpoint = isFreeAccount 
+    ? 'https://api-free.deepl.com/v2/translate'
+    : 'https://api.deepl.com/v2/translate';
+
   const requestInfo = {
-    endpoint: 'https://api-free.deepl.com/v2/translate',
+    endpoint: apiEndpoint,
+    accountType: isFreeAccount ? 'free' : 'pro',
     sourceLang: sourceCode,
     targetLang: targetCode,
     textLength: text.length,
@@ -47,7 +55,7 @@ export async function translateText(
 
   let response: Response;
   try {
-    response = await fetch('https://api-free.deepl.com/v2/translate', {
+    response = await fetch(apiEndpoint, {
       method: 'POST',
       headers: {
         'Authorization': `DeepL-Auth-Key ${deeplApiKey}`,
