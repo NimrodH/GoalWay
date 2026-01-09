@@ -42,6 +42,13 @@ export async function action({ request }: Route.ActionArgs) {
   const language = formData.get("language") as string;
   const accessToken = formData.get("accessToken") as string | null;
 
+  // Handle DeepL test action
+  if (actionType === "testDeepL") {
+    const { testDeepLConnection } = await import('~/lib/test-deepl');
+    const result = await testDeepLConnection();
+    return result;
+  }
+
   // Handle translation action
   if (actionType === "translate") {
     console.log('[ADMIN ACTION] Translation request received');
@@ -483,6 +490,106 @@ function ExplanationContentItem({
   );
 }
 
+// Component to test DeepL connection
+function DeepLTestButton() {
+  const [isTestung, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
+
+  const handleTest = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('actionType', 'testDeepL');
+
+      const response = await fetch('/admin', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      setTestResult(result);
+    } catch (error) {
+      setTestResult({
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  return (
+    <div style={{ marginRight: 'var(--space-4)' }}>
+      <button
+        type="button"
+        onClick={handleTest}
+        disabled={isTestung}
+        className={styles.addButton}
+        style={{ fontSize: '0.875rem', padding: 'var(--space-2) var(--space-3)' }}
+      >
+        {isTestung ? 'Testing...' : '🔧 Test DeepL API'}
+      </button>
+      {testResult && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'var(--color-neutral-2)',
+            border: '1px solid var(--color-neutral-6)',
+            borderRadius: 'var(--radius-3)',
+            padding: 'var(--space-5)',
+            maxWidth: '600px',
+            maxHeight: '80vh',
+            overflow: 'auto',
+            zIndex: 1000,
+            boxShadow: 'var(--shadow-4)'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 'var(--space-3)' }}>
+            <h3 style={{ margin: 0, color: testResult.success ? 'var(--color-success-11)' : 'var(--color-error-11)' }}>
+              {testResult.success ? '✅ DeepL API Test Passed' : '❌ DeepL API Test Failed'}
+            </h3>
+            <button
+              onClick={() => setTestResult(null)}
+              style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', padding: 0 }}
+            >
+              ✕
+            </button>
+          </div>
+          <pre style={{ 
+            background: 'var(--color-neutral-3)', 
+            padding: 'var(--space-3)', 
+            borderRadius: 'var(--radius-2)', 
+            overflow: 'auto',
+            fontSize: '0.875rem',
+            lineHeight: 1.5
+          }}>
+            {JSON.stringify(testResult, null, 2)}
+          </pre>
+        </div>
+      )}
+      {testResult && (
+        <div
+          onClick={() => setTestResult(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 999
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 // Component to handle authenticated form submissions
 function AuthenticatedForm({ 
   actionType, 
@@ -645,6 +752,7 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
             <p className={styles.subtitle}>Create and manage instructions and missions</p>
           </div>
           <div className={styles.userInfo}>
+            <DeepLTestButton />
             <div className={styles.languageToggle}>
               <button 
                 type="button"
