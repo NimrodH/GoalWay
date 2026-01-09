@@ -94,7 +94,20 @@ export async function translateText(
   // Check if response is JSON before parsing
   const contentType = response.headers.get('content-type');
   if (!contentType || !contentType.includes('application/json')) {
-    const error = `DeepL API returned non-JSON response (${contentType || 'unknown'}). This usually means the API key is invalid or missing. Status: ${response.status}. Response: ${responseText.substring(0, 200)}`;
+    let error = `DeepL API returned non-JSON response (content-type: ${contentType || 'unknown'}). `;
+    
+    // Provide more specific guidance based on response
+    if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
+      error += `The API returned an HTML page instead of JSON. This typically means:\n`;
+      error += `1. The API key is invalid or expired\n`;
+      error += `2. The API endpoint is incorrect (Free vs Pro)\n`;
+      error += `3. The API key doesn't have proper permissions\n\n`;
+      error += `Current endpoint: ${apiEndpoint} (${isFreeAccount ? 'Free' : 'Pro'} account detected)\n`;
+      error += `Please verify your DEEPL_API_KEY in the .env file.`;
+    } else {
+      error += `Status: ${response.status}. Response: ${responseText.substring(0, 200)}`;
+    }
+    
     console.error('[DEEPL INVALID RESPONSE TYPE]', error);
     return { translatedText: '', error };
   }
@@ -103,8 +116,10 @@ export async function translateText(
   try {
     data = JSON.parse(responseText);
   } catch (parseError) {
-    const error = `Invalid API response - failed to parse JSON. Status: ${response.status}. Response: ${responseText.substring(0, 200)}`;
-    console.error('[DEEPL JSON PARSE ERROR]', error, parseError);
+    // This should rarely happen if the content-type check above works correctly
+    const errorMsg = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
+    const error = `Failed to parse API response as JSON (${errorMsg}). Response preview: ${responseText.substring(0, 200)}`;
+    console.error('[DEEPL JSON PARSE ERROR]', error);
     return { translatedText: '', error };
   }
 
