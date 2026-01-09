@@ -70,4 +70,5 @@ If you want to allow all operations without authentication (less secure but simp
 7. WITH CHECK expression: `true`
 8. Click "Save"
 
-This will allow anyone to upload/read/delete files, which is fine for a demo but not recommended for production.
+This will allow anyone to upload/read/delete files, which is fine for a 
+demo but not recommended for production.
