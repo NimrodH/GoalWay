@@ -37,6 +37,14 @@ export async function translateText(
     formData.append('source_lang', sourceCode);
     formData.append('target_lang', targetCode);
 
+    console.log('DeepL Request:', {
+      endpoint: 'https://api-free.deepl.com/v2/translate',
+      sourceLang: sourceCode,
+      targetLang: targetCode,
+      textLength: text.length,
+      apiKeyPrefix: deeplApiKey.substring(0, 8) + '...'
+    });
+
     const response = await fetch('https://api-free.deepl.com/v2/translate', {
       method: 'POST',
       headers: {
@@ -46,22 +54,30 @@ export async function translateText(
       body: formData,
     });
 
+    console.log('DeepL Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries())
+    });
+
+    const responseText = await response.text();
+    console.log('DeepL Response Body (first 500 chars):', responseText.substring(0, 500));
+
     if (!response.ok) {
-      const errorText = await response.text();
       return { 
         translatedText: '', 
-        error: `DeepL API error (${response.status}): ${errorText.substring(0, 200)}` 
+        error: `DeepL API error (${response.status} ${response.statusText}): ${responseText.substring(0, 300)}` 
       };
     }
 
-    const responseText = await response.text();
     let data;
     try {
       data = JSON.parse(responseText);
     } catch (parseError) {
+      console.error('JSON Parse Error:', parseError);
       return {
         translatedText: '',
-        error: `Invalid API response. Received: ${responseText.substring(0, 100)}...`
+        error: `Invalid API response (not JSON). Status: ${response.status}. Response: ${responseText.substring(0, 200)}`
       };
     }
     
