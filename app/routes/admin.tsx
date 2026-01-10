@@ -1275,6 +1275,7 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedInstructions, setSelectedInstructions] = useState<string[]>([]);
+  const [selectedInstructionForReorder, setSelectedInstructionForReorder] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
@@ -1432,9 +1433,34 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
   const toggleInstruction = (instructionId: string) => {
     if (selectedInstructions.includes(instructionId)) {
       setSelectedInstructions(selectedInstructions.filter((id) => id !== instructionId));
+      if (selectedInstructionForReorder === instructionId) {
+        setSelectedInstructionForReorder(null);
+      }
     } else {
       setSelectedInstructions([...selectedInstructions, instructionId]);
     }
+  };
+
+  const moveInstructionUp = () => {
+    if (!selectedInstructionForReorder) return;
+    
+    const index = selectedInstructions.indexOf(selectedInstructionForReorder);
+    if (index <= 0) return; // Already at the top or not found
+    
+    const newOrder = [...selectedInstructions];
+    [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+    setSelectedInstructions(newOrder);
+  };
+
+  const moveInstructionDown = () => {
+    if (!selectedInstructionForReorder) return;
+    
+    const index = selectedInstructions.indexOf(selectedInstructionForReorder);
+    if (index === -1 || index >= selectedInstructions.length - 1) return; // Already at the bottom or not found
+    
+    const newOrder = [...selectedInstructions];
+    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+    setSelectedInstructions(newOrder);
   };
 
   const generateCode = () => {
@@ -1628,18 +1654,45 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
           <div className={styles.formSection}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
               <h2 className={styles.sectionTitle}>Select Instructions</h2>
-              <button
-                type="button"
-                onClick={handleAddNewInstruction}
-                className={styles.addButton}
-                disabled={isCreatingNew || !session}
-              >
-                {isCreatingNew ? 'Creating...' : '+ Add New Instruction'}
-              </button>
+              <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                <button
+                  type="button"
+                  onClick={moveInstructionUp}
+                  className={styles.addButton}
+                  disabled={!selectedInstructionForReorder || selectedInstructions.indexOf(selectedInstructionForReorder) === 0}
+                  title="Move selected instruction up"
+                >
+                  ↑ Move Up
+                </button>
+                <button
+                  type="button"
+                  onClick={moveInstructionDown}
+                  className={styles.addButton}
+                  disabled={!selectedInstructionForReorder || selectedInstructions.indexOf(selectedInstructionForReorder) === selectedInstructions.length - 1}
+                  title="Move selected instruction down"
+                >
+                  ↓ Move Down
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddNewInstruction}
+                  className={styles.addButton}
+                  disabled={isCreatingNew || !session}
+                >
+                  {isCreatingNew ? 'Creating...' : '+ Add New Instruction'}
+                </button>
+              </div>
             </div>
             <div className={styles.instructionCheckboxList}>
               {instructions.map((instruction) => (
                 <label key={instruction.id} className={styles.checkboxLabel}>
+                  <input
+                    type="radio"
+                    name="instructionForReorder"
+                    checked={selectedInstructionForReorder === instruction.id}
+                    onChange={() => setSelectedInstructionForReorder(instruction.id)}
+                    disabled={!selectedInstructions.includes(instruction.id)}
+                  />
                   <input
                     type="checkbox"
                     checked={selectedInstructions.includes(instruction.id)}
@@ -1699,6 +1752,7 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedInstructions, setSelectedInstructions] = useState<string[]>([]);
+  const [selectedInstructionForReorder, setSelectedInstructionForReorder] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
