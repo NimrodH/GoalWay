@@ -1686,25 +1686,52 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
               </div>
             </div>
             <div className={styles.instructionCheckboxList}>
-              {instructions.map((instruction) => (
-                <label key={instruction.id} className={styles.checkboxLabel}>
-                  <input
-                    type="radio"
-                    name="instructionForReorder"
-                    checked={selectedInstructionForReorder === instruction.id}
-                    onChange={() => setSelectedInstructionForReorder(instruction.id)}
-                    disabled={!selectedInstructions.includes(instruction.id)}
-                  />
-                  <input
-                    type="checkbox"
-                    checked={selectedInstructions.includes(instruction.id)}
-                    onChange={() => toggleInstruction(instruction.id)}
-                  />
-                  <span>
-                    {instruction.id} - {instruction.title}
-                  </span>
-                </label>
-              ))}
+              {/* First show selected instructions in order */}
+              {selectedInstructions.map((instructionId) => {
+                const instruction = instructions.find(i => i.id === instructionId);
+                if (!instruction) return null;
+                return (
+                  <label key={instruction.id} className={styles.checkboxLabel}>
+                    <input
+                      type="radio"
+                      name="instructionForReorder"
+                      checked={selectedInstructionForReorder === instruction.id}
+                      onChange={() => setSelectedInstructionForReorder(instruction.id)}
+                    />
+                    <input
+                      type="checkbox"
+                      checked={true}
+                      onChange={() => toggleInstruction(instruction.id)}
+                    />
+                    <span>
+                      {instruction.id} - {instruction.title}
+                    </span>
+                  </label>
+                );
+              })}
+              {/* Then show unselected instructions */}
+              {instructions
+                .filter(instruction => !selectedInstructions.includes(instruction.id))
+                .map((instruction) => (
+                  <label key={instruction.id} className={styles.checkboxLabel}>
+                    <input
+                      type="radio"
+                      name="instructionForReorder"
+                      checked={false}
+                      onChange={() => setSelectedInstructionForReorder(instruction.id)}
+                      disabled={true}
+                    />
+                    <input
+                      type="checkbox"
+                      checked={false}
+                      onChange={() => toggleInstruction(instruction.id)}
+                    />
+                    <span>
+                      {instruction.id} - {instruction.title}
+                    </span>
+                  </label>
+                ))
+              }
             </div>
           </div>
 
