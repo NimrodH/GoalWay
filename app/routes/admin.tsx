@@ -101,11 +101,11 @@ export async function action({ request }: Route.ActionArgs) {
       return { success: false, error: error.message };
     }
 
-    return Response.json({ 
+    return { 
       success: true, 
       message: `New instruction ${newId} created successfully!`,
       newInstructionId: newId
-    });
+    };
   }
 
   // Handle translation action (no auth required for translation)
