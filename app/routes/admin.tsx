@@ -580,12 +580,37 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentTab, setCurrentTab] = useState(tab);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [pendingTab, setPendingTab] = useState<string | null>(null);
   
   // Initialize Supabase on the client
   useEffect(() => {
     initSupabase(supabaseUrl, supabaseKey);
   }, [supabaseUrl, supabaseKey]);
   
+  // Handle tab change with unsaved changes check
+  const handleTabChange = (newTab: string) => {
+    if (hasUnsavedChanges && newTab !== currentTab) {
+      setPendingTab(newTab);
+    } else {
+      setCurrentTab(newTab);
+    }
+  };
+
+  // Confirm discard changes
+  const confirmDiscardChanges = () => {
+    if (pendingTab) {
+      setHasUnsavedChanges(false);
+      setCurrentTab(pendingTab);
+      setPendingTab(null);
+    }
+  };
+
+  // Cancel tab change
+  const cancelTabChange = () => {
+    setPendingTab(null);
+  };
+
   // Update URL when tab changes
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
@@ -734,7 +759,7 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
         </div>
       </header>
 
-      <Tabs value={currentTab} onValueChange={setCurrentTab} className={styles.tabs}>
+      <Tabs value={currentTab} onValueChange={handleTabChange} className={styles.tabs}>
         <TabsList>
           <TabsTrigger value="instruction">New Instruction</TabsTrigger>
           <TabsTrigger value="edit-instruction">Edit Instruction</TabsTrigger>
@@ -743,26 +768,54 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
         </TabsList>
 
         <TabsContent value="instruction">
-          <InstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} language={language} />
+          <InstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} language={language} onChangesDetected={setHasUnsavedChanges} />
         </TabsContent>
 
         <TabsContent value="edit-instruction">
-          <EditInstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} allInstructionIds={allInstructionIds} language={language} />
+          <EditInstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} allInstructionIds={allInstructionIds} language={language} onChangesDetected={setHasUnsavedChanges} />
         </TabsContent>
 
         <TabsContent value="mission">
-          <MissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} language={language} />
+          <MissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} language={language} onChangesDetected={setHasUnsavedChanges} />
         </TabsContent>
 
         <TabsContent value="edit-mission">
-          <EditMissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} allMissionIds={allMissionIds} language={language} />
+          <EditMissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} allMissionIds={allMissionIds} language={language} onChangesDetected={setHasUnsavedChanges} />
         </TabsContent>
       </Tabs>
+
+      {/* Unsaved Changes Warning Dialog */}
+      {pendingTab && (
+        <div className={styles.dialogOverlay}>
+          <div className={styles.dialogContent}>
+            <div className={styles.dialogHeader}>
+              <h2 className={styles.dialogTitle}>Unsaved Changes</h2>
+            </div>
+            <p style={{ marginBottom: "var(--space-4)" }}>
+              You have unsaved changes. Do you want to save them before leaving?
+            </p>
+            <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end" }}>
+              <button
+                className={styles.addButton}
+                onClick={cancelTabChange}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.removeButton}
+                onClick={confirmDiscardChanges}
+              >
+                Discard Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function InstructionForm({ actionData, clearActionData, instructions, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; language: string }) {
+function InstructionForm({ actionData, clearActionData, instructions, language, onChangesDetected }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; language: string; onChangesDetected: (hasChanges: boolean) => void }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -770,6 +823,25 @@ function InstructionForm({ actionData, clearActionData, instructions, language }
   const [missionId, setMissionId] = useState("");
   const [explanation, setExplanation] = useState<InstructionContent[]>([]);
   const { session } = useAuth();
+  const [originalCode, setOriginalCode] = useState("");
+
+  // Track changes
+  useEffect(() => {
+    const currentCode = generateCode();
+    if (originalCode === "") {
+      setOriginalCode(currentCode);
+    } else {
+      onChangesDetected(currentCode !== originalCode);
+    }
+  }, [id, title, description, type, missionId, explanation]);
+
+  // Reset on save
+  useEffect(() => {
+    if (actionData?.success) {
+      setOriginalCode(generateCode());
+      onChangesDetected(false);
+    }
+  }, [actionData]);
 
   const addContent = (type: "text" | "image" | "video") => {
     setExplanation([...explanation, { type, content: "" }]);
@@ -917,7 +989,7 @@ function InstructionForm({ actionData, clearActionData, instructions, language }
   );
 }
 
-function EditInstructionForm({ actionData, clearActionData, instructions, allInstructionIds, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translatedText?: string | null; newInstructionId?: string }; clearActionData: () => void; instructions: Instruction[]; allInstructionIds: string[]; language: string }) {
+function EditInstructionForm({ actionData, clearActionData, instructions, allInstructionIds, language, onChangesDetected }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translatedText?: string | null; newInstructionId?: string }; clearActionData: () => void; instructions: Instruction[]; allInstructionIds: string[]; language: string; onChangesDetected: (hasChanges: boolean) => void }) {
   const [searchParams] = useSearchParams();
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
   const [id, setId] = useState("");
@@ -930,6 +1002,27 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const { session } = useAuth();
   const navigate = useNavigate();
+  const [originalCode, setOriginalCode] = useState("");
+
+  // Track changes
+  useEffect(() => {
+    if (selectedInstructionId) {
+      const currentCode = generateCode();
+      if (originalCode === "") {
+        setOriginalCode(currentCode);
+      } else {
+        onChangesDetected(currentCode !== originalCode);
+      }
+    }
+  }, [id, title, description, type, missionId, explanation, selectedInstructionId]);
+
+  // Reset on save or instruction change
+  useEffect(() => {
+    if (actionData?.success || selectedInstructionId) {
+      setOriginalCode(generateCode());
+      onChangesDetected(false);
+    }
+  }, [actionData, selectedInstructionId]);
 
   // Handle newly created instruction or URL parameter
   useEffect(() => {
@@ -1269,7 +1362,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
   );
 }
 
-function EditMissionForm({ actionData, clearActionData, instructions, missions, allMissionIds, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translatedText?: string | null }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; allMissionIds: string[]; language: string }) {
+function EditMissionForm({ actionData, clearActionData, instructions, missions, allMissionIds, language, onChangesDetected }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translatedText?: string | null }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; allMissionIds: string[]; language: string; onChangesDetected: (hasChanges: boolean) => void }) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -1282,6 +1375,27 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
   const [isTranslating, setIsTranslating] = useState(false);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const { session } = useAuth();
+  const [originalCode, setOriginalCode] = useState("");
+
+  // Track changes
+  useEffect(() => {
+    if (selectedMissionId) {
+      const currentCode = generateCode();
+      if (originalCode === "") {
+        setOriginalCode(currentCode);
+      } else {
+        onChangesDetected(currentCode !== originalCode);
+      }
+    }
+  }, [id, title, description, selectedInstructions, selectedMissionId]);
+
+  // Reset on save or mission change
+  useEffect(() => {
+    if (actionData?.success || selectedMissionId) {
+      setOriginalCode(generateCode());
+      onChangesDetected(false);
+    }
+  }, [actionData, selectedMissionId]);
 
   const handleAddNewInstruction = async () => {
     setIsCreatingNew(true);
@@ -1776,7 +1890,7 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
   );
 }
 
-function MissionForm({ actionData, clearActionData, instructions, missions, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; language: string }) {
+function MissionForm({ actionData, clearActionData, instructions, missions, language, onChangesDetected }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; language: string; onChangesDetected: (hasChanges: boolean) => void }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -1787,6 +1901,25 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
   const [isUploading, setIsUploading] = useState(false);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const { session } = useAuth();
+  const [originalCode, setOriginalCode] = useState("");
+
+  // Track changes
+  useEffect(() => {
+    const currentCode = generateCode();
+    if (originalCode === "") {
+      setOriginalCode(currentCode);
+    } else {
+      onChangesDetected(currentCode !== originalCode);
+    }
+  }, [id, title, description, selectedInstructions]);
+
+  // Reset on save
+  useEffect(() => {
+    if (actionData?.success) {
+      setOriginalCode(generateCode());
+      onChangesDetected(false);
+    }
+  }, [actionData]);
 
   const handleAddNewInstruction = async () => {
     setIsCreatingNew(true);
