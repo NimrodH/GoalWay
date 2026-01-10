@@ -6,21 +6,27 @@ import { initSupabase, getSupabase } from "~/lib/supabase";
 import { uploadImage, listAllImages } from "~/lib/image-upload";
 import type { Route } from "./+types/admin";
 import styles from "./admin.module.css";
-import { getAllInstructions, getAllInstructionsHe, getAllInstructionIds, type Instruction, type InstructionContent } from "~/services/instructions.server";
+import {
+  getAllInstructions,
+  getAllInstructionsHe,
+  getAllInstructionIds,
+  type Instruction,
+  type InstructionContent,
+} from "~/services/instructions.server";
 import { getAllMissions, getAllMissionsHe, getAllMissionIds, type Mission } from "~/services/missions.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
-  const language = url.searchParams.get('lang') || 'en';
-  const tab = url.searchParams.get('tab') || 'instruction';
-  
+  const language = url.searchParams.get("lang") || "en";
+  const tab = url.searchParams.get("tab") || "instruction";
+
   const [instructions, missions, allInstructionIds, allMissionIds] = await Promise.all([
-    language === 'he' ? getAllInstructionsHe() : getAllInstructions(),
-    language === 'he' ? getAllMissionsHe() : getAllMissions(),
+    language === "he" ? getAllInstructionsHe() : getAllInstructions(),
+    language === "he" ? getAllMissionsHe() : getAllMissions(),
     getAllInstructionIds(),
-    getAllMissionIds()
+    getAllMissionIds(),
   ]);
-  
+
   return {
     supabaseUrl: process.env.SUPABASE_PROJECT_URL!,
     supabaseKey: process.env.SUPABASE_API_KEY!,
@@ -49,29 +55,21 @@ export async function action({ request }: Route.ActionArgs) {
     const accessToken = formData.get("accessToken") as string | null;
 
     if (!accessToken) {
-      return { success: false, error: 'Unauthorized: Authentication required' };
+      return { success: false, error: "Unauthorized: Authentication required" };
     }
 
     // Create authenticated Supabase client
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabase = createClient(
-      process.env.SUPABASE_PROJECT_URL!,
-      process.env.SUPABASE_API_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
-      }
-    );
+      },
+    });
 
     // Check if instruction already exists
-    const { data: existingData } = await supabase
-      .from("instructions")
-      .select("id")
-      .eq("id", newId)
-      .single();
+    const { data: existingData } = await supabase.from("instructions").select("id").eq("id", newId).single();
 
     if (existingData) {
       return { success: false, error: `Instruction with ID ${newId} already exists` };
@@ -87,90 +85,78 @@ export async function action({ request }: Route.ActionArgs) {
     // Insert the new instruction
     const insertData: any = {
       id: newId,
-      data_en: targetLanguage === 'en' ? emptyInstruction : { id: newId, title: "", explanation: [] },
-      data_he: targetLanguage === 'he' ? emptyInstruction : null,
+      data_en: targetLanguage === "en" ? emptyInstruction : { id: newId, title: "", explanation: [] },
+      data_he: targetLanguage === "he" ? emptyInstruction : null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase
-      .from("instructions")
-      .insert(insertData);
+    const { error } = await supabase.from("instructions").insert(insertData);
 
     if (error) {
       return { success: false, error: error.message };
     }
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: `New instruction ${newId} created successfully!`,
-      newInstructionId: newId
+      newInstructionId: newId,
     };
   }
 
   // Handle translation action (no auth required for translation)
   if (actionType === "translate") {
-    const { translateText } = await import('~/lib/translate');
-    const sourceLang = formData.get("sourceLang") as 'en' | 'he';
-    const targetLang = formData.get("targetLang") as 'en' | 'he';
+    const { translateText } = await import("~/lib/translate");
+    const sourceLang = formData.get("sourceLang") as "en" | "he";
+    const targetLang = formData.get("targetLang") as "en" | "he";
     const textToTranslate = formData.get("text") as string;
 
     const result = await translateText(textToTranslate, sourceLang, targetLang);
-    
+
     if (result.error) {
-      return { 
-        success: false, 
-        error: result.error
+      return {
+        success: false,
+        error: result.error,
       };
     }
 
-    return { 
-      success: true, 
-      translatedText: result.translatedText
+    return {
+      success: true,
+      translatedText: result.translatedText,
     };
   }
 
   // Verify auth token is provided for save operations
   if (!accessToken) {
-    return { success: false, error: 'Unauthorized: Authentication required' };
+    return { success: false, error: "Unauthorized: Authentication required" };
   }
 
   // Create authenticated Supabase client
-  const { createClient } = await import('@supabase/supabase-js');
-  const supabase = createClient(
-    process.env.SUPABASE_PROJECT_URL!,
-    process.env.SUPABASE_API_KEY!,
-    {
-      global: {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+  const { createClient } = await import("@supabase/supabase-js");
+  const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
       },
-    }
-  );
+    },
+  });
 
   if (actionType === "saveInstruction") {
     const instructionData = JSON.parse(dataEn);
-    
+
     // Check if the row exists
-    const { data: existingData } = await supabase
-      .from("instructions")
-      .select("id")
-      .eq("id", id)
-      .single();
-    
+    const { data: existingData } = await supabase.from("instructions").select("id").eq("id", id).single();
+
     if (!existingData) {
       // Row doesn't exist, we need to insert with data_en at minimum
       const insertData: any = {
         id,
-        data_en: language === 'en' ? instructionData : {},
-        data_he: language === 'he' ? instructionData : null,
+        data_en: language === "en" ? instructionData : {},
+        data_he: language === "he" ? instructionData : null,
         updated_at: new Date().toISOString(),
       };
-      
-      const { error } = await supabase
-        .from("instructions")
-        .insert(insertData);
+
+      const { error } = await supabase.from("instructions").insert(insertData);
 
       if (error) {
         return { success: false, error: error.message };
@@ -180,49 +166,40 @@ export async function action({ request }: Route.ActionArgs) {
       const updateData: any = {
         updated_at: new Date().toISOString(),
       };
-      
-      if (language === 'he') {
+
+      if (language === "he") {
         updateData.data_he = instructionData;
       } else {
         updateData.data_en = instructionData;
       }
-      
-      const { error } = await supabase
-        .from("instructions")
-        .update(updateData)
-        .eq("id", id);
+
+      const { error } = await supabase.from("instructions").update(updateData).eq("id", id);
 
       if (error) {
         return { success: false, error: error.message };
       }
     }
 
-    return { 
-      success: true, 
-      message: "Instruction saved successfully!"
+    return {
+      success: true,
+      message: "Instruction saved successfully!",
     };
   } else if (actionType === "saveMission") {
     const missionData = JSON.parse(dataEn);
-    
+
     // Check if the row exists
-    const { data: existingData } = await supabase
-      .from("missions")
-      .select("id")
-      .eq("id", id)
-      .single();
-    
+    const { data: existingData } = await supabase.from("missions").select("id").eq("id", id).single();
+
     if (!existingData) {
       // Row doesn't exist, we need to insert with data_en at minimum
       const insertData: any = {
         id,
-        data_en: language === 'en' ? missionData : {},
-        data_he: language === 'he' ? missionData : null,
+        data_en: language === "en" ? missionData : {},
+        data_he: language === "he" ? missionData : null,
         updated_at: new Date().toISOString(),
       };
-      
-      const { error } = await supabase
-        .from("missions")
-        .insert(insertData);
+
+      const { error } = await supabase.from("missions").insert(insertData);
 
       if (error) {
         return { success: false, error: error.message };
@@ -232,26 +209,23 @@ export async function action({ request }: Route.ActionArgs) {
       const updateData: any = {
         updated_at: new Date().toISOString(),
       };
-      
-      if (language === 'he') {
+
+      if (language === "he") {
         updateData.data_he = missionData;
       } else {
         updateData.data_en = missionData;
       }
-      
-      const { error } = await supabase
-        .from("missions")
-        .update(updateData)
-        .eq("id", id);
+
+      const { error } = await supabase.from("missions").update(updateData).eq("id", id);
 
       if (error) {
         return { success: false, error: error.message };
       }
     }
 
-    return { 
-      success: true, 
-      message: "Mission saved successfully!"
+    return {
+      success: true,
+      message: "Mission saved successfully!",
     };
   }
 
@@ -259,14 +233,14 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 // Image Library Dialog Component
-function ImageLibraryDialog({ 
-  isOpen, 
-  onClose, 
-  onSelectImage 
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  onSelectImage: (url: string) => void; 
+function ImageLibraryDialog({
+  isOpen,
+  onClose,
+  onSelectImage,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelectImage: (url: string) => void;
 }) {
   const [images, setImages] = useState<Array<{ name: string; url: string; path: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -302,24 +276,20 @@ function ImageLibraryDialog({
             ✕
           </button>
         </div>
-        
-        {isLoading && (
-          <div className={styles.dialogLoading}>Loading images...</div>
-        )}
-        
-        {error && (
-          <div className={styles.errorMessage}>{error}</div>
-        )}
-        
+
+        {isLoading && <div className={styles.dialogLoading}>Loading images...</div>}
+
+        {error && <div className={styles.errorMessage}>{error}</div>}
+
         {!isLoading && !error && images.length === 0 && (
           <div className={styles.dialogEmpty}>No images found in storage</div>
         )}
-        
+
         {!isLoading && !error && images.length > 0 && (
           <div className={styles.imageGrid}>
             {images.map((image) => (
-              <div 
-                key={image.path} 
+              <div
+                key={image.path}
                 className={styles.imageGridItem}
                 onClick={() => {
                   onSelectImage(image.url);
@@ -369,55 +339,61 @@ function ExplanationContentItem({
   const handlePasteFromClipboard = async () => {
     try {
       // Check clipboard permissions first
-      const permissionStatus = await navigator.permissions.query({ name: 'clipboard-read' as PermissionName });
-      console.log('Clipboard permission:', permissionStatus.state);
-      
+      const permissionStatus = await navigator.permissions.query({ name: "clipboard-read" as PermissionName });
+      console.log("Clipboard permission:", permissionStatus.state);
+
       const clipboardItems = await navigator.clipboard.read();
-      console.log('Clipboard items count:', clipboardItems.length);
-      
+      console.log("Clipboard items count:", clipboardItems.length);
+
       for (const item of clipboardItems) {
-        console.log('Available clipboard types:', item.types);
-        
+        console.log("Available clipboard types:", item.types);
+
         // Look for image types
-        const imageType = item.types.find(type => type.startsWith('image/'));
-        
+        const imageType = item.types.find((type) => type.startsWith("image/"));
+
         if (imageType) {
-          console.log('Found image type:', imageType);
+          console.log("Found image type:", imageType);
           const blob = await item.getType(imageType);
-          console.log('Blob size:', blob.size, 'bytes');
-          
+          console.log("Blob size:", blob.size, "bytes");
+
           // Convert blob to File object
           const timestamp = Date.now();
-          const extension = imageType.split('/')[1] || 'png';
+          const extension = imageType.split("/")[1] || "png";
           const file = new File([blob], `pasted-image-${timestamp}.${extension}`, { type: blob.type });
-          
+
           setImageFile(file);
-          
+
           // Create preview
           const reader = new FileReader();
           reader.onloadend = () => {
             setImagePreview(reader.result as string);
           };
           reader.readAsDataURL(blob);
-          
+
           alert(`Image pasted successfully! (${Math.round(blob.size / 1024)}KB)`);
           return; // Exit after finding first image
         }
       }
-      
+
       // No image found in clipboard
-      const allTypes = clipboardItems.flatMap(item => item.types).join(', ');
-      alert(`No image found in clipboard.\n\nAvailable formats: ${allTypes || 'none'}\n\nPlease copy an image (right-click on image → Copy Image, or use a screenshot tool).`);
+      const allTypes = clipboardItems.flatMap((item) => item.types).join(", ");
+      alert(
+        `No image found in clipboard.\n\nAvailable formats: ${allTypes || "none"}\n\nPlease copy an image (right-click on image → Copy Image, or use a screenshot tool).`,
+      );
     } catch (error) {
-      console.error('Clipboard error details:', error);
+      console.error("Clipboard error details:", error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      if (errorMessage.includes('denied') || errorMessage.includes('permission')) {
-        alert('Clipboard access denied.\n\nPlease allow clipboard access in your browser settings, or try:\n1. Copy an image using Ctrl+C (or Cmd+C on Mac)\n2. Right-click on an image and select "Copy Image"\n3. Use a screenshot tool and copy to clipboard');
-      } else if (errorMessage.includes('not supported')) {
-        alert('Clipboard API not supported.\n\nPlease use the file input instead.');
+
+      if (errorMessage.includes("denied") || errorMessage.includes("permission")) {
+        alert(
+          'Clipboard access denied.\n\nPlease allow clipboard access in your browser settings, or try:\n1. Copy an image using Ctrl+C (or Cmd+C on Mac)\n2. Right-click on an image and select "Copy Image"\n3. Use a screenshot tool and copy to clipboard',
+        );
+      } else if (errorMessage.includes("not supported")) {
+        alert("Clipboard API not supported.\n\nPlease use the file input instead.");
       } else {
-        alert(`Failed to read clipboard: ${errorMessage}\n\nTry:\n1. Copy an image to clipboard\n2. Make sure you\'re using a modern browser (Chrome, Edge, Firefox)\n3. If using a screenshot tool, ensure it copies to clipboard`);
+        alert(
+          `Failed to read clipboard: ${errorMessage}\n\nTry:\n1. Copy an image to clipboard\n2. Make sure you\'re using a modern browser (Chrome, Edge, Firefox)\n3. If using a screenshot tool, ensure it copies to clipboard`,
+        );
       }
     }
   };
@@ -426,15 +402,15 @@ function ExplanationContentItem({
     if (!imageFile) return;
 
     setIsUploading(true);
-    const result = await uploadImage(imageFile, 'instructions');
+    const result = await uploadImage(imageFile, "instructions");
     setIsUploading(false);
 
-    if ('error' in result) {
+    if ("error" in result) {
       alert(`Upload failed: ${result.error}`);
     } else {
       setImagePreview(result.url);
       onUpdate(index, result.url);
-      alert('Image uploaded successfully!');
+      alert("Image uploaded successfully!");
     }
   };
 
@@ -447,14 +423,11 @@ function ExplanationContentItem({
     <div className={styles.contentItem}>
       <div className={styles.contentItemHeader}>
         <span className={styles.contentItemType}>{item.type}</span>
-        <button
-          className={styles.removeButton}
-          onClick={() => onRemove(index)}
-        >
+        <button className={styles.removeButton} onClick={() => onRemove(index)}>
           Remove
         </button>
       </div>
-      
+
       {item.type === "text" ? (
         <textarea
           className={styles.textarea}
@@ -477,34 +450,17 @@ function ExplanationContentItem({
           <div className={styles.formGroup} style={{ marginTop: "var(--space-3)" }}>
             <label className={styles.label}>Upload New Image or Select from Library</label>
             <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-              <button
-                type="button"
-                onClick={() => setShowImageLibrary(true)}
-                className={styles.addButton}
-              >
+              <button type="button" onClick={() => setShowImageLibrary(true)} className={styles.addButton}>
                 📚 Select from Library
               </button>
-              <button
-                type="button"
-                onClick={handlePasteFromClipboard}
-                className={styles.addButton}
-              >
+              <button type="button" onClick={handlePasteFromClipboard} className={styles.addButton}>
                 📋 Paste from Clipboard
               </button>
             </div>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className={styles.input}
-            />
+            <input type="file" accept="image/*" onChange={handleImageChange} className={styles.input} />
             {imagePreview && (
               <div style={{ marginTop: "var(--space-2)" }}>
-                <img 
-                  src={imagePreview} 
-                  alt="Preview" 
-                  style={{ maxWidth: "200px", borderRadius: "var(--radius-2)" }}
-                />
+                <img src={imagePreview} alt="Preview" style={{ maxWidth: "200px", borderRadius: "var(--radius-2)" }} />
               </div>
             )}
             {imageFile && !isUploading && (
@@ -518,15 +474,13 @@ function ExplanationContentItem({
               </button>
             )}
             {isUploading && (
-              <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>
-                Uploading...
-              </p>
+              <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>Uploading...</p>
             )}
           </div>
-          <ImageLibraryDialog 
-            isOpen={showImageLibrary} 
-            onClose={() => setShowImageLibrary(false)} 
-            onSelectImage={handleSelectFromLibrary} 
+          <ImageLibraryDialog
+            isOpen={showImageLibrary}
+            onClose={() => setShowImageLibrary(false)}
+            onSelectImage={handleSelectFromLibrary}
           />
         </div>
       ) : (
@@ -542,24 +496,22 @@ function ExplanationContentItem({
   );
 }
 
-
-
 // Component to handle authenticated form submissions
-function AuthenticatedForm({ 
-  actionType, 
-  id, 
-  data, 
+function AuthenticatedForm({
+  actionType,
+  id,
+  data,
   disabled,
-  language
-}: { 
-  actionType: string; 
-  id: string; 
-  data: string; 
+  language,
+}: {
+  actionType: string;
+  id: string;
+  data: string;
   disabled: boolean;
   language: string;
 }) {
   const { session } = useAuth();
-  
+
   return (
     <Form method="post" style={{ marginTop: "var(--space-4)" }}>
       <input type="hidden" name="actionType" value={actionType} />
@@ -568,14 +520,15 @@ function AuthenticatedForm({
       <input type="hidden" name="language" value={language} />
       <input type="hidden" name="accessToken" value={session?.access_token || ""} />
       <button type="submit" className={styles.submitButton} disabled={disabled || !session}>
-        Save to Database ({language === 'he' ? 'Hebrew' : 'English'})
+        Save to Database ({language === "he" ? "Hebrew" : "English"})
       </button>
     </Form>
   );
 }
 
 export default function AdminPage({ loaderData }: Route.ComponentProps) {
-  const { supabaseUrl, supabaseKey, instructions, missions, allInstructionIds, allMissionIds, language, tab } = loaderData;
+  const { supabaseUrl, supabaseKey, instructions, missions, allInstructionIds, allMissionIds, language, tab } =
+    loaderData;
   const actionData = useActionData<typeof action>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -583,12 +536,12 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingTab, setPendingTab] = useState<string | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
-  
+
   // Initialize Supabase on the client
   useEffect(() => {
     initSupabase(supabaseUrl, supabaseKey);
   }, [supabaseUrl, supabaseKey]);
-  
+
   // Handle tab change with unsaved changes check
   const handleTabChange = (newTab: string) => {
     if (hasUnsavedChanges && newTab !== currentTab) {
@@ -651,27 +604,27 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
   // Update URL when tab changes
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
-    params.set('tab', currentTab);
+    params.set("tab", currentTab);
     if (language) {
-      params.set('lang', language);
+      params.set("lang", language);
     }
     navigate(`/admin?${params.toString()}`, { replace: true });
   }, [currentTab, language]);
-  
+
   const clearActionData = () => {
     const params = new URLSearchParams();
-    params.set('tab', currentTab);
-    params.set('lang', language);
+    params.set("tab", currentTab);
+    params.set("lang", language);
     navigate(`/admin?${params.toString()}`, { replace: true });
   };
-  
+
   const switchLanguage = (newLang: string) => {
     const params = new URLSearchParams();
-    params.set('tab', currentTab);
-    params.set('lang', newLang);
+    params.set("tab", currentTab);
+    params.set("lang", newLang);
     navigate(`/admin?${params.toString()}`);
   };
-  
+
   const { user, loading, signIn, signOut } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -684,11 +637,11 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
     setIsSigningIn(true);
 
     const { error } = await signIn(email, password);
-    
+
     if (error) {
       setError(error.message);
     }
-    
+
     setIsSigningIn(false);
   };
 
@@ -711,7 +664,7 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
           <div className={styles.loginCard}>
             <h1 className={styles.loginTitle}>Admin Login</h1>
             <p className={styles.loginSubtitle}>Sign in to access the admin panel</p>
-            
+
             <form onSubmit={handleSignIn} className={styles.loginForm}>
               <div className={styles.formGroup}>
                 <label className={styles.label}>Email</label>
@@ -739,17 +692,9 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
                 />
               </div>
 
-              {error && (
-                <div className={styles.errorMessage}>
-                  {error}
-                </div>
-              )}
+              {error && <div className={styles.errorMessage}>{error}</div>}
 
-              <button
-                type="submit"
-                className={styles.submitButton}
-                disabled={isSigningIn}
-              >
+              <button type="submit" className={styles.submitButton} disabled={isSigningIn}>
                 {isSigningIn ? "Signing in..." : "Sign In"}
               </button>
             </form>
@@ -772,23 +717,24 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
               Go to Home
             </Link>
             <div className={styles.languageToggle}>
-              <button 
+              <button
                 type="button"
-                onClick={() => switchLanguage('en')}
-                className={language === 'en' ? styles.languageActive : styles.languageInactive}
+                onClick={() => switchLanguage("en")}
+                className={language === "en" ? styles.languageActive : styles.languageInactive}
               >
                 English
               </button>
               <span className={styles.languageSeparator}>|</span>
-              <button 
+              <button
                 type="button"
-                onClick={() => switchLanguage('he')}
-                className={language === 'he' ? styles.languageActive : styles.languageInactive}
+                onClick={() => switchLanguage("he")}
+                className={language === "he" ? styles.languageActive : styles.languageInactive}
               >
                 Hebrew
               </button>
             </div>
-            <span className={styles.userEmail}>{user.email}</span>
+            {user.email}
+            <span className={styles.userEmail}></span>
             <button onClick={handleSignOut} className={styles.signOutButton}>
               Sign Out
             </button>
@@ -797,7 +743,7 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
       </header>
 
       <Tabs value={currentTab} onValueChange={handleTabChange} className={styles.tabs}>
-        <TabsList>
+        <TabsList className={styles.tabsList}>
           <TabsTrigger value="instruction">New Instruction</TabsTrigger>
           <TabsTrigger value="edit-instruction">Edit Instruction</TabsTrigger>
           <TabsTrigger value="mission">New Mission</TabsTrigger>
@@ -805,19 +751,51 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
         </TabsList>
 
         <TabsContent value="instruction">
-          <InstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} language={language} onChangesDetected={setHasUnsavedChanges} onNavigationRequest={handleNavigationWithCheck} />
+          <InstructionForm
+            actionData={actionData}
+            clearActionData={clearActionData}
+            instructions={instructions}
+            language={language}
+            onChangesDetected={setHasUnsavedChanges}
+            onNavigationRequest={handleNavigationWithCheck}
+          />
         </TabsContent>
 
         <TabsContent value="edit-instruction">
-          <EditInstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} allInstructionIds={allInstructionIds} language={language} onChangesDetected={setHasUnsavedChanges} onNavigationRequest={handleNavigationWithCheck} />
+          <EditInstructionForm
+            actionData={actionData}
+            clearActionData={clearActionData}
+            instructions={instructions}
+            allInstructionIds={allInstructionIds}
+            language={language}
+            onChangesDetected={setHasUnsavedChanges}
+            onNavigationRequest={handleNavigationWithCheck}
+          />
         </TabsContent>
 
         <TabsContent value="mission">
-          <MissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} language={language} onChangesDetected={setHasUnsavedChanges} onNavigationRequest={handleNavigationWithCheck} />
+          <MissionForm
+            actionData={actionData}
+            clearActionData={clearActionData}
+            instructions={instructions}
+            missions={missions}
+            language={language}
+            onChangesDetected={setHasUnsavedChanges}
+            onNavigationRequest={handleNavigationWithCheck}
+          />
         </TabsContent>
 
         <TabsContent value="edit-mission">
-          <EditMissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} allMissionIds={allMissionIds} language={language} onChangesDetected={setHasUnsavedChanges} onNavigationRequest={handleNavigationWithCheck} />
+          <EditMissionForm
+            actionData={actionData}
+            clearActionData={clearActionData}
+            instructions={instructions}
+            missions={missions}
+            allMissionIds={allMissionIds}
+            language={language}
+            onChangesDetected={setHasUnsavedChanges}
+            onNavigationRequest={handleNavigationWithCheck}
+          />
         </TabsContent>
       </Tabs>
 
@@ -832,22 +810,13 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
               You have unsaved changes. Do you want to save them before leaving?
             </p>
             <div className={styles.warningDialogButtons}>
-              <button
-                className={styles.addButton}
-                onClick={cancelTabChange}
-              >
+              <button className={styles.addButton} onClick={cancelTabChange}>
                 Cancel
               </button>
-              <button
-                className={styles.submitButton}
-                onClick={saveAndNavigate}
-              >
+              <button className={styles.submitButton} onClick={saveAndNavigate}>
                 Save
               </button>
-              <button
-                className={styles.removeButton}
-                onClick={confirmDiscardChanges}
-              >
+              <button className={styles.removeButton} onClick={confirmDiscardChanges}>
                 Discard Changes
               </button>
             </div>
@@ -858,7 +827,21 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
   );
 }
 
-function InstructionForm({ actionData, clearActionData, instructions, language, onChangesDetected, onNavigationRequest }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; language: string; onChangesDetected: (hasChanges: boolean) => void; onNavigationRequest: (navigationFn: () => void) => void }) {
+function InstructionForm({
+  actionData,
+  clearActionData,
+  instructions,
+  language,
+  onChangesDetected,
+  onNavigationRequest,
+}: {
+  actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string };
+  clearActionData: () => void;
+  instructions: Instruction[];
+  language: string;
+  onChangesDetected: (hasChanges: boolean) => void;
+  onNavigationRequest: (navigationFn: () => void) => void;
+}) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -983,29 +966,29 @@ function InstructionForm({ actionData, clearActionData, instructions, language, 
       {type === "default" && (
         <div className={styles.formSection}>
           <h2 className={styles.sectionTitle}>Explanation Content</h2>
-          
-          {explanation.map((item, index) => (
-          <ExplanationContentItem
-            key={index}
-            item={item}
-            index={index}
-            onUpdate={updateContent}
-            onRemove={removeContent}
-          />
-        ))}
 
-        <div className={styles.addContentButtons}>
-          <button className={styles.addButton} onClick={() => addContent("text")}>
-            + Add Text
-          </button>
-          <button className={styles.addButton} onClick={() => addContent("image")}>
-            + Add Image
-          </button>
-          <button className={styles.addButton} onClick={() => addContent("video")}>
-            + Add Video
-          </button>
+          {explanation.map((item, index) => (
+            <ExplanationContentItem
+              key={index}
+              item={item}
+              index={index}
+              onUpdate={updateContent}
+              onRemove={removeContent}
+            />
+          ))}
+
+          <div className={styles.addContentButtons}>
+            <button className={styles.addButton} onClick={() => addContent("text")}>
+              + Add Text
+            </button>
+            <button className={styles.addButton} onClick={() => addContent("image")}>
+              + Add Image
+            </button>
+            <button className={styles.addButton} onClick={() => addContent("video")}>
+              + Add Video
+            </button>
+          </div>
         </div>
-      </div>
       )}
 
       <div className={styles.previewSection}>
@@ -1014,9 +997,15 @@ function InstructionForm({ actionData, clearActionData, instructions, language, 
           Copy this object and add it to the <code>instructions</code> array in <code>app/data/instructions.ts</code>
         </p>
         <pre className={styles.outputCode}>{generateCode()}</pre>
-        
-        <AuthenticatedForm actionType="saveInstruction" id={id} data={generateCode()} disabled={!id || !title} language={language} />
-        
+
+        <AuthenticatedForm
+          actionType="saveInstruction"
+          id={id}
+          data={generateCode()}
+          disabled={!id || !title}
+          language={language}
+        />
+
         {actionData?.success && (
           <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
             {actionData.message}
@@ -1032,7 +1021,30 @@ function InstructionForm({ actionData, clearActionData, instructions, language, 
   );
 }
 
-function EditInstructionForm({ actionData, clearActionData, instructions, allInstructionIds, language, onChangesDetected, onNavigationRequest }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translatedText?: string | null; newInstructionId?: string }; clearActionData: () => void; instructions: Instruction[]; allInstructionIds: string[]; language: string; onChangesDetected: (hasChanges: boolean) => void; onNavigationRequest: (navigationFn: () => void) => void }) {
+function EditInstructionForm({
+  actionData,
+  clearActionData,
+  instructions,
+  allInstructionIds,
+  language,
+  onChangesDetected,
+  onNavigationRequest,
+}: {
+  actionData?: {
+    success: boolean;
+    message?: string;
+    error?: string;
+    imageUrl?: string;
+    translatedText?: string | null;
+    newInstructionId?: string;
+  };
+  clearActionData: () => void;
+  instructions: Instruction[];
+  allInstructionIds: string[];
+  language: string;
+  onChangesDetected: (hasChanges: boolean) => void;
+  onNavigationRequest: (navigationFn: () => void) => void;
+}) {
   const [searchParams] = useSearchParams();
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
   const [id, setId] = useState("");
@@ -1069,7 +1081,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
 
   // Handle newly created instruction or URL parameter
   useEffect(() => {
-    const instructionIdFromUrl = searchParams.get('instructionId');
+    const instructionIdFromUrl = searchParams.get("instructionId");
     if (instructionIdFromUrl && allInstructionIds.includes(instructionIdFromUrl)) {
       handleSelectInstruction(instructionIdFromUrl);
     }
@@ -1081,22 +1093,20 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
 
       try {
         // Find the highest ID from existing instructions
-        const numericIds = allInstructionIds
-          .map(id => parseInt(id, 10))
-          .filter(id => !isNaN(id));
-        
+        const numericIds = allInstructionIds.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
+
         const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
         const newId = String(maxId + 1);
 
         // Create the new instruction via form submission
         const formData = new FormData();
-        formData.append('actionType', 'createInstruction');
-        formData.append('newId', newId);
-        formData.append('language', language);
-        formData.append('accessToken', session?.access_token || '');
+        formData.append("actionType", "createInstruction");
+        formData.append("newId", newId);
+        formData.append("language", language);
+        formData.append("accessToken", session?.access_token || "");
 
-        const response = await fetch('/admin', {
-          method: 'POST',
+        const response = await fetch("/admin", {
+          method: "POST",
           body: formData,
         });
 
@@ -1111,8 +1121,8 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
         // Reload the page to refresh the instruction list
         window.location.href = `/admin?tab=edit-instruction&lang=${language}`;
       } catch (error) {
-        console.error('Error creating instruction:', error);
-        alert(`Failed to create instruction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error("Error creating instruction:", error);
+        alert(`Failed to create instruction: ${error instanceof Error ? error.message : "Unknown error"}`);
         setIsCreatingNew(false);
       }
     });
@@ -1168,37 +1178,37 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
 
   const handleTranslateAndSwitch = async () => {
     if (!title) {
-      alert('Please fill in at least the title before translating');
+      alert("Please fill in at least the title before translating");
       return;
     }
 
     setIsTranslating(true);
 
     try {
-      const sourceLang = language === 'en' ? 'en' : 'he';
-      const targetLang = language === 'en' ? 'he' : 'en';
+      const sourceLang = language === "en" ? "en" : "he";
+      const targetLang = language === "en" ? "he" : "en";
 
       const textsToTranslate = [
         title,
-        description || '',
-        ...explanation.filter(e => e.type === 'text').map(e => e.content)
+        description || "",
+        ...explanation.filter((e) => e.type === "text").map((e) => e.content),
       ].filter(Boolean);
 
       const translationPromises = textsToTranslate.map(async (text) => {
         const formData = new FormData();
-        formData.append('actionType', 'translate');
-        formData.append('text', text);
-        formData.append('sourceLang', sourceLang);
-        formData.append('targetLang', targetLang);
+        formData.append("actionType", "translate");
+        formData.append("text", text);
+        formData.append("sourceLang", sourceLang);
+        formData.append("targetLang", targetLang);
 
-        const response = await fetch('/admin', {
-          method: 'POST',
+        const response = await fetch("/admin", {
+          method: "POST",
           body: formData,
         });
 
         const result = await response.json();
         if (!result.success) {
-          throw new Error(result.error || 'Translation failed');
+          throw new Error(result.error || "Translation failed");
         }
         return result.translatedText;
       });
@@ -1207,10 +1217,10 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
 
       let index = 0;
       const translatedTitle = translations[index++];
-      const translatedDescription = description ? translations[index++] : '';
-      
-      const translatedExplanation = explanation.map(item => {
-        if (item.type === 'text' && item.content) {
+      const translatedDescription = description ? translations[index++] : "";
+
+      const translatedExplanation = explanation.map((item) => {
+        if (item.type === "text" && item.content) {
           return { ...item, content: translations[index++] };
         }
         return item;
@@ -1220,12 +1230,12 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
       setDescription(translatedDescription);
       setExplanation(translatedExplanation);
 
-      alert(`Translation successful! Fields updated to ${targetLang === 'he' ? 'Hebrew' : 'English'}`);
-      
+      alert(`Translation successful! Fields updated to ${targetLang === "he" ? "Hebrew" : "English"}`);
+
       window.location.href = `/admin?tab=edit-instruction&lang=${targetLang}`;
     } catch (error) {
-      console.error('Translation error:', error);
-      alert(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("Translation error:", error);
+      alert(`Translation failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsTranslating(false);
     }
@@ -1234,7 +1244,14 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
   return (
     <div>
       <div className={styles.formSection}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "var(--space-3)",
+          }}
+        >
           <h2 className={styles.sectionTitle}>Select Instruction to Edit</h2>
           <button
             type="button"
@@ -1242,18 +1259,14 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
             className={styles.addButton}
             disabled={isCreatingNew || !session}
           >
-            {isCreatingNew ? 'Creating...' : '+ Add New Instruction'}
+            {isCreatingNew ? "Creating..." : "+ Add New Instruction"}
           </button>
         </div>
         <div className={styles.instructionCheckboxList}>
           {allInstructionIds.map((id) => {
             const instruction = instructions.find((i) => i.id === id);
             return (
-              <label
-                key={id}
-                className={styles.checkboxLabel}
-                style={{ cursor: "pointer" }}
-              >
+              <label key={id} className={styles.checkboxLabel} style={{ cursor: "pointer" }}>
                 <input
                   type="radio"
                   name="instruction"
@@ -1262,7 +1275,8 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
                   onChange={() => handleSelectInstruction(id)}
                 />
                 <span>
-                  {id}{instruction ? ` - ${instruction.title}` : ' (No data for this language)'}
+                  {id}
+                  {instruction ? ` - ${instruction.title}` : " (No data for this language)"}
                 </span>
               </label>
             );
@@ -1330,7 +1344,9 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
                     onChange={(e) => setMissionId(e.target.value)}
                     placeholder="e.g., beginner-setup"
                   />
-                  <small style={{ color: "var(--color-neutral-11)", fontSize: "0.875rem", marginTop: "var(--space-1)" }}>
+                  <small
+                    style={{ color: "var(--color-neutral-11)", fontSize: "0.875rem", marginTop: "var(--space-1)" }}
+                  >
                     The mission ID to navigate to when this instruction is clicked
                   </small>
                 </div>
@@ -1341,38 +1357,39 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
           {type === "default" && (
             <div className={styles.formSection}>
               <h2 className={styles.sectionTitle}>Explanation Content</h2>
-              
-              {explanation.map((item, index) => (
-              <ExplanationContentItem
-                key={index}
-                item={item}
-                index={index}
-                onUpdate={updateContent}
-                onRemove={removeContent}
-              />
-            ))}
 
-            <div className={styles.addContentButtons}>
-              <button className={styles.addButton} onClick={() => addContent("text")}>
-                + Add Text
-              </button>
-              <button className={styles.addButton} onClick={() => addContent("image")}>
-                + Add Image
-              </button>
-              <button className={styles.addButton} onClick={() => addContent("video")}>
-                + Add Video
-              </button>
+              {explanation.map((item, index) => (
+                <ExplanationContentItem
+                  key={index}
+                  item={item}
+                  index={index}
+                  onUpdate={updateContent}
+                  onRemove={removeContent}
+                />
+              ))}
+
+              <div className={styles.addContentButtons}>
+                <button className={styles.addButton} onClick={() => addContent("text")}>
+                  + Add Text
+                </button>
+                <button className={styles.addButton} onClick={() => addContent("image")}>
+                  + Add Image
+                </button>
+                <button className={styles.addButton} onClick={() => addContent("video")}>
+                  + Add Video
+                </button>
+              </div>
             </div>
-          </div>
           )}
 
           <div className={styles.previewSection}>
             <h2 className={styles.previewTitle}>Updated Code</h2>
             <p style={{ marginBottom: "var(--space-3)", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
-              Copy this object and replace the existing instruction with ID "{id}" in <code>app/data/instructions.ts</code>
+              Copy this object and replace the existing instruction with ID "{id}" in{" "}
+              <code>app/data/instructions.ts</code>
             </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
-            
+
             <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-4)" }}>
               <button
                 type="button"
@@ -1381,15 +1398,18 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
                 disabled={isTranslating || !title}
                 style={{ flex: 1 }}
               >
-                {isTranslating 
-                  ? 'Translating...' 
-                  : `Translate to ${language === 'en' ? 'Hebrew' : 'English'} & Switch`
-                }
+                {isTranslating ? "Translating..." : `Translate to ${language === "en" ? "Hebrew" : "English"} & Switch`}
               </button>
             </div>
-            
-            <AuthenticatedForm actionType="saveInstruction" id={id} data={generateCode()} disabled={!id || !title} language={language} />
-            
+
+            <AuthenticatedForm
+              actionType="saveInstruction"
+              id={id}
+              data={generateCode()}
+              disabled={!id || !title}
+              language={language}
+            />
+
             {actionData?.success && actionData.message && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
                 {actionData.message}
@@ -1407,7 +1427,31 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
   );
 }
 
-function EditMissionForm({ actionData, clearActionData, instructions, missions, allMissionIds, language, onChangesDetected, onNavigationRequest }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translatedText?: string | null }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; allMissionIds: string[]; language: string; onChangesDetected: (hasChanges: boolean) => void; onNavigationRequest: (navigationFn: () => void) => void }) {
+function EditMissionForm({
+  actionData,
+  clearActionData,
+  instructions,
+  missions,
+  allMissionIds,
+  language,
+  onChangesDetected,
+  onNavigationRequest,
+}: {
+  actionData?: {
+    success: boolean;
+    message?: string;
+    error?: string;
+    imageUrl?: string;
+    translatedText?: string | null;
+  };
+  clearActionData: () => void;
+  instructions: Instruction[];
+  missions: Mission[];
+  allMissionIds: string[];
+  language: string;
+  onChangesDetected: (hasChanges: boolean) => void;
+  onNavigationRequest: (navigationFn: () => void) => void;
+}) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -1450,33 +1494,31 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
         // Use the already available allInstructionIds from props
         const allInstructionIdsResponse = await fetch(`/admin?lang=${language}`);
         const htmlText = await allInstructionIdsResponse.text();
-        
+
         // We can't parse HTML as JSON, so we'll use the instructions from props
         // Get all instruction IDs from the instructions prop
-        const allIds = instructions.map(i => i.id);
-        
-        const numericIds = allIds
-          .map((id: string) => parseInt(id, 10))
-          .filter((id: number) => !isNaN(id));
-        
+        const allIds = instructions.map((i) => i.id);
+
+        const numericIds = allIds.map((id: string) => parseInt(id, 10)).filter((id: number) => !isNaN(id));
+
         const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
         const newId = String(maxId + 1);
 
         // Create the new instruction via form submission
         const formData = new FormData();
-        formData.append('actionType', 'createInstruction');
-        formData.append('newId', newId);
-        formData.append('language', language);
-        formData.append('accessToken', session?.access_token || '');
+        formData.append("actionType", "createInstruction");
+        formData.append("newId", newId);
+        formData.append("language", language);
+        formData.append("accessToken", session?.access_token || "");
 
-        const response = await fetch('/admin', {
-          method: 'POST',
+        const response = await fetch("/admin", {
+          method: "POST",
           body: formData,
         });
 
         // The response might be HTML (redirect), so check content type
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
           const result = await response.json();
           if (!result.success) {
             alert(`Failed to create instruction: ${result.error}`);
@@ -1488,8 +1530,8 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
         // Navigate to edit-instruction tab with the new instruction selected
         window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${newId}`;
       } catch (error) {
-        console.error('Error creating instruction:', error);
-        alert(`Failed to create instruction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error("Error creating instruction:", error);
+        alert(`Failed to create instruction: ${error instanceof Error ? error.message : "Unknown error"}`);
         setIsCreatingNew(false);
       }
     });
@@ -1509,51 +1551,57 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
 
   const handlePasteFromClipboard = async () => {
     try {
-      const permissionStatus = await navigator.permissions.query({ name: 'clipboard-read' as PermissionName });
-      console.log('Clipboard permission:', permissionStatus.state);
-      
+      const permissionStatus = await navigator.permissions.query({ name: "clipboard-read" as PermissionName });
+      console.log("Clipboard permission:", permissionStatus.state);
+
       const clipboardItems = await navigator.clipboard.read();
-      console.log('Clipboard items count:', clipboardItems.length);
-      
+      console.log("Clipboard items count:", clipboardItems.length);
+
       for (const item of clipboardItems) {
-        console.log('Available clipboard types:', item.types);
-        
-        const imageType = item.types.find(type => type.startsWith('image/'));
-        
+        console.log("Available clipboard types:", item.types);
+
+        const imageType = item.types.find((type) => type.startsWith("image/"));
+
         if (imageType) {
-          console.log('Found image type:', imageType);
+          console.log("Found image type:", imageType);
           const blob = await item.getType(imageType);
-          console.log('Blob size:', blob.size, 'bytes');
-          
+          console.log("Blob size:", blob.size, "bytes");
+
           const timestamp = Date.now();
-          const extension = imageType.split('/')[1] || 'png';
+          const extension = imageType.split("/")[1] || "png";
           const file = new File([blob], `pasted-image-${timestamp}.${extension}`, { type: blob.type });
-          
+
           setImageFile(file);
-          
+
           const reader = new FileReader();
           reader.onloadend = () => {
             setImagePreview(reader.result as string);
           };
           reader.readAsDataURL(blob);
-          
+
           alert(`Image pasted successfully! (${Math.round(blob.size / 1024)}KB)`);
           return;
         }
       }
-      
-      const allTypes = clipboardItems.flatMap(item => item.types).join(', ');
-      alert(`No image found in clipboard.\n\nAvailable formats: ${allTypes || 'none'}\n\nPlease copy an image (right-click on image → Copy Image, or use a screenshot tool).`);
+
+      const allTypes = clipboardItems.flatMap((item) => item.types).join(", ");
+      alert(
+        `No image found in clipboard.\n\nAvailable formats: ${allTypes || "none"}\n\nPlease copy an image (right-click on image → Copy Image, or use a screenshot tool).`,
+      );
     } catch (error) {
-      console.error('Clipboard error details:', error);
+      console.error("Clipboard error details:", error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      if (errorMessage.includes('denied') || errorMessage.includes('permission')) {
-        alert('Clipboard access denied.\n\nPlease allow clipboard access in your browser settings, or try:\n1. Copy an image using Ctrl+C (or Cmd+C on Mac)\n2. Right-click on an image and select "Copy Image"\n3. Use a screenshot tool and copy to clipboard');
-      } else if (errorMessage.includes('not supported')) {
-        alert('Clipboard API not supported.\n\nPlease use the file input instead.');
+
+      if (errorMessage.includes("denied") || errorMessage.includes("permission")) {
+        alert(
+          'Clipboard access denied.\n\nPlease allow clipboard access in your browser settings, or try:\n1. Copy an image using Ctrl+C (or Cmd+C on Mac)\n2. Right-click on an image and select "Copy Image"\n3. Use a screenshot tool and copy to clipboard',
+        );
+      } else if (errorMessage.includes("not supported")) {
+        alert("Clipboard API not supported.\n\nPlease use the file input instead.");
       } else {
-        alert(`Failed to read clipboard: ${errorMessage}\n\nTry:\n1. Copy an image to clipboard\n2. Make sure you\'re using a modern browser (Chrome, Edge, Firefox)\n3. If using a screenshot tool, ensure it copies to clipboard`);
+        alert(
+          `Failed to read clipboard: ${errorMessage}\n\nTry:\n1. Copy an image to clipboard\n2. Make sure you\'re using a modern browser (Chrome, Edge, Firefox)\n3. If using a screenshot tool, ensure it copies to clipboard`,
+        );
       }
     }
   };
@@ -1562,10 +1610,10 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
     if (!imageFile) return;
 
     setIsUploading(true);
-    const result = await uploadImage(imageFile, 'missions');
+    const result = await uploadImage(imageFile, "missions");
     setIsUploading(false);
 
-    if ('error' in result) {
+    if ("error" in result) {
       alert(`Upload failed: ${result.error}`);
     } else {
       setImagePreview(result.url);
@@ -1605,10 +1653,10 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
   const moveInstructionUp = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!selectedInstructionForReorder) return;
-    
+
     const index = selectedInstructions.indexOf(selectedInstructionForReorder);
     if (index <= 0) return; // Already at the top or not found
-    
+
     const newOrder = [...selectedInstructions];
     [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
     setSelectedInstructions(newOrder);
@@ -1617,10 +1665,10 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
   const moveInstructionDown = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!selectedInstructionForReorder) return;
-    
+
     const index = selectedInstructions.indexOf(selectedInstructionForReorder);
     if (index === -1 || index >= selectedInstructions.length - 1) return; // Already at the bottom or not found
-    
+
     const newOrder = [...selectedInstructions];
     [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
     setSelectedInstructions(newOrder);
@@ -1639,57 +1687,57 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
 
   const handleTranslateAndSwitch = async () => {
     if (!title || !description) {
-      alert('Please fill in the title and description before translating');
+      alert("Please fill in the title and description before translating");
       return;
     }
 
     setIsTranslating(true);
 
     try {
-      const sourceLang = language === 'en' ? 'en' : 'he';
-      const targetLang = language === 'en' ? 'he' : 'en';
+      const sourceLang = language === "en" ? "en" : "he";
+      const targetLang = language === "en" ? "he" : "en";
 
       const titleFormData = new FormData();
-      titleFormData.append('actionType', 'translate');
-      titleFormData.append('text', title);
-      titleFormData.append('sourceLang', sourceLang);
-      titleFormData.append('targetLang', targetLang);
+      titleFormData.append("actionType", "translate");
+      titleFormData.append("text", title);
+      titleFormData.append("sourceLang", sourceLang);
+      titleFormData.append("targetLang", targetLang);
 
-      const titleResponse = await fetch('/admin', {
-        method: 'POST',
+      const titleResponse = await fetch("/admin", {
+        method: "POST",
         body: titleFormData,
       });
       const titleResult = await titleResponse.json();
 
       if (!titleResult.success) {
-        throw new Error(titleResult.error || 'Title translation failed');
+        throw new Error(titleResult.error || "Title translation failed");
       }
 
       const descFormData = new FormData();
-      descFormData.append('actionType', 'translate');
-      descFormData.append('text', description);
-      descFormData.append('sourceLang', sourceLang);
-      descFormData.append('targetLang', targetLang);
+      descFormData.append("actionType", "translate");
+      descFormData.append("text", description);
+      descFormData.append("sourceLang", sourceLang);
+      descFormData.append("targetLang", targetLang);
 
-      const descResponse = await fetch('/admin', {
-        method: 'POST',
+      const descResponse = await fetch("/admin", {
+        method: "POST",
         body: descFormData,
       });
       const descResult = await descResponse.json();
 
       if (!descResult.success) {
-        throw new Error(descResult.error || 'Description translation failed');
+        throw new Error(descResult.error || "Description translation failed");
       }
 
       setTitle(titleResult.translatedText);
       setDescription(descResult.translatedText);
 
-      alert(`Translation successful! Fields updated to ${targetLang === 'he' ? 'Hebrew' : 'English'}`);
-      
+      alert(`Translation successful! Fields updated to ${targetLang === "he" ? "Hebrew" : "English"}`);
+
       window.location.href = `/admin?tab=edit-mission&lang=${targetLang}`;
     } catch (error) {
-      console.error('Translation error:', error);
-      alert(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("Translation error:", error);
+      alert(`Translation failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsTranslating(false);
     }
@@ -1703,11 +1751,7 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
           {allMissionIds.map((id) => {
             const mission = missions.find((m) => m.id === id);
             return (
-              <label
-                key={id}
-                className={styles.checkboxLabel}
-                style={{ cursor: "pointer" }}
-              >
+              <label key={id} className={styles.checkboxLabel} style={{ cursor: "pointer" }}>
                 <input
                   type="radio"
                   name="mission"
@@ -1716,7 +1760,8 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
                   onChange={() => handleSelectMission(id)}
                 />
                 <span>
-                  {id}{mission ? ` - ${mission.title}` : ' (No data for this language)'}
+                  {id}
+                  {mission ? ` - ${mission.title}` : " (No data for this language)"}
                 </span>
               </label>
             );
@@ -1768,25 +1813,16 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
             <div className={styles.formGroup}>
               <label className={styles.label}>Upload Image</label>
               <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-                <button
-                  type="button"
-                  onClick={handlePasteFromClipboard}
-                  className={styles.addButton}
-                >
+                <button type="button" onClick={handlePasteFromClipboard} className={styles.addButton}>
                   📋 Paste from Clipboard
                 </button>
               </div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className={styles.input}
-              />
+              <input type="file" accept="image/*" onChange={handleImageChange} className={styles.input} />
               {imagePreview && (
                 <div style={{ marginTop: "var(--space-3)" }}>
-                  <img 
-                    src={imagePreview} 
-                    alt="Preview" 
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
                     style={{ maxWidth: "300px", borderRadius: "var(--radius-3)" }}
                   />
                 </div>
@@ -1802,9 +1838,7 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
                 </button>
               )}
               {isUploading && (
-                <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>
-                  Uploading...
-                </p>
+                <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>Uploading...</p>
               )}
               {actionData?.imageUrl && (
                 <p style={{ marginTop: "var(--space-2)", fontSize: "0.875rem", color: "var(--color-success-11)" }}>
@@ -1815,14 +1849,24 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
           </div>
 
           <div className={styles.formSection}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "var(--space-3)",
+              }}
+              className={styles.div1}
+            >
               <h2 className={styles.sectionTitle}>Select Instructions</h2>
               <div style={{ display: "flex", gap: "var(--space-2)" }}>
                 <button
                   type="button"
                   onClick={moveInstructionUp}
                   className={styles.addButton}
-                  disabled={!selectedInstructionForReorder || selectedInstructions.indexOf(selectedInstructionForReorder) === 0}
+                  disabled={
+                    !selectedInstructionForReorder || selectedInstructions.indexOf(selectedInstructionForReorder) === 0
+                  }
                   title="Move selected instruction up"
                 >
                   ↑ Move Up
@@ -1831,7 +1875,10 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
                   type="button"
                   onClick={moveInstructionDown}
                   className={styles.addButton}
-                  disabled={!selectedInstructionForReorder || selectedInstructions.indexOf(selectedInstructionForReorder) === selectedInstructions.length - 1}
+                  disabled={
+                    !selectedInstructionForReorder ||
+                    selectedInstructions.indexOf(selectedInstructionForReorder) === selectedInstructions.length - 1
+                  }
                   title="Move selected instruction down"
                 >
                   ↓ Move Down
@@ -1842,14 +1889,14 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
                   className={styles.addButton}
                   disabled={isCreatingNew || !session}
                 >
-                  {isCreatingNew ? 'Creating...' : '+ Add New Instruction'}
+                  {isCreatingNew ? "Creating..." : "+ Add New Instruction"}
                 </button>
               </div>
             </div>
             <div className={styles.instructionCheckboxList}>
               {/* First show selected instructions in order */}
               {selectedInstructions.map((instructionId) => {
-                const instruction = instructions.find(i => i.id === instructionId);
+                const instruction = instructions.find((i) => i.id === instructionId);
                 if (!instruction) return null;
                 return (
                   <label key={instruction.id} className={styles.checkboxLabel}>
@@ -1859,11 +1906,7 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
                       checked={selectedInstructionForReorder === instruction.id}
                       onChange={() => setSelectedInstructionForReorder(instruction.id)}
                     />
-                    <input
-                      type="checkbox"
-                      checked={true}
-                      onChange={() => toggleInstruction(instruction.id)}
-                    />
+                    <input type="checkbox" checked={true} onChange={() => toggleInstruction(instruction.id)} />
                     <span>
                       {instruction.id} - {instruction.title}
                     </span>
@@ -1872,7 +1915,7 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
               })}
               {/* Then show unselected instructions */}
               {instructions
-                .filter(instruction => !selectedInstructions.includes(instruction.id))
+                .filter((instruction) => !selectedInstructions.includes(instruction.id))
                 .map((instruction) => (
                   <label key={instruction.id} className={styles.checkboxLabel}>
                     <input
@@ -1882,17 +1925,12 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
                       onChange={() => setSelectedInstructionForReorder(instruction.id)}
                       disabled={true}
                     />
-                    <input
-                      type="checkbox"
-                      checked={false}
-                      onChange={() => toggleInstruction(instruction.id)}
-                    />
+                    <input type="checkbox" checked={false} onChange={() => toggleInstruction(instruction.id)} />
                     <span>
                       {instruction.id} - {instruction.title}
                     </span>
                   </label>
-                ))
-              }
+                ))}
             </div>
           </div>
 
@@ -1902,7 +1940,7 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
               Copy this object and replace the existing mission with ID "{id}" in <code>app/data/missions.ts</code>
             </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
-            
+
             <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-4)" }}>
               <button
                 type="button"
@@ -1911,15 +1949,18 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
                 disabled={isTranslating || !title || !description}
                 style={{ flex: 1 }}
               >
-                {isTranslating 
-                  ? 'Translating...' 
-                  : `Translate to ${language === 'en' ? 'Hebrew' : 'English'} & Switch`
-                }
+                {isTranslating ? "Translating..." : `Translate to ${language === "en" ? "Hebrew" : "English"} & Switch`}
               </button>
             </div>
-            
-            <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} language={language} />
-            
+
+            <AuthenticatedForm
+              actionType="saveMission"
+              id={id}
+              data={generateCode()}
+              disabled={!id || !title}
+              language={language}
+            />
+
             {actionData?.success && actionData.message && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
                 {actionData.message}
@@ -1937,7 +1978,23 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
   );
 }
 
-function MissionForm({ actionData, clearActionData, instructions, missions, language, onChangesDetected, onNavigationRequest }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; language: string; onChangesDetected: (hasChanges: boolean) => void; onNavigationRequest: (navigationFn: () => void) => void }) {
+function MissionForm({
+  actionData,
+  clearActionData,
+  instructions,
+  missions,
+  language,
+  onChangesDetected,
+  onNavigationRequest,
+}: {
+  actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string };
+  clearActionData: () => void;
+  instructions: Instruction[];
+  missions: Mission[];
+  language: string;
+  onChangesDetected: (hasChanges: boolean) => void;
+  onNavigationRequest: (navigationFn: () => void) => void;
+}) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -1974,30 +2031,28 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
 
       try {
         // Get all instruction IDs from the instructions prop
-        const allIds = instructions.map(i => i.id);
-        
-        const numericIds = allIds
-          .map((id: string) => parseInt(id, 10))
-          .filter((id: number) => !isNaN(id));
-        
+        const allIds = instructions.map((i) => i.id);
+
+        const numericIds = allIds.map((id: string) => parseInt(id, 10)).filter((id: number) => !isNaN(id));
+
         const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
         const newId = String(maxId + 1);
 
         // Create the new instruction via form submission
         const formData = new FormData();
-        formData.append('actionType', 'createInstruction');
-        formData.append('newId', newId);
-        formData.append('language', language);
-        formData.append('accessToken', session?.access_token || '');
+        formData.append("actionType", "createInstruction");
+        formData.append("newId", newId);
+        formData.append("language", language);
+        formData.append("accessToken", session?.access_token || "");
 
-        const response = await fetch('/admin', {
-          method: 'POST',
+        const response = await fetch("/admin", {
+          method: "POST",
           body: formData,
         });
 
         // The response might be HTML (redirect), so check content type
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
           const result = await response.json();
           if (!result.success) {
             alert(`Failed to create instruction: ${result.error}`);
@@ -2009,8 +2064,8 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
         // Navigate to edit-instruction tab with the new instruction selected
         window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${newId}`;
       } catch (error) {
-        console.error('Error creating instruction:', error);
-        alert(`Failed to create instruction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error("Error creating instruction:", error);
+        alert(`Failed to create instruction: ${error instanceof Error ? error.message : "Unknown error"}`);
         setIsCreatingNew(false);
       }
     });
@@ -2030,51 +2085,57 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
 
   const handlePasteFromClipboard = async () => {
     try {
-      const permissionStatus = await navigator.permissions.query({ name: 'clipboard-read' as PermissionName });
-      console.log('Clipboard permission:', permissionStatus.state);
-      
+      const permissionStatus = await navigator.permissions.query({ name: "clipboard-read" as PermissionName });
+      console.log("Clipboard permission:", permissionStatus.state);
+
       const clipboardItems = await navigator.clipboard.read();
-      console.log('Clipboard items count:', clipboardItems.length);
-      
+      console.log("Clipboard items count:", clipboardItems.length);
+
       for (const item of clipboardItems) {
-        console.log('Available clipboard types:', item.types);
-        
-        const imageType = item.types.find(type => type.startsWith('image/'));
-        
+        console.log("Available clipboard types:", item.types);
+
+        const imageType = item.types.find((type) => type.startsWith("image/"));
+
         if (imageType) {
-          console.log('Found image type:', imageType);
+          console.log("Found image type:", imageType);
           const blob = await item.getType(imageType);
-          console.log('Blob size:', blob.size, 'bytes');
-          
+          console.log("Blob size:", blob.size, "bytes");
+
           const timestamp = Date.now();
-          const extension = imageType.split('/')[1] || 'png';
+          const extension = imageType.split("/")[1] || "png";
           const file = new File([blob], `pasted-image-${timestamp}.${extension}`, { type: blob.type });
-          
+
           setImageFile(file);
-          
+
           const reader = new FileReader();
           reader.onloadend = () => {
             setImagePreview(reader.result as string);
           };
           reader.readAsDataURL(blob);
-          
+
           alert(`Image pasted successfully! (${Math.round(blob.size / 1024)}KB)`);
           return;
         }
       }
-      
-      const allTypes = clipboardItems.flatMap(item => item.types).join(', ');
-      alert(`No image found in clipboard.\n\nAvailable formats: ${allTypes || 'none'}\n\nPlease copy an image (right-click on image → Copy Image, or use a screenshot tool).`);
+
+      const allTypes = clipboardItems.flatMap((item) => item.types).join(", ");
+      alert(
+        `No image found in clipboard.\n\nAvailable formats: ${allTypes || "none"}\n\nPlease copy an image (right-click on image → Copy Image, or use a screenshot tool).`,
+      );
     } catch (error) {
-      console.error('Clipboard error details:', error);
+      console.error("Clipboard error details:", error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      if (errorMessage.includes('denied') || errorMessage.includes('permission')) {
-        alert('Clipboard access denied.\n\nPlease allow clipboard access in your browser settings, or try:\n1. Copy an image using Ctrl+C (or Cmd+C on Mac)\n2. Right-click on an image and select "Copy Image"\n3. Use a screenshot tool and copy to clipboard');
-      } else if (errorMessage.includes('not supported')) {
-        alert('Clipboard API not supported.\n\nPlease use the file input instead.');
+
+      if (errorMessage.includes("denied") || errorMessage.includes("permission")) {
+        alert(
+          'Clipboard access denied.\n\nPlease allow clipboard access in your browser settings, or try:\n1. Copy an image using Ctrl+C (or Cmd+C on Mac)\n2. Right-click on an image and select "Copy Image"\n3. Use a screenshot tool and copy to clipboard',
+        );
+      } else if (errorMessage.includes("not supported")) {
+        alert("Clipboard API not supported.\n\nPlease use the file input instead.");
       } else {
-        alert(`Failed to read clipboard: ${errorMessage}\n\nTry:\n1. Copy an image to clipboard\n2. Make sure you\'re using a modern browser (Chrome, Edge, Firefox)\n3. If using a screenshot tool, ensure it copies to clipboard`);
+        alert(
+          `Failed to read clipboard: ${errorMessage}\n\nTry:\n1. Copy an image to clipboard\n2. Make sure you\'re using a modern browser (Chrome, Edge, Firefox)\n3. If using a screenshot tool, ensure it copies to clipboard`,
+        );
       }
     }
   };
@@ -2083,10 +2144,10 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
     if (!imageFile) return;
 
     setIsUploading(true);
-    const result = await uploadImage(imageFile, 'missions');
+    const result = await uploadImage(imageFile, "missions");
     setIsUploading(false);
 
-    if ('error' in result) {
+    if ("error" in result) {
       alert(`Upload failed: ${result.error}`);
     } else {
       setImagePreview(result.url);
@@ -2157,27 +2218,14 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
         <div className={styles.formGroup}>
           <label className={styles.label}>Upload Image</label>
           <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-            <button
-              type="button"
-              onClick={handlePasteFromClipboard}
-              className={styles.addButton}
-            >
+            <button type="button" onClick={handlePasteFromClipboard} className={styles.addButton}>
               📋 Paste from Clipboard
             </button>
           </div>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageChange}
-            className={styles.input}
-          />
+          <input type="file" accept="image/*" onChange={handleImageChange} className={styles.input} />
           {imagePreview && (
             <div style={{ marginTop: "var(--space-3)" }}>
-              <img 
-                src={imagePreview} 
-                alt="Preview" 
-                style={{ maxWidth: "300px", borderRadius: "var(--radius-3)" }}
-              />
+              <img src={imagePreview} alt="Preview" style={{ maxWidth: "300px", borderRadius: "var(--radius-3)" }} />
             </div>
           )}
           {imageFile && !isUploading && (
@@ -2190,11 +2238,7 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
               Upload Image to Supabase
             </button>
           )}
-          {isUploading && (
-            <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>
-              Uploading...
-            </p>
-          )}
+          {isUploading && <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>Uploading...</p>}
           {actionData?.imageUrl && (
             <p style={{ marginTop: "var(--space-2)", fontSize: "0.875rem", color: "var(--color-success-11)" }}>
               Image URL: {actionData.imageUrl}
@@ -2204,7 +2248,14 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
       </div>
 
       <div className={styles.formSection}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "var(--space-3)",
+          }}
+        >
           <h2 className={styles.sectionTitle}>Select Instructions</h2>
           <button
             type="button"
@@ -2212,7 +2263,7 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
             className={styles.addButton}
             disabled={isCreatingNew || !session}
           >
-            {isCreatingNew ? 'Creating...' : '+ Add New Instruction'}
+            {isCreatingNew ? "Creating..." : "+ Add New Instruction"}
           </button>
         </div>
         <div className={styles.instructionCheckboxList}>
@@ -2237,9 +2288,15 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
           Copy this object and add it to the <code>missions</code> array in <code>app/data/missions.ts</code>
         </p>
         <pre className={styles.outputCode}>{generateCode()}</pre>
-        
-        <AuthenticatedForm actionType="saveMission" id={id} data={generateCode()} disabled={!id || !title} language={language} />
-        
+
+        <AuthenticatedForm
+          actionType="saveMission"
+          id={id}
+          data={generateCode()}
+          disabled={!id || !title}
+          language={language}
+        />
+
         {actionData?.success && (
           <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
             {actionData.message}

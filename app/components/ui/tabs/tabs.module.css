@@ -38,6 +38,7 @@
   background: var(--color-accent-9);
   color: var(--color-accent-contrast);
   box-shadow: var(--shadow-1);
+  display: flex;
   &:hover {
     background: var(--color-accent-10);
   }

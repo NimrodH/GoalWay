@@ -10,7 +10,7 @@
 
 .title {
   font-family: var(--font-heading);
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 700;
   color: var(--color-neutral-12);
   margin-bottom: var(--space-2);
@@ -514,4 +514,14 @@
   color: var(--color-neutral-11);
   word-break: break-all;
   text-align: center;
+}
+.tabsList {
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.div1 {
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
