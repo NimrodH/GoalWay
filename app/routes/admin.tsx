@@ -101,11 +101,11 @@ export async function action({ request }: Route.ActionArgs) {
       return { success: false, error: error.message };
     }
 
-    return { 
+    return Response.json({ 
       success: true, 
       message: `New instruction ${newId} created successfully!`,
       newInstructionId: newId
-    };
+    });
   }
 
   // Handle translation action (no auth required for translation)
@@ -1286,12 +1286,15 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
     setIsCreatingNew(true);
 
     try {
-      // Use the already loaded allInstructionIds from loader
+      // Use the already available allInstructionIds from props
       const allInstructionIdsResponse = await fetch(`/admin?lang=${language}`);
-      const loaderData = await allInstructionIdsResponse.json();
-      const allInstructionIds = loaderData.allInstructionIds;
-
-      const numericIds = allInstructionIds
+      const htmlText = await allInstructionIdsResponse.text();
+      
+      // We can't parse HTML as JSON, so we'll use the instructions from props
+      // Get all instruction IDs from the instructions prop
+      const allIds = instructions.map(i => i.id);
+      
+      const numericIds = allIds
         .map((id: string) => parseInt(id, 10))
         .filter((id: number) => !isNaN(id));
       
@@ -1310,12 +1313,15 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
         body: formData,
       });
 
-      const result = await response.json();
-
-      if (!result.success) {
-        alert(`Failed to create instruction: ${result.error}`);
-        setIsCreatingNew(false);
-        return;
+      // The response might be HTML (redirect), so check content type
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const result = await response.json();
+        if (!result.success) {
+          alert(`Failed to create instruction: ${result.error}`);
+          setIsCreatingNew(false);
+          return;
+        }
       }
 
       // Reload the page to refresh the instruction list
@@ -1703,12 +1709,10 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
     setIsCreatingNew(true);
 
     try {
-      // Fetch the instruction IDs to find the highest one
-      const allInstructionIdsResponse = await fetch(`/admin?lang=${language}`);
-      const loaderData = await allInstructionIdsResponse.json();
-      const allInstructionIds = loaderData.allInstructionIds;
-
-      const numericIds = allInstructionIds
+      // Get all instruction IDs from the instructions prop
+      const allIds = instructions.map(i => i.id);
+      
+      const numericIds = allIds
         .map((id: string) => parseInt(id, 10))
         .filter((id: number) => !isNaN(id));
       
@@ -1727,12 +1731,15 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
         body: formData,
       });
 
-      const result = await response.json();
-
-      if (!result.success) {
-        alert(`Failed to create instruction: ${result.error}`);
-        setIsCreatingNew(false);
-        return;
+      // The response might be HTML (redirect), so check content type
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const result = await response.json();
+        if (!result.success) {
+          alert(`Failed to create instruction: ${result.error}`);
+          setIsCreatingNew(false);
+          return;
+        }
       }
 
       // Reload the page to refresh the instruction list
