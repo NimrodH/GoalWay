@@ -918,6 +918,7 @@ function InstructionForm({ actionData, clearActionData, instructions, language }
 }
 
 function EditInstructionForm({ actionData, clearActionData, instructions, allInstructionIds, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translatedText?: string | null; newInstructionId?: string }; clearActionData: () => void; instructions: Instruction[]; allInstructionIds: string[]; language: string }) {
+  const [searchParams] = useSearchParams();
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -930,14 +931,13 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
   const { session } = useAuth();
   const navigate = useNavigate();
 
-  // Handle newly created instruction
+  // Handle newly created instruction or URL parameter
   useEffect(() => {
-    if (actionData?.success && actionData.newInstructionId) {
-      // Select the newly created instruction
-      handleSelectInstruction(actionData.newInstructionId);
-      clearActionData();
+    const instructionIdFromUrl = searchParams.get('instructionId');
+    if (instructionIdFromUrl && allInstructionIds.includes(instructionIdFromUrl)) {
+      handleSelectInstruction(instructionIdFromUrl);
     }
-  }, [actionData]);
+  }, [searchParams, allInstructionIds]);
 
   const handleAddNewInstruction = async () => {
     setIsCreatingNew(true);
@@ -1324,8 +1324,8 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
         }
       }
 
-      // Reload the page to refresh the instruction list
-      window.location.href = `/admin?tab=edit-mission&lang=${language}`;
+      // Navigate to edit-instruction tab with the new instruction selected
+      window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${newId}`;
     } catch (error) {
       console.error('Error creating instruction:', error);
       alert(`Failed to create instruction: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -1742,8 +1742,8 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
         }
       }
 
-      // Reload the page to refresh the instruction list
-      window.location.href = `/admin?tab=mission&lang=${language}`;
+      // Navigate to edit-instruction tab with the new instruction selected
+      window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${newId}`;
     } catch (error) {
       console.error('Error creating instruction:', error);
       alert(`Failed to create instruction: ${error instanceof Error ? error.message : 'Unknown error'}`);
