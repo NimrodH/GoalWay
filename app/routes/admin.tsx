@@ -42,6 +42,72 @@ export async function action({ request }: Route.ActionArgs) {
   const language = formData.get("language") as string;
   const accessToken = formData.get("accessToken") as string | null;
 
+  // Handle create new instruction action
+  if (actionType === "createInstruction") {
+    const newId = formData.get("newId") as string;
+    const targetLanguage = formData.get("language") as string;
+    const accessToken = formData.get("accessToken") as string | null;
+
+    if (!accessToken) {
+      return { success: false, error: 'Unauthorized: Authentication required' };
+    }
+
+    // Create authenticated Supabase client
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_PROJECT_URL!,
+      process.env.SUPABASE_API_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      }
+    );
+
+    // Check if instruction already exists
+    const { data: existingData } = await supabase
+      .from("instructions")
+      .select("id")
+      .eq("id", newId)
+      .single();
+
+    if (existingData) {
+      return { success: false, error: `Instruction with ID ${newId} already exists` };
+    }
+
+    // Create empty instruction object
+    const emptyInstruction = {
+      id: newId,
+      title: "",
+      explanation: [],
+    };
+
+    // Insert the new instruction
+    const insertData: any = {
+      id: newId,
+      data_en: targetLanguage === 'en' ? emptyInstruction : { id: newId, title: "", explanation: [] },
+      data_he: targetLanguage === 'he' ? emptyInstruction : null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from("instructions")
+      .insert(insertData);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { 
+      success: true, 
+      message: `New instruction ${newId} created successfully!`,
+      newInstructionId: newId
+    };
+  }
+
   // Handle translation action (no auth required for translation)
   if (actionType === "translate") {
     const { translateText } = await import('~/lib/translate');
@@ -851,7 +917,7 @@ function InstructionForm({ actionData, clearActionData, instructions, language }
   );
 }
 
-function EditInstructionForm({ actionData, clearActionData, instructions, allInstructionIds, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translatedText?: string | null }; clearActionData: () => void; instructions: Instruction[]; allInstructionIds: string[]; language: string }) {
+function EditInstructionForm({ actionData, clearActionData, instructions, allInstructionIds, language }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translatedText?: string | null; newInstructionId?: string }; clearActionData: () => void; instructions: Instruction[]; allInstructionIds: string[]; language: string }) {
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -860,7 +926,59 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
   const [missionId, setMissionId] = useState("");
   const [explanation, setExplanation] = useState<InstructionContent[]>([]);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
   const { session } = useAuth();
+  const navigate = useNavigate();
+
+  // Handle newly created instruction
+  useEffect(() => {
+    if (actionData?.success && actionData.newInstructionId) {
+      // Select the newly created instruction
+      handleSelectInstruction(actionData.newInstructionId);
+      clearActionData();
+    }
+  }, [actionData]);
+
+  const handleAddNewInstruction = async () => {
+    setIsCreatingNew(true);
+
+    try {
+      // Find the highest ID from existing instructions
+      const numericIds = allInstructionIds
+        .map(id => parseInt(id, 10))
+        .filter(id => !isNaN(id));
+      
+      const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+      const newId = String(maxId + 1);
+
+      // Create the new instruction via form submission
+      const formData = new FormData();
+      formData.append('actionType', 'createInstruction');
+      formData.append('newId', newId);
+      formData.append('language', language);
+      formData.append('accessToken', session?.access_token || '');
+
+      const response = await fetch('/admin', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        alert(`Failed to create instruction: ${result.error}`);
+        setIsCreatingNew(false);
+        return;
+      }
+
+      // Reload the page to refresh the instruction list
+      window.location.href = `/admin?tab=edit-instruction&lang=${language}`;
+    } catch (error) {
+      console.error('Error creating instruction:', error);
+      alert(`Failed to create instruction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setIsCreatingNew(false);
+    }
+  };
 
   const handleSelectInstruction = (instructionId: string) => {
     clearActionData();
@@ -978,7 +1096,17 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
   return (
     <div>
       <div className={styles.formSection}>
-        <h2 className={styles.sectionTitle}>Select Instruction to Edit</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
+          <h2 className={styles.sectionTitle}>Select Instruction to Edit</h2>
+          <button
+            type="button"
+            onClick={handleAddNewInstruction}
+            className={styles.addButton}
+            disabled={isCreatingNew || !session}
+          >
+            {isCreatingNew ? 'Creating...' : '+ Add New Instruction'}
+          </button>
+        </div>
         <div className={styles.instructionCheckboxList}>
           {allInstructionIds.map((id) => {
             const instruction = instructions.find((i) => i.id === id);
