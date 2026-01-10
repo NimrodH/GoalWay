@@ -824,14 +824,14 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
       {/* Unsaved Changes Warning Dialog */}
       {(pendingTab || pendingNavigation) && (
         <div className={styles.dialogOverlay}>
-          <div className={styles.dialogContent}>
-            <div className={styles.dialogHeader}>
-              <h2 className={styles.dialogTitle}>Unsaved Changes</h2>
+          <div className={styles.warningDialog}>
+            <div className={styles.warningDialogHeader}>
+              <h2 className={styles.warningDialogTitle}>Unsaved Changes</h2>
             </div>
-            <p style={{ marginBottom: "var(--space-4)" }}>
+            <p className={styles.warningDialogText}>
               You have unsaved changes. Do you want to save them before leaving?
             </p>
-            <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end" }}>
+            <div className={styles.warningDialogButtons}>
               <button
                 className={styles.addButton}
                 onClick={cancelTabChange}
