@@ -1279,7 +1279,53 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
   const { session } = useAuth();
+
+  const handleAddNewInstruction = async () => {
+    setIsCreatingNew(true);
+
+    try {
+      // Use the already loaded allInstructionIds from loader
+      const allInstructionIdsResponse = await fetch(`/admin?lang=${language}`);
+      const loaderData = await allInstructionIdsResponse.json();
+      const allInstructionIds = loaderData.allInstructionIds;
+
+      const numericIds = allInstructionIds
+        .map((id: string) => parseInt(id, 10))
+        .filter((id: number) => !isNaN(id));
+      
+      const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+      const newId = String(maxId + 1);
+
+      // Create the new instruction via form submission
+      const formData = new FormData();
+      formData.append('actionType', 'createInstruction');
+      formData.append('newId', newId);
+      formData.append('language', language);
+      formData.append('accessToken', session?.access_token || '');
+
+      const response = await fetch('/admin', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        alert(`Failed to create instruction: ${result.error}`);
+        setIsCreatingNew(false);
+        return;
+      }
+
+      // Reload the page to refresh the instruction list
+      window.location.href = `/admin?tab=edit-mission&lang=${language}`;
+    } catch (error) {
+      console.error('Error creating instruction:', error);
+      alert(`Failed to create instruction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setIsCreatingNew(false);
+    }
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1574,7 +1620,17 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
           </div>
 
           <div className={styles.formSection}>
-            <h2 className={styles.sectionTitle}>Select Instructions</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
+              <h2 className={styles.sectionTitle}>Select Instructions</h2>
+              <button
+                type="button"
+                onClick={handleAddNewInstruction}
+                className={styles.addButton}
+                disabled={isCreatingNew || !session}
+              >
+                {isCreatingNew ? 'Creating...' : '+ Add New Instruction'}
+              </button>
+            </div>
             <div className={styles.instructionCheckboxList}>
               {instructions.map((instruction) => (
                 <label key={instruction.id} className={styles.checkboxLabel}>
@@ -1640,7 +1696,53 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
   const { session } = useAuth();
+
+  const handleAddNewInstruction = async () => {
+    setIsCreatingNew(true);
+
+    try {
+      // Fetch the instruction IDs to find the highest one
+      const allInstructionIdsResponse = await fetch(`/admin?lang=${language}`);
+      const loaderData = await allInstructionIdsResponse.json();
+      const allInstructionIds = loaderData.allInstructionIds;
+
+      const numericIds = allInstructionIds
+        .map((id: string) => parseInt(id, 10))
+        .filter((id: number) => !isNaN(id));
+      
+      const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+      const newId = String(maxId + 1);
+
+      // Create the new instruction via form submission
+      const formData = new FormData();
+      formData.append('actionType', 'createInstruction');
+      formData.append('newId', newId);
+      formData.append('language', language);
+      formData.append('accessToken', session?.access_token || '');
+
+      const response = await fetch('/admin', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        alert(`Failed to create instruction: ${result.error}`);
+        setIsCreatingNew(false);
+        return;
+      }
+
+      // Reload the page to refresh the instruction list
+      window.location.href = `/admin?tab=mission&lang=${language}`;
+    } catch (error) {
+      console.error('Error creating instruction:', error);
+      alert(`Failed to create instruction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setIsCreatingNew(false);
+    }
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1830,7 +1932,17 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
       </div>
 
       <div className={styles.formSection}>
-        <h2 className={styles.sectionTitle}>Select Instructions</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
+          <h2 className={styles.sectionTitle}>Select Instructions</h2>
+          <button
+            type="button"
+            onClick={handleAddNewInstruction}
+            className={styles.addButton}
+            disabled={isCreatingNew || !session}
+          >
+            {isCreatingNew ? 'Creating...' : '+ Add New Instruction'}
+          </button>
+        </div>
         <div className={styles.instructionCheckboxList}>
           {instructions.map((instruction) => (
             <label key={instruction.id} className={styles.checkboxLabel}>
