@@ -582,6 +582,7 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
   const [currentTab, setCurrentTab] = useState(tab);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingTab, setPendingTab] = useState<string | null>(null);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   
   // Initialize Supabase on the client
   useEffect(() => {
@@ -597,6 +598,15 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
     }
   };
 
+  // Handle navigation with unsaved changes check
+  const handleNavigationWithCheck = (navigationFn: () => void) => {
+    if (hasUnsavedChanges) {
+      setPendingNavigation(() => navigationFn);
+    } else {
+      navigationFn();
+    }
+  };
+
   // Confirm discard changes
   const confirmDiscardChanges = () => {
     if (pendingTab) {
@@ -604,28 +614,38 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
       setCurrentTab(pendingTab);
       setPendingTab(null);
     }
+    if (pendingNavigation) {
+      setHasUnsavedChanges(false);
+      pendingNavigation();
+      setPendingNavigation(null);
+    }
   };
 
   // Save and navigate
   const saveAndNavigate = () => {
-    if (pendingTab) {
-      // Trigger save by finding the active form's submit button and clicking it
-      const saveButton = document.querySelector('button[type="submit"]') as HTMLButtonElement;
-      if (saveButton) {
-        saveButton.click();
-      }
-      // After save, navigate to the new tab
-      setTimeout(() => {
-        setHasUnsavedChanges(false);
+    // Trigger save by finding the active form's submit button and clicking it
+    const saveButton = document.querySelector('button[type="submit"]') as HTMLButtonElement;
+    if (saveButton) {
+      saveButton.click();
+    }
+    // After save, navigate to the new tab or execute pending navigation
+    setTimeout(() => {
+      setHasUnsavedChanges(false);
+      if (pendingTab) {
         setCurrentTab(pendingTab);
         setPendingTab(null);
-      }, 100);
-    }
+      }
+      if (pendingNavigation) {
+        pendingNavigation();
+        setPendingNavigation(null);
+      }
+    }, 100);
   };
 
   // Cancel tab change
   const cancelTabChange = () => {
     setPendingTab(null);
+    setPendingNavigation(null);
   };
 
   // Update URL when tab changes
@@ -785,24 +805,24 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
         </TabsList>
 
         <TabsContent value="instruction">
-          <InstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} language={language} onChangesDetected={setHasUnsavedChanges} />
+          <InstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} language={language} onChangesDetected={setHasUnsavedChanges} onNavigationRequest={handleNavigationWithCheck} />
         </TabsContent>
 
         <TabsContent value="edit-instruction">
-          <EditInstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} allInstructionIds={allInstructionIds} language={language} onChangesDetected={setHasUnsavedChanges} />
+          <EditInstructionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} allInstructionIds={allInstructionIds} language={language} onChangesDetected={setHasUnsavedChanges} onNavigationRequest={handleNavigationWithCheck} />
         </TabsContent>
 
         <TabsContent value="mission">
-          <MissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} language={language} onChangesDetected={setHasUnsavedChanges} />
+          <MissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} language={language} onChangesDetected={setHasUnsavedChanges} onNavigationRequest={handleNavigationWithCheck} />
         </TabsContent>
 
         <TabsContent value="edit-mission">
-          <EditMissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} allMissionIds={allMissionIds} language={language} onChangesDetected={setHasUnsavedChanges} />
+          <EditMissionForm actionData={actionData} clearActionData={clearActionData} instructions={instructions} missions={missions} allMissionIds={allMissionIds} language={language} onChangesDetected={setHasUnsavedChanges} onNavigationRequest={handleNavigationWithCheck} />
         </TabsContent>
       </Tabs>
 
       {/* Unsaved Changes Warning Dialog */}
-      {pendingTab && (
+      {(pendingTab || pendingNavigation) && (
         <div className={styles.dialogOverlay}>
           <div className={styles.dialogContent}>
             <div className={styles.dialogHeader}>
@@ -838,7 +858,7 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
   );
 }
 
-function InstructionForm({ actionData, clearActionData, instructions, language, onChangesDetected }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; language: string; onChangesDetected: (hasChanges: boolean) => void }) {
+function InstructionForm({ actionData, clearActionData, instructions, language, onChangesDetected, onNavigationRequest }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; language: string; onChangesDetected: (hasChanges: boolean) => void; onNavigationRequest: (navigationFn: () => void) => void }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -1012,7 +1032,7 @@ function InstructionForm({ actionData, clearActionData, instructions, language, 
   );
 }
 
-function EditInstructionForm({ actionData, clearActionData, instructions, allInstructionIds, language, onChangesDetected }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translatedText?: string | null; newInstructionId?: string }; clearActionData: () => void; instructions: Instruction[]; allInstructionIds: string[]; language: string; onChangesDetected: (hasChanges: boolean) => void }) {
+function EditInstructionForm({ actionData, clearActionData, instructions, allInstructionIds, language, onChangesDetected, onNavigationRequest }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translatedText?: string | null; newInstructionId?: string }; clearActionData: () => void; instructions: Instruction[]; allInstructionIds: string[]; language: string; onChangesDetected: (hasChanges: boolean) => void; onNavigationRequest: (navigationFn: () => void) => void }) {
   const [searchParams] = useSearchParams();
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
   const [id, setId] = useState("");
@@ -1056,44 +1076,46 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
   }, [searchParams, allInstructionIds]);
 
   const handleAddNewInstruction = async () => {
-    setIsCreatingNew(true);
+    onNavigationRequest(async () => {
+      setIsCreatingNew(true);
 
-    try {
-      // Find the highest ID from existing instructions
-      const numericIds = allInstructionIds
-        .map(id => parseInt(id, 10))
-        .filter(id => !isNaN(id));
-      
-      const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
-      const newId = String(maxId + 1);
+      try {
+        // Find the highest ID from existing instructions
+        const numericIds = allInstructionIds
+          .map(id => parseInt(id, 10))
+          .filter(id => !isNaN(id));
+        
+        const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+        const newId = String(maxId + 1);
 
-      // Create the new instruction via form submission
-      const formData = new FormData();
-      formData.append('actionType', 'createInstruction');
-      formData.append('newId', newId);
-      formData.append('language', language);
-      formData.append('accessToken', session?.access_token || '');
+        // Create the new instruction via form submission
+        const formData = new FormData();
+        formData.append('actionType', 'createInstruction');
+        formData.append('newId', newId);
+        formData.append('language', language);
+        formData.append('accessToken', session?.access_token || '');
 
-      const response = await fetch('/admin', {
-        method: 'POST',
-        body: formData,
-      });
+        const response = await fetch('/admin', {
+          method: 'POST',
+          body: formData,
+        });
 
-      const result = await response.json();
+        const result = await response.json();
 
-      if (!result.success) {
-        alert(`Failed to create instruction: ${result.error}`);
+        if (!result.success) {
+          alert(`Failed to create instruction: ${result.error}`);
+          setIsCreatingNew(false);
+          return;
+        }
+
+        // Reload the page to refresh the instruction list
+        window.location.href = `/admin?tab=edit-instruction&lang=${language}`;
+      } catch (error) {
+        console.error('Error creating instruction:', error);
+        alert(`Failed to create instruction: ${error instanceof Error ? error.message : 'Unknown error'}`);
         setIsCreatingNew(false);
-        return;
       }
-
-      // Reload the page to refresh the instruction list
-      window.location.href = `/admin?tab=edit-instruction&lang=${language}`;
-    } catch (error) {
-      console.error('Error creating instruction:', error);
-      alert(`Failed to create instruction: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      setIsCreatingNew(false);
-    }
+    });
   };
 
   const handleSelectInstruction = (instructionId: string) => {
@@ -1385,7 +1407,7 @@ function EditInstructionForm({ actionData, clearActionData, instructions, allIns
   );
 }
 
-function EditMissionForm({ actionData, clearActionData, instructions, missions, allMissionIds, language, onChangesDetected }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translatedText?: string | null }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; allMissionIds: string[]; language: string; onChangesDetected: (hasChanges: boolean) => void }) {
+function EditMissionForm({ actionData, clearActionData, instructions, missions, allMissionIds, language, onChangesDetected, onNavigationRequest }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string; translatedText?: string | null }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; allMissionIds: string[]; language: string; onChangesDetected: (hasChanges: boolean) => void; onNavigationRequest: (navigationFn: () => void) => void }) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -1421,54 +1443,56 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
   }, [actionData, selectedMissionId]);
 
   const handleAddNewInstruction = async () => {
-    setIsCreatingNew(true);
+    onNavigationRequest(async () => {
+      setIsCreatingNew(true);
 
-    try {
-      // Use the already available allInstructionIds from props
-      const allInstructionIdsResponse = await fetch(`/admin?lang=${language}`);
-      const htmlText = await allInstructionIdsResponse.text();
-      
-      // We can't parse HTML as JSON, so we'll use the instructions from props
-      // Get all instruction IDs from the instructions prop
-      const allIds = instructions.map(i => i.id);
-      
-      const numericIds = allIds
-        .map((id: string) => parseInt(id, 10))
-        .filter((id: number) => !isNaN(id));
-      
-      const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
-      const newId = String(maxId + 1);
+      try {
+        // Use the already available allInstructionIds from props
+        const allInstructionIdsResponse = await fetch(`/admin?lang=${language}`);
+        const htmlText = await allInstructionIdsResponse.text();
+        
+        // We can't parse HTML as JSON, so we'll use the instructions from props
+        // Get all instruction IDs from the instructions prop
+        const allIds = instructions.map(i => i.id);
+        
+        const numericIds = allIds
+          .map((id: string) => parseInt(id, 10))
+          .filter((id: number) => !isNaN(id));
+        
+        const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+        const newId = String(maxId + 1);
 
-      // Create the new instruction via form submission
-      const formData = new FormData();
-      formData.append('actionType', 'createInstruction');
-      formData.append('newId', newId);
-      formData.append('language', language);
-      formData.append('accessToken', session?.access_token || '');
+        // Create the new instruction via form submission
+        const formData = new FormData();
+        formData.append('actionType', 'createInstruction');
+        formData.append('newId', newId);
+        formData.append('language', language);
+        formData.append('accessToken', session?.access_token || '');
 
-      const response = await fetch('/admin', {
-        method: 'POST',
-        body: formData,
-      });
+        const response = await fetch('/admin', {
+          method: 'POST',
+          body: formData,
+        });
 
-      // The response might be HTML (redirect), so check content type
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const result = await response.json();
-        if (!result.success) {
-          alert(`Failed to create instruction: ${result.error}`);
-          setIsCreatingNew(false);
-          return;
+        // The response might be HTML (redirect), so check content type
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const result = await response.json();
+          if (!result.success) {
+            alert(`Failed to create instruction: ${result.error}`);
+            setIsCreatingNew(false);
+            return;
+          }
         }
-      }
 
-      // Navigate to edit-instruction tab with the new instruction selected
-      window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${newId}`;
-    } catch (error) {
-      console.error('Error creating instruction:', error);
-      alert(`Failed to create instruction: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      setIsCreatingNew(false);
-    }
+        // Navigate to edit-instruction tab with the new instruction selected
+        window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${newId}`;
+      } catch (error) {
+        console.error('Error creating instruction:', error);
+        alert(`Failed to create instruction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        setIsCreatingNew(false);
+      }
+    });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1913,7 +1937,7 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
   );
 }
 
-function MissionForm({ actionData, clearActionData, instructions, missions, language, onChangesDetected }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; language: string; onChangesDetected: (hasChanges: boolean) => void }) {
+function MissionForm({ actionData, clearActionData, instructions, missions, language, onChangesDetected, onNavigationRequest }: { actionData?: { success: boolean; message?: string; error?: string; imageUrl?: string }; clearActionData: () => void; instructions: Instruction[]; missions: Mission[]; language: string; onChangesDetected: (hasChanges: boolean) => void; onNavigationRequest: (navigationFn: () => void) => void }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -1945,49 +1969,51 @@ function MissionForm({ actionData, clearActionData, instructions, missions, lang
   }, [actionData]);
 
   const handleAddNewInstruction = async () => {
-    setIsCreatingNew(true);
+    onNavigationRequest(async () => {
+      setIsCreatingNew(true);
 
-    try {
-      // Get all instruction IDs from the instructions prop
-      const allIds = instructions.map(i => i.id);
-      
-      const numericIds = allIds
-        .map((id: string) => parseInt(id, 10))
-        .filter((id: number) => !isNaN(id));
-      
-      const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
-      const newId = String(maxId + 1);
+      try {
+        // Get all instruction IDs from the instructions prop
+        const allIds = instructions.map(i => i.id);
+        
+        const numericIds = allIds
+          .map((id: string) => parseInt(id, 10))
+          .filter((id: number) => !isNaN(id));
+        
+        const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+        const newId = String(maxId + 1);
 
-      // Create the new instruction via form submission
-      const formData = new FormData();
-      formData.append('actionType', 'createInstruction');
-      formData.append('newId', newId);
-      formData.append('language', language);
-      formData.append('accessToken', session?.access_token || '');
+        // Create the new instruction via form submission
+        const formData = new FormData();
+        formData.append('actionType', 'createInstruction');
+        formData.append('newId', newId);
+        formData.append('language', language);
+        formData.append('accessToken', session?.access_token || '');
 
-      const response = await fetch('/admin', {
-        method: 'POST',
-        body: formData,
-      });
+        const response = await fetch('/admin', {
+          method: 'POST',
+          body: formData,
+        });
 
-      // The response might be HTML (redirect), so check content type
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const result = await response.json();
-        if (!result.success) {
-          alert(`Failed to create instruction: ${result.error}`);
-          setIsCreatingNew(false);
-          return;
+        // The response might be HTML (redirect), so check content type
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const result = await response.json();
+          if (!result.success) {
+            alert(`Failed to create instruction: ${result.error}`);
+            setIsCreatingNew(false);
+            return;
+          }
         }
-      }
 
-      // Navigate to edit-instruction tab with the new instruction selected
-      window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${newId}`;
-    } catch (error) {
-      console.error('Error creating instruction:', error);
-      alert(`Failed to create instruction: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      setIsCreatingNew(false);
-    }
+        // Navigate to edit-instruction tab with the new instruction selected
+        window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${newId}`;
+      } catch (error) {
+        console.error('Error creating instruction:', error);
+        alert(`Failed to create instruction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        setIsCreatingNew(false);
+      }
+    });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
