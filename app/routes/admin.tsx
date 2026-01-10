@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Form, useActionData, useNavigate, useSearchParams } from "react-router";
+import { Form, useActionData, useNavigate, useSearchParams, Link } from "react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs/tabs";
 import { useAuth } from "~/hooks/use-auth";
 import { initSupabase, getSupabase } from "~/lib/supabase";
@@ -640,6 +640,9 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
             <p className={styles.subtitle}>Create and manage instructions and missions</p>
           </div>
           <div className={styles.userInfo}>
+            <Link to="/" className={styles.homeButton}>
+              Go to Home
+            </Link>
             <div className={styles.languageToggle}>
               <button 
                 type="button"
