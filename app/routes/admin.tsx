@@ -1441,7 +1441,8 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
     }
   };
 
-  const moveInstructionUp = () => {
+  const moveInstructionUp = (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!selectedInstructionForReorder) return;
     
     const index = selectedInstructions.indexOf(selectedInstructionForReorder);
@@ -1452,7 +1453,8 @@ function EditMissionForm({ actionData, clearActionData, instructions, missions, 
     setSelectedInstructions(newOrder);
   };
 
-  const moveInstructionDown = () => {
+  const moveInstructionDown = (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!selectedInstructionForReorder) return;
     
     const index = selectedInstructions.indexOf(selectedInstructionForReorder);
