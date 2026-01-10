@@ -606,6 +606,23 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
     }
   };
 
+  // Save and navigate
+  const saveAndNavigate = () => {
+    if (pendingTab) {
+      // Trigger save by finding the active form's submit button and clicking it
+      const saveButton = document.querySelector('button[type="submit"]') as HTMLButtonElement;
+      if (saveButton) {
+        saveButton.click();
+      }
+      // After save, navigate to the new tab
+      setTimeout(() => {
+        setHasUnsavedChanges(false);
+        setCurrentTab(pendingTab);
+        setPendingTab(null);
+      }, 100);
+    }
+  };
+
   // Cancel tab change
   const cancelTabChange = () => {
     setPendingTab(null);
@@ -800,6 +817,12 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
                 onClick={cancelTabChange}
               >
                 Cancel
+              </button>
+              <button
+                className={styles.submitButton}
+                onClick={saveAndNavigate}
+              >
+                Save
               </button>
               <button
                 className={styles.removeButton}
