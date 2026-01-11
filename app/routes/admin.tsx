@@ -1822,7 +1822,7 @@ function EditMissionForm({
                   className={styles.addButton}
                   disabled={!selectedInstructionForReorder}
                 >
-                  + Add Selected Instruction
+                  Edit Selected Instruction
                 </button>
                 <button
                   type="button"
