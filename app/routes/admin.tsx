@@ -48,6 +48,65 @@ export async function action({ request }: Route.ActionArgs) {
   const language = formData.get("language") as string;
   const accessToken = formData.get("accessToken") as string | null;
 
+  // Handle create new mission action
+  if (actionType === "createMission") {
+    const accessToken = formData.get("accessToken") as string | null;
+
+    if (!accessToken) {
+      return { success: false, error: "Unauthorized: Authentication required" };
+    }
+
+    // Create authenticated Supabase client
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    });
+
+    // Get all existing mission IDs
+    const { data: existingMissions } = await supabase.from("missions").select("id").order("created_at", { ascending: true });
+
+    // Find the highest numeric ID
+    const numericIds = (existingMissions || [])
+      .map((m: any) => parseInt(m.id, 10))
+      .filter((id: number) => !isNaN(id));
+
+    const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+    const newId = String(maxId + 1);
+
+    // Create empty mission object
+    const emptyMission = {
+      id: newId,
+      title: "",
+      description: "",
+      instructionIds: [],
+    };
+
+    // Insert the new mission
+    const insertData: any = {
+      id: newId,
+      data_en: emptyMission,
+      data_he: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase.from("missions").insert(insertData);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return {
+      success: true,
+      message: `New mission ${newId} created successfully!`,
+      newMissionId: newId,
+    };
+  }
+
   // Handle create new instruction action
   if (actionType === "createInstruction") {
     const newId = formData.get("newId") as string;
@@ -1443,6 +1502,7 @@ function EditMissionForm({
     error?: string;
     imageUrl?: string;
     translatedText?: string | null;
+    newMissionId?: string;
   };
   clearActionData: () => void;
   instructions: Instruction[];
@@ -1465,6 +1525,7 @@ function EditMissionForm({
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const { session } = useAuth();
   const [originalCode, setOriginalCode] = useState("");
+  const [searchParams] = useSearchParams();
 
   // Track changes
   useEffect(() => {
@@ -1485,6 +1546,14 @@ function EditMissionForm({
       onChangesDetected(false);
     }
   }, [actionData, selectedMissionId]);
+
+  // Handle newly created mission or URL parameter
+  useEffect(() => {
+    const missionIdFromUrl = searchParams.get("missionId");
+    if (missionIdFromUrl && allMissionIds.includes(missionIdFromUrl)) {
+      handleSelectMission(missionIdFromUrl);
+    }
+  }, [searchParams, allMissionIds]);
 
   const handleAddNewInstruction = async () => {
     onNavigationRequest(async () => {
@@ -1685,6 +1754,33 @@ function EditMissionForm({
     return JSON.stringify(mission, null, 2);
   };
 
+  const handleClearForNewMission = async () => {
+    try {
+      // Create the new mission via form submission
+      const formData = new FormData();
+      formData.append("actionType", "createMission");
+      formData.append("accessToken", session?.access_token || "");
+
+      const response = await fetch("/admin", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        alert(`Failed to create mission: ${result.error}`);
+        return;
+      }
+
+      // Reload the page to refresh with the new mission selected
+      window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${result.newMissionId}`;
+    } catch (error) {
+      console.error("Error creating mission:", error);
+      alert(`Failed to create mission: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  };
+
   const handleTranslateAndSwitch = async () => {
     if (!title || !description) {
       alert("Please fill in the title and description before translating");
@@ -1783,18 +1879,9 @@ function EditMissionForm({
               <h2 className={styles.sectionTitle}>Mission Details</h2>
               <button
                 type="button"
-                onClick={() => {
-                  setId("");
-                  setTitle("");
-                  setDescription("");
-                  setSelectedInstructions([]);
-                  setSelectedInstructionForReorder(null);
-                  setImageFile(null);
-                  setImagePreview("");
-                  setSelectedMissionId("");
-                  clearActionData();
-                }}
+                onClick={handleClearForNewMission}
                 className={styles.addButton}
+                disabled={!session}
               >
                 Clear for New Mission
               </button>
