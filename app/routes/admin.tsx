@@ -53,58 +53,67 @@ export async function action({ request }: Route.ActionArgs) {
     const accessToken = formData.get("accessToken") as string | null;
 
     if (!accessToken) {
-      return { success: false, error: "Unauthorized: Authentication required" };
+      return Response.json({ success: false, error: "Unauthorized: Authentication required" });
     }
 
-    // Create authenticated Supabase client
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
+    try {
+      // Create authenticated Supabase client
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+        global: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
         },
-      },
-    });
+      });
 
-    // Get all existing mission IDs
-    const { data: existingMissions } = await supabase.from("missions").select("id").order("created_at", { ascending: true });
+      // Get all existing mission IDs
+      const { data: existingMissions, error: fetchError } = await supabase.from("missions").select("id").order("created_at", { ascending: true });
 
-    // Find the highest numeric ID
-    const numericIds = (existingMissions || [])
-      .map((m: any) => parseInt(m.id, 10))
-      .filter((id: number) => !isNaN(id));
+      if (fetchError) {
+        return Response.json({ success: false, error: fetchError.message });
+      }
 
-    const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
-    const newId = String(maxId + 1);
+      // Find the highest numeric ID
+      const numericIds = (existingMissions || [])
+        .map((m: any) => parseInt(m.id, 10))
+        .filter((id: number) => !isNaN(id));
 
-    // Create empty mission object
-    const emptyMission = {
-      id: newId,
-      title: "",
-      description: "",
-      instructionIds: [],
-    };
+      const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+      const newId = String(maxId + 1);
 
-    // Insert the new mission
-    const insertData: any = {
-      id: newId,
-      data_en: emptyMission,
-      data_he: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+      // Create empty mission object
+      const emptyMission = {
+        id: newId,
+        title: "",
+        description: "",
+        instructionIds: [],
+      };
 
-    const { error } = await supabase.from("missions").insert(insertData);
+      // Insert the new mission
+      const insertData: any = {
+        id: newId,
+        data_en: emptyMission,
+        data_he: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
 
-    if (error) {
-      return { success: false, error: error.message };
+      const { error } = await supabase.from("missions").insert(insertData);
+
+      if (error) {
+        return Response.json({ success: false, error: error.message });
+      }
+
+      return Response.json({
+        success: true,
+        message: `New mission ${newId} created successfully!`,
+        newMissionId: newId,
+      });
+    } catch (error) {
+      console.error("Error in createMission:", error);
+      return Response.json({ success: false, error: error instanceof Error ? error.message : "Unknown error" });
     }
-
-    return {
-      success: true,
-      message: `New mission ${newId} created successfully!`,
-      newMissionId: newId,
-    };
   }
 
   // Handle create new instruction action
@@ -1765,6 +1774,12 @@ function EditMissionForm({
         method: "POST",
         body: formData,
       });
+
+      // Check if response is JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Server returned non-JSON response. The mission may have been created, but there was an issue with the response.");
+      }
 
       const result = await response.json();
 
