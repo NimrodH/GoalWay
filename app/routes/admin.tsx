@@ -1308,6 +1308,8 @@ function EditMissionForm({
   const [searchParams] = useSearchParams();
   const missionFetcher = useFetcher<typeof action>();
   const instructionFetcher = useFetcher<typeof action>();
+  const [showNewInstructionDialog, setShowNewInstructionDialog] = useState(false);
+  const [newInstructionTitle, setNewInstructionTitle] = useState("");
 
   // Track changes
   useEffect(() => {
@@ -1354,6 +1356,58 @@ function EditMissionForm({
       
       instructionFetcher.submit(formData, { method: "post" });
     });
+  };
+
+  const handleCreateAndAddInstruction = () => {
+    if (!newInstructionTitle.trim()) {
+      alert("Please enter a title for the new instruction");
+      return;
+    }
+
+    // Get all instruction IDs from the instructions prop
+    const allIds = instructions.map((i) => i.id);
+    const numericIds = allIds.map((id: string) => parseInt(id, 10)).filter((id: number) => !isNaN(id));
+    const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+    const newId = String(maxId + 1);
+
+    // Create the new instruction object with the title
+    const newInstruction = {
+      id: newId,
+      title: newInstructionTitle.trim(),
+      explanation: [],
+    };
+
+    // Submit to database
+    const formData = new FormData();
+    formData.append("actionType", "saveInstruction");
+    formData.append("id", newId);
+    formData.append("dataEn", JSON.stringify(newInstruction));
+    formData.append("language", language);
+    formData.append("accessToken", session?.access_token || "");
+
+    fetch("/admin", {
+      method: "POST",
+      body: formData,
+    })
+      .then((res) => res.json())
+      .then((result) => {
+        if (result.success) {
+          // Add the new instruction to the selected instructions list
+          setSelectedInstructions([...selectedInstructions, newId]);
+          
+          // Close the dialog and reset
+          setShowNewInstructionDialog(false);
+          setNewInstructionTitle("");
+          
+          // Reload the page to refresh the instruction list
+          window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${selectedMissionId}`;
+        } else {
+          alert(`Failed to create instruction: ${result.error}`);
+        }
+      })
+      .catch((error) => {
+        alert(`Failed to create instruction: ${error.message}`);
+      });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1609,14 +1663,24 @@ function EditMissionForm({
           }}
         >
           <h2 className={styles.sectionTitle}>Select Mission to Edit</h2>
-          <button
-            type="button"
-            onClick={handleClearForNewMission}
-            className={styles.addButton}
-            disabled={missionFetcher.state !== "idle" || !session}
-          >
-            {missionFetcher.state !== "idle" ? "Creating..." : "+ Create New Mission"}
-          </button>
+          <div style={{ display: "flex", gap: "var(--space-2)" }}>
+            <button
+              type="button"
+              onClick={handleClearForNewMission}
+              className={styles.addButton}
+              disabled={missionFetcher.state !== "idle" || !session}
+            >
+              {missionFetcher.state !== "idle" ? "Creating..." : "+ Create New Mission"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowNewInstructionDialog(true)}
+              className={styles.addButton}
+              disabled={!selectedMissionId || !session}
+            >
+              + Create & Add Instruction
+            </button>
+          </div>
         </div>
         <div className={styles.instructionCheckboxList}>
           {allMissionIds.map((id) => {
@@ -1844,6 +1908,50 @@ function EditMissionForm({
             )}
           </div>
         </>
+      )}
+
+      {/* New Instruction Dialog */}
+      {showNewInstructionDialog && (
+        <div className={styles.dialogOverlay} onClick={() => setShowNewInstructionDialog(false)}>
+          <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.dialogHeader}>
+              <h2 className={styles.dialogTitle}>Create New Instruction</h2>
+              <button className={styles.dialogClose} onClick={() => setShowNewInstructionDialog(false)}>
+                ✕
+              </button>
+            </div>
+            <div className={styles.formGroup} style={{ marginTop: "var(--space-4)" }}>
+              <label className={styles.label}>Instruction Title</label>
+              <input
+                type="text"
+                className={styles.input}
+                value={newInstructionTitle}
+                onChange={(e) => setNewInstructionTitle(e.target.value)}
+                placeholder="Enter instruction title..."
+                autoFocus
+              />
+            </div>
+            <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)" }}>
+              <button
+                type="button"
+                onClick={() => setShowNewInstructionDialog(false)}
+                className={styles.removeButton}
+                style={{ flex: 1 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateAndAddInstruction}
+                className={styles.submitButton}
+                style={{ flex: 1 }}
+                disabled={!newInstructionTitle.trim()}
+              >
+                Create & Add to Mission
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
