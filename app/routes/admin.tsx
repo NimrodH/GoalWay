@@ -1820,11 +1820,19 @@ function EditMissionForm({
                 </button>
                 <button
                   type="button"
-                  onClick={handleAddNewInstruction}
+                  onClick={() => {
+                    if (selectedInstructionForReorder) {
+                      onNavigationRequest(() => {
+                        window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${selectedInstructionForReorder}`;
+                      });
+                    } else {
+                      alert("Please select an instruction from the list using the radio button first");
+                    }
+                  }}
                   className={styles.addButton}
-                  disabled={instructionFetcher.state !== "idle" || !session}
+                  disabled={!selectedInstructionForReorder}
                 >
-                  {instructionFetcher.state !== "idle" ? "Creating..." : "+ Add New Instruction"}
+                  + Add Selected Instruction
                 </button>
               </div>
             </div>
