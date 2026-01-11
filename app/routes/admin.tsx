@@ -1600,7 +1600,24 @@ function EditMissionForm({
   return (
     <div>
       <div className={styles.formSection}>
-        <h2 className={styles.sectionTitle}>Select Mission to Edit</h2>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "var(--space-3)",
+          }}
+        >
+          <h2 className={styles.sectionTitle}>Select Mission to Edit</h2>
+          <button
+            type="button"
+            onClick={handleClearForNewMission}
+            className={styles.addButton}
+            disabled={missionFetcher.state !== "idle" || !session}
+          >
+            {missionFetcher.state !== "idle" ? "Creating..." : "+ Create New Mission"}
+          </button>
+        </div>
         <div className={styles.instructionCheckboxList}>
           {allMissionIds.map((id) => {
             const mission = missions.find((m) => m.id === id);
@@ -1626,24 +1643,7 @@ function EditMissionForm({
       {selectedMissionId && (
         <>
           <div className={styles.formSection}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "var(--space-3)",
-              }}
-            >
-              <h2 className={styles.sectionTitle}>Mission Details</h2>
-              <button
-                type="button"
-                onClick={handleClearForNewMission}
-                className={styles.addButton}
-                disabled={!session}
-              >
-                Clear for New Mission
-              </button>
-            </div>
+            <h2 className={styles.sectionTitle}>Mission Details</h2>
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
                 <label className={styles.label}>Mission ID</label>
