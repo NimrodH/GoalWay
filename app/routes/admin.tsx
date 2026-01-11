@@ -1663,24 +1663,14 @@ function EditMissionForm({
           }}
         >
           <h2 className={styles.sectionTitle}>Select Mission to Edit</h2>
-          <div style={{ display: "flex", gap: "var(--space-2)" }}>
-            <button
-              type="button"
-              onClick={handleClearForNewMission}
-              className={styles.addButton}
-              disabled={missionFetcher.state !== "idle" || !session}
-            >
-              {missionFetcher.state !== "idle" ? "Creating..." : "+ Create New Mission"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowNewInstructionDialog(true)}
-              className={styles.addButton}
-              disabled={!selectedMissionId || !session}
-            >
-              + Create & Add Instruction
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleClearForNewMission}
+            className={styles.addButton}
+            disabled={missionFetcher.state !== "idle" || !session}
+          >
+            {missionFetcher.state !== "idle" ? "Creating..." : "+ Create New Mission"}
+          </button>
         </div>
         <div className={styles.instructionCheckboxList}>
           {allMissionIds.map((id) => {
@@ -1833,6 +1823,14 @@ function EditMissionForm({
                   disabled={!selectedInstructionForReorder}
                 >
                   + Add Selected Instruction
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowNewInstructionDialog(true)}
+                  className={styles.addButton}
+                  disabled={!selectedMissionId || !session}
+                >
+                  + Create & Add Instruction
                 </button>
               </div>
             </div>
