@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Form, useActionData, useNavigate, useSearchParams, Link } from "react-router";
+import { Form, useActionData, useNavigate, useSearchParams, Link, useFetcher } from "react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs/tabs";
 import { useAuth } from "~/hooks/use-auth";
 import { initSupabase, getSupabase } from "~/lib/supabase";
@@ -1535,6 +1535,7 @@ function EditMissionForm({
   const { session } = useAuth();
   const [originalCode, setOriginalCode] = useState("");
   const [searchParams] = useSearchParams();
+  const fetcher = useFetcher<typeof action>();
 
   // Track changes
   useEffect(() => {
@@ -1763,31 +1764,27 @@ function EditMissionForm({
     return JSON.stringify(mission, null, 2);
   };
 
-  const handleClearForNewMission = async () => {
-    try {
-      // Create the new mission via form submission
+  // Watch for fetcher completion
+  useEffect(() => {
+    if (fetcher.data && fetcher.state === "idle") {
+      if (fetcher.data.success && fetcher.data.newMissionId) {
+        // Reload the page to refresh with the new mission selected
+        window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${fetcher.data.newMissionId}`;
+      } else if (fetcher.data.error) {
+        alert(`Failed to create mission: ${fetcher.data.error}`);
+      }
+    }
+  }, [fetcher.data, fetcher.state, language]);
+
+  const handleClearForNewMission = () => {
+    onNavigationRequest(() => {
+      // Create the new mission via fetcher
       const formData = new FormData();
       formData.append("actionType", "createMission");
       formData.append("accessToken", session?.access_token || "");
-
-      const response = await fetch("/admin", {
-        method: "POST",
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (!result.success) {
-        alert(`Failed to create mission: ${result.error}`);
-        return;
-      }
-
-      // Reload the page to refresh with the new mission selected
-      window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${result.newMissionId}`;
-    } catch (error) {
-      console.error("Error creating mission:", error);
-      alert(`Failed to create mission: ${error instanceof Error ? error.message : "Unknown error"}`);
-    }
+      
+      fetcher.submit(formData, { method: "post" });
+    });
   };
 
   const handleTranslateAndSwitch = async () => {
