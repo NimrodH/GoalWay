@@ -1377,7 +1377,7 @@ function EditMissionForm({
       explanation: [],
     };
 
-    // Submit to database
+    // Submit to database using fetcher
     const formData = new FormData();
     formData.append("actionType", "saveInstruction");
     formData.append("id", newId);
@@ -1385,41 +1385,9 @@ function EditMissionForm({
     formData.append("language", language);
     formData.append("accessToken", session?.access_token || "");
 
-    fetch("/admin", {
-      method: "POST",
-      body: formData,
-    })
-      .then(async (res) => {
-        const contentType = res.headers.get("content-type");
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Server error: ${res.status}`);
-        }
-        if (contentType && contentType.includes("application/json")) {
-          return res.json();
-        } else {
-          const text = await res.text();
-          throw new Error(`Expected JSON but received HTML/text`);
-        }
-      })
-      .then((result) => {
-        if (result.success) {
-          // Add the new instruction to the selected instructions list
-          setSelectedInstructions([...selectedInstructions, newId]);
-          
-          // Close the dialog and reset
-          setShowNewInstructionDialog(false);
-          setNewInstructionTitle("");
-          
-          // Reload the page to refresh the instruction list
-          window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${selectedMissionId}`;
-        } else {
-          alert(`Failed to create instruction: ${result.error}`);
-        }
-      })
-      .catch((error) => {
-        alert(`Failed to create instruction: ${error.message}`);
-      });
+    // Store the new ID temporarily so we can use it in the useEffect
+    (window as any).__pendingNewInstructionId = newId;
+    instructionFetcher.submit(formData, { method: "post" });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1585,14 +1553,31 @@ function EditMissionForm({
   // Watch for instruction fetcher completion
   useEffect(() => {
     if (instructionFetcher.data && instructionFetcher.state === "idle") {
-      if (instructionFetcher.data.success && instructionFetcher.data.newInstructionId) {
-        // Reload the page to refresh with the new instruction selected
-        window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${instructionFetcher.data.newInstructionId}`;
+      if (instructionFetcher.data.success) {
+        // Check if this was a "create and add" operation
+        const pendingId = (window as any).__pendingNewInstructionId;
+        if (pendingId && selectedMissionId) {
+          // Add the new instruction to the selected instructions list
+          setSelectedInstructions([...selectedInstructions, pendingId]);
+          
+          // Close the dialog and reset
+          setShowNewInstructionDialog(false);
+          setNewInstructionTitle("");
+          
+          // Clear the pending ID
+          delete (window as any).__pendingNewInstructionId;
+          
+          // Reload the page to refresh the instruction list
+          window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${selectedMissionId}`;
+        } else if (instructionFetcher.data.newInstructionId) {
+          // Regular "add new instruction" from edit-instruction tab
+          window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${instructionFetcher.data.newInstructionId}`;
+        }
       } else if (instructionFetcher.data.error) {
         alert(`Failed to create instruction: ${instructionFetcher.data.error}`);
       }
     }
-  }, [instructionFetcher.data, instructionFetcher.state, language]);
+  }, [instructionFetcher.data, instructionFetcher.state, language, selectedMissionId, selectedInstructions]);
 
   const handleClearForNewMission = () => {
     onNavigationRequest(() => {
