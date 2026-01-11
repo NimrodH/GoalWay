@@ -1823,6 +1823,21 @@ function EditMissionForm({
                 </button>
                 <button
                   type="button"
+                  onClick={() => {
+                    if (selectedInstructionForReorder) {
+                      setSelectedInstructions(selectedInstructions.filter(id => id !== selectedInstructionForReorder));
+                      setSelectedInstructionForReorder(null);
+                    } else {
+                      alert("Please select an instruction from the list using the radio button first");
+                    }
+                  }}
+                  className={styles.removeButton}
+                  disabled={!selectedInstructionForReorder}
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
                   onClick={() => setShowNewInstructionDialog(true)}
                   className={styles.addButton}
                   disabled={!selectedMissionId || !session}
