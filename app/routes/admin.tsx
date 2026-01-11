@@ -897,7 +897,13 @@ function EditInstructionForm({
   onNavigationRequest: (navigationFn: () => void) => void;
 }) {
   const [searchParams] = useSearchParams();
-  const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
+  // Initialize with last selected instruction from localStorage
+  const [selectedInstructionId, setSelectedInstructionId] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('admin_lastSelectedInstruction') || "";
+    }
+    return "";
+  });
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -930,11 +936,14 @@ function EditInstructionForm({
     }
   }, [actionData, selectedInstructionId]);
 
-  // Handle newly created instruction or URL parameter
+  // Handle newly created instruction or URL parameter or restore last selected
   useEffect(() => {
     const instructionIdFromUrl = searchParams.get("instructionId");
     if (instructionIdFromUrl && allInstructionIds.includes(instructionIdFromUrl)) {
       handleSelectInstruction(instructionIdFromUrl);
+    } else if (selectedInstructionId && allInstructionIds.includes(selectedInstructionId)) {
+      // Restore last selected instruction if it still exists
+      handleSelectInstruction(selectedInstructionId);
     }
   }, [searchParams, allInstructionIds]);
 
@@ -971,6 +980,10 @@ function EditInstructionForm({
   const handleSelectInstruction = (instructionId: string) => {
     clearActionData();
     setSelectedInstructionId(instructionId);
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('admin_lastSelectedInstruction', instructionId);
+    }
     const instruction = instructions.find((i) => i.id === instructionId);
     if (instruction) {
       setId(instruction.id);
@@ -1293,7 +1306,13 @@ function EditMissionForm({
   onChangesDetected: (hasChanges: boolean) => void;
   onNavigationRequest: (navigationFn: () => void) => void;
 }) {
-  const [selectedMissionId, setSelectedMissionId] = useState<string>("");
+  // Initialize with last selected mission from localStorage
+  const [selectedMissionId, setSelectedMissionId] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('admin_lastSelectedMission') || "";
+    }
+    return "";
+  });
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -1331,11 +1350,14 @@ function EditMissionForm({
     }
   }, [actionData, selectedMissionId]);
 
-  // Handle newly created mission or URL parameter
+  // Handle newly created mission or URL parameter or restore last selected
   useEffect(() => {
     const missionIdFromUrl = searchParams.get("missionId");
     if (missionIdFromUrl && allMissionIds.includes(missionIdFromUrl)) {
       handleSelectMission(missionIdFromUrl);
+    } else if (selectedMissionId && allMissionIds.includes(selectedMissionId)) {
+      // Restore last selected mission if it still exists
+      handleSelectMission(selectedMissionId);
     }
   }, [searchParams, allMissionIds]);
 
@@ -1477,6 +1499,10 @@ function EditMissionForm({
   const handleSelectMission = (missionId: string) => {
     clearActionData();
     setSelectedMissionId(missionId);
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('admin_lastSelectedMission', missionId);
+    }
     const mission = missions.find((m) => m.id === missionId);
     if (mission) {
       setId(mission.id);
