@@ -53,7 +53,7 @@ export async function action({ request }: Route.ActionArgs) {
     const accessToken = formData.get("accessToken") as string | null;
 
     if (!accessToken) {
-      return Response.json({ success: false, error: "Unauthorized: Authentication required" });
+      return { success: false, error: "Unauthorized: Authentication required" };
     }
 
     try {
@@ -71,7 +71,7 @@ export async function action({ request }: Route.ActionArgs) {
       const { data: existingMissions, error: fetchError } = await supabase.from("missions").select("id").order("created_at", { ascending: true });
 
       if (fetchError) {
-        return Response.json({ success: false, error: fetchError.message });
+        return { success: false, error: fetchError.message };
       }
 
       // Find the highest numeric ID
@@ -102,17 +102,17 @@ export async function action({ request }: Route.ActionArgs) {
       const { error } = await supabase.from("missions").insert(insertData);
 
       if (error) {
-        return Response.json({ success: false, error: error.message });
+        return { success: false, error: error.message };
       }
 
-      return Response.json({
+      return {
         success: true,
         message: `New mission ${newId} created successfully!`,
         newMissionId: newId,
-      });
+      };
     } catch (error) {
       console.error("Error in createMission:", error);
-      return Response.json({ success: false, error: error instanceof Error ? error.message : "Unknown error" });
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
   }
 
@@ -1774,12 +1774,6 @@ function EditMissionForm({
         method: "POST",
         body: formData,
       });
-
-      // Check if response is JSON
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Server returned non-JSON response. The mission may have been created, but there was an issue with the response.");
-      }
 
       const result = await response.json();
 
