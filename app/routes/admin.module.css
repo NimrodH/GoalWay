@@ -423,6 +423,7 @@
   justify-content: center;
   z-index: 1000;
   padding: var(--space-4);
+  overflow-y: auto;
 }
 
 .dialogContent {
