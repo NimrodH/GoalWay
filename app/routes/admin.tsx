@@ -1389,7 +1389,19 @@ function EditMissionForm({
       method: "POST",
       body: formData,
     })
-      .then((res) => res.json())
+      .then(async (res) => {
+        const contentType = res.headers.get("content-type");
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Server error: ${res.status}`);
+        }
+        if (contentType && contentType.includes("application/json")) {
+          return res.json();
+        } else {
+          const text = await res.text();
+          throw new Error(`Expected JSON but received HTML/text`);
+        }
+      })
       .then((result) => {
         if (result.success) {
           // Add the new instruction to the selected instructions list
