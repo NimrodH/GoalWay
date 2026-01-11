@@ -1772,7 +1772,33 @@ function EditMissionForm({
       {selectedMissionId && (
         <>
           <div className={styles.formSection}>
-            <h2 className={styles.sectionTitle}>Mission Details</h2>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "var(--space-3)",
+              }}
+            >
+              <h2 className={styles.sectionTitle}>Mission Details</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setId("");
+                  setTitle("");
+                  setDescription("");
+                  setSelectedInstructions([]);
+                  setSelectedInstructionForReorder(null);
+                  setImageFile(null);
+                  setImagePreview("");
+                  setSelectedMissionId("");
+                  clearActionData();
+                }}
+                className={styles.addButton}
+              >
+                Clear for New Mission
+              </button>
+            </div>
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
                 <label className={styles.label}>Mission ID</label>
