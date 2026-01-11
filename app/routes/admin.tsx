@@ -1122,10 +1122,10 @@ function EditInstructionForm({
   const [missionId, setMissionId] = useState("");
   const [explanation, setExplanation] = useState<InstructionContent[]>([]);
   const [isTranslating, setIsTranslating] = useState(false);
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
   const { session } = useAuth();
   const navigate = useNavigate();
   const [originalCode, setOriginalCode] = useState("");
+  const fetcher = useFetcher<typeof action>();
 
   // Track changes
   useEffect(() => {
@@ -1155,44 +1155,33 @@ function EditInstructionForm({
     }
   }, [searchParams, allInstructionIds]);
 
-  const handleAddNewInstruction = async () => {
-    onNavigationRequest(async () => {
-      setIsCreatingNew(true);
-
-      try {
-        // Find the highest ID from existing instructions
-        const numericIds = allInstructionIds.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
-
-        const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
-        const newId = String(maxId + 1);
-
-        // Create the new instruction via form submission
-        const formData = new FormData();
-        formData.append("actionType", "createInstruction");
-        formData.append("newId", newId);
-        formData.append("language", language);
-        formData.append("accessToken", session?.access_token || "");
-
-        const response = await fetch("/admin", {
-          method: "POST",
-          body: formData,
-        });
-
-        const result = await response.json();
-
-        if (!result.success) {
-          alert(`Failed to create instruction: ${result.error}`);
-          setIsCreatingNew(false);
-          return;
-        }
-
-        // Reload the page to refresh the instruction list
-        window.location.href = `/admin?tab=edit-instruction&lang=${language}`;
-      } catch (error) {
-        console.error("Error creating instruction:", error);
-        alert(`Failed to create instruction: ${error instanceof Error ? error.message : "Unknown error"}`);
-        setIsCreatingNew(false);
+  // Watch for fetcher completion
+  useEffect(() => {
+    if (fetcher.data && fetcher.state === "idle") {
+      if (fetcher.data.success && fetcher.data.newInstructionId) {
+        // Reload the page to refresh with the new instruction selected
+        window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${fetcher.data.newInstructionId}`;
+      } else if (fetcher.data.error) {
+        alert(`Failed to create instruction: ${fetcher.data.error}`);
       }
+    }
+  }, [fetcher.data, fetcher.state, language]);
+
+  const handleAddNewInstruction = () => {
+    onNavigationRequest(() => {
+      // Find the highest ID from existing instructions
+      const numericIds = allInstructionIds.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
+      const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+      const newId = String(maxId + 1);
+
+      // Create the new instruction via fetcher
+      const formData = new FormData();
+      formData.append("actionType", "createInstruction");
+      formData.append("newId", newId);
+      formData.append("language", language);
+      formData.append("accessToken", session?.access_token || "");
+      
+      fetcher.submit(formData, { method: "post" });
     });
   };
 
@@ -1325,9 +1314,9 @@ function EditInstructionForm({
             type="button"
             onClick={handleAddNewInstruction}
             className={styles.addButton}
-            disabled={isCreatingNew || !session}
+            disabled={fetcher.state !== "idle" || !session}
           >
-            {isCreatingNew ? "Creating..." : "+ Add New Instruction"}
+            {fetcher.state !== "idle" ? "Creating..." : "+ Add New Instruction"}
           </button>
         </div>
         <div className={styles.instructionCheckboxList}>
@@ -1531,11 +1520,11 @@ function EditMissionForm({
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
   const { session } = useAuth();
   const [originalCode, setOriginalCode] = useState("");
   const [searchParams] = useSearchParams();
-  const fetcher = useFetcher<typeof action>();
+  const missionFetcher = useFetcher<typeof action>();
+  const instructionFetcher = useFetcher<typeof action>();
 
   // Track changes
   useEffect(() => {
@@ -1565,54 +1554,22 @@ function EditMissionForm({
     }
   }, [searchParams, allMissionIds]);
 
-  const handleAddNewInstruction = async () => {
-    onNavigationRequest(async () => {
-      setIsCreatingNew(true);
+  const handleAddNewInstruction = () => {
+    onNavigationRequest(() => {
+      // Get all instruction IDs from the instructions prop
+      const allIds = instructions.map((i) => i.id);
+      const numericIds = allIds.map((id: string) => parseInt(id, 10)).filter((id: number) => !isNaN(id));
+      const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+      const newId = String(maxId + 1);
 
-      try {
-        // Use the already available allInstructionIds from props
-        const allInstructionIdsResponse = await fetch(`/admin?lang=${language}`);
-        const htmlText = await allInstructionIdsResponse.text();
-
-        // We can't parse HTML as JSON, so we'll use the instructions from props
-        // Get all instruction IDs from the instructions prop
-        const allIds = instructions.map((i) => i.id);
-
-        const numericIds = allIds.map((id: string) => parseInt(id, 10)).filter((id: number) => !isNaN(id));
-
-        const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
-        const newId = String(maxId + 1);
-
-        // Create the new instruction via form submission
-        const formData = new FormData();
-        formData.append("actionType", "createInstruction");
-        formData.append("newId", newId);
-        formData.append("language", language);
-        formData.append("accessToken", session?.access_token || "");
-
-        const response = await fetch("/admin", {
-          method: "POST",
-          body: formData,
-        });
-
-        // The response might be HTML (redirect), so check content type
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          const result = await response.json();
-          if (!result.success) {
-            alert(`Failed to create instruction: ${result.error}`);
-            setIsCreatingNew(false);
-            return;
-          }
-        }
-
-        // Navigate to edit-instruction tab with the new instruction selected
-        window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${newId}`;
-      } catch (error) {
-        console.error("Error creating instruction:", error);
-        alert(`Failed to create instruction: ${error instanceof Error ? error.message : "Unknown error"}`);
-        setIsCreatingNew(false);
-      }
+      // Create the new instruction via fetcher
+      const formData = new FormData();
+      formData.append("actionType", "createInstruction");
+      formData.append("newId", newId);
+      formData.append("language", language);
+      formData.append("accessToken", session?.access_token || "");
+      
+      instructionFetcher.submit(formData, { method: "post" });
     });
   };
 
@@ -1764,17 +1721,29 @@ function EditMissionForm({
     return JSON.stringify(mission, null, 2);
   };
 
-  // Watch for fetcher completion
+  // Watch for mission fetcher completion
   useEffect(() => {
-    if (fetcher.data && fetcher.state === "idle") {
-      if (fetcher.data.success && fetcher.data.newMissionId) {
+    if (missionFetcher.data && missionFetcher.state === "idle") {
+      if (missionFetcher.data.success && missionFetcher.data.newMissionId) {
         // Reload the page to refresh with the new mission selected
-        window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${fetcher.data.newMissionId}`;
-      } else if (fetcher.data.error) {
-        alert(`Failed to create mission: ${fetcher.data.error}`);
+        window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${missionFetcher.data.newMissionId}`;
+      } else if (missionFetcher.data.error) {
+        alert(`Failed to create mission: ${missionFetcher.data.error}`);
       }
     }
-  }, [fetcher.data, fetcher.state, language]);
+  }, [missionFetcher.data, missionFetcher.state, language]);
+
+  // Watch for instruction fetcher completion
+  useEffect(() => {
+    if (instructionFetcher.data && instructionFetcher.state === "idle") {
+      if (instructionFetcher.data.success && instructionFetcher.data.newInstructionId) {
+        // Reload the page to refresh with the new instruction selected
+        window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${instructionFetcher.data.newInstructionId}`;
+      } else if (instructionFetcher.data.error) {
+        alert(`Failed to create instruction: ${instructionFetcher.data.error}`);
+      }
+    }
+  }, [instructionFetcher.data, instructionFetcher.state, language]);
 
   const handleClearForNewMission = () => {
     onNavigationRequest(() => {
@@ -1783,7 +1752,7 @@ function EditMissionForm({
       formData.append("actionType", "createMission");
       formData.append("accessToken", session?.access_token || "");
       
-      fetcher.submit(formData, { method: "post" });
+      missionFetcher.submit(formData, { method: "post" });
     });
   };
 
@@ -2006,9 +1975,9 @@ function EditMissionForm({
                   type="button"
                   onClick={handleAddNewInstruction}
                   className={styles.addButton}
-                  disabled={isCreatingNew || !session}
+                  disabled={instructionFetcher.state !== "idle" || !session}
                 >
-                  {isCreatingNew ? "Creating..." : "+ Add New Instruction"}
+                  {instructionFetcher.state !== "idle" ? "Creating..." : "+ Add New Instruction"}
                 </button>
               </div>
             </div>
@@ -2122,9 +2091,9 @@ function MissionForm({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
   const { session } = useAuth();
   const [originalCode, setOriginalCode] = useState("");
+  const instructionFetcher = useFetcher<typeof action>();
 
   // Track changes
   useEffect(() => {
@@ -2144,49 +2113,34 @@ function MissionForm({
     }
   }, [actionData]);
 
-  const handleAddNewInstruction = async () => {
-    onNavigationRequest(async () => {
-      setIsCreatingNew(true);
-
-      try {
-        // Get all instruction IDs from the instructions prop
-        const allIds = instructions.map((i) => i.id);
-
-        const numericIds = allIds.map((id: string) => parseInt(id, 10)).filter((id: number) => !isNaN(id));
-
-        const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
-        const newId = String(maxId + 1);
-
-        // Create the new instruction via form submission
-        const formData = new FormData();
-        formData.append("actionType", "createInstruction");
-        formData.append("newId", newId);
-        formData.append("language", language);
-        formData.append("accessToken", session?.access_token || "");
-
-        const response = await fetch("/admin", {
-          method: "POST",
-          body: formData,
-        });
-
-        // The response might be HTML (redirect), so check content type
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          const result = await response.json();
-          if (!result.success) {
-            alert(`Failed to create instruction: ${result.error}`);
-            setIsCreatingNew(false);
-            return;
-          }
-        }
-
-        // Navigate to edit-instruction tab with the new instruction selected
-        window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${newId}`;
-      } catch (error) {
-        console.error("Error creating instruction:", error);
-        alert(`Failed to create instruction: ${error instanceof Error ? error.message : "Unknown error"}`);
-        setIsCreatingNew(false);
+  // Watch for instruction fetcher completion
+  useEffect(() => {
+    if (instructionFetcher.data && instructionFetcher.state === "idle") {
+      if (instructionFetcher.data.success && instructionFetcher.data.newInstructionId) {
+        // Reload the page to refresh with the new instruction selected
+        window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${instructionFetcher.data.newInstructionId}`;
+      } else if (instructionFetcher.data.error) {
+        alert(`Failed to create instruction: ${instructionFetcher.data.error}`);
       }
+    }
+  }, [instructionFetcher.data, instructionFetcher.state, language]);
+
+  const handleAddNewInstruction = () => {
+    onNavigationRequest(() => {
+      // Get all instruction IDs from the instructions prop
+      const allIds = instructions.map((i) => i.id);
+      const numericIds = allIds.map((id: string) => parseInt(id, 10)).filter((id: number) => !isNaN(id));
+      const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+      const newId = String(maxId + 1);
+
+      // Create the new instruction via fetcher
+      const formData = new FormData();
+      formData.append("actionType", "createInstruction");
+      formData.append("newId", newId);
+      formData.append("language", language);
+      formData.append("accessToken", session?.access_token || "");
+      
+      instructionFetcher.submit(formData, { method: "post" });
     });
   };
 
@@ -2380,9 +2334,9 @@ function MissionForm({
             type="button"
             onClick={handleAddNewInstruction}
             className={styles.addButton}
-            disabled={isCreatingNew || !session}
+            disabled={instructionFetcher.state !== "idle" || !session}
           >
-            {isCreatingNew ? "Creating..." : "+ Add New Instruction"}
+            {instructionFetcher.state !== "idle" ? "Creating..." : "+ Add New Instruction"}
           </button>
         </div>
         <div className={styles.instructionCheckboxList}>
