@@ -940,7 +940,7 @@ function EditInstructionForm({
   useEffect(() => {
     const instructionIdFromUrl = searchParams.get("instructionId");
     if (instructionIdFromUrl && allInstructionIds.includes(instructionIdFromUrl) && selectedInstructionId !== instructionIdFromUrl) {
-      handleSelectInstruction(instructionIdFromUrl);
+      updateFormFields(instructionIdFromUrl);
     }
   }, [searchParams, allInstructionIds, selectedInstructionId]);
 
@@ -974,8 +974,7 @@ function EditInstructionForm({
     });
   };
 
-  const handleSelectInstruction = (instructionId: string) => {
-    clearActionData();
+  const updateFormFields = (instructionId: string) => {
     setSelectedInstructionId(instructionId);
     const instruction = instructions.find((i) => i.id === instructionId);
     if (instruction) {
@@ -994,6 +993,11 @@ function EditInstructionForm({
       setMissionId("");
       setExplanation([]);
     }
+  };
+
+  const handleSelectInstruction = (instructionId: string) => {
+    clearActionData();
+    updateFormFields(instructionId);
   };
 
   const addContent = (type: "text" | "image" | "video") => {
@@ -1348,10 +1352,10 @@ function EditMissionForm({
   // Handle newly created mission or URL parameter
   useEffect(() => {
     const missionIdFromUrl = searchParams.get("missionId");
-    if (missionIdFromUrl && allMissionIds.includes(missionIdFromUrl)) {
-      handleSelectMission(missionIdFromUrl);
+    if (missionIdFromUrl && allMissionIds.includes(missionIdFromUrl) && selectedMissionId !== missionIdFromUrl) {
+      updateMissionFormFields(missionIdFromUrl);
     }
-  }, [searchParams, allMissionIds]);
+  }, [searchParams, allMissionIds, selectedMissionId]);
 
   const handleAddNewInstruction = () => {
     onNavigationRequest(() => {
@@ -1488,8 +1492,7 @@ function EditMissionForm({
     }
   };
 
-  const handleSelectMission = (missionId: string) => {
-    clearActionData();
+  const updateMissionFormFields = (missionId: string) => {
     setSelectedMissionId(missionId);
     const mission = missions.find((m) => m.id === missionId);
     if (mission) {
@@ -1504,6 +1507,11 @@ function EditMissionForm({
       setDescription("");
       setSelectedInstructions([]);
     }
+  };
+
+  const handleSelectMission = (missionId: string) => {
+    clearActionData();
+    updateMissionFormFields(missionId);
   };
 
   const toggleInstruction = (instructionId: string) => {
