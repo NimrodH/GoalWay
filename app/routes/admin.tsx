@@ -821,7 +821,9 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
             actionData={actionData}
             clearActionData={clearActionData}
             instructions={instructions}
+            missions={missions}
             allInstructionIds={allInstructionIds}
+            allMissionIds={allMissionIds}
             language={language}
             onChangesDetected={setHasUnsavedChanges}
             onNavigationRequest={handleNavigationWithCheck}
@@ -876,7 +878,9 @@ function EditInstructionForm({
   actionData,
   clearActionData,
   instructions,
+  missions,
   allInstructionIds,
+  allMissionIds,
   language,
   onChangesDetected,
   onNavigationRequest,
@@ -891,7 +895,9 @@ function EditInstructionForm({
   };
   clearActionData: () => void;
   instructions: Instruction[];
+  missions: Mission[];
   allInstructionIds: string[];
+  allMissionIds: string[];
   language: string;
   onChangesDetected: (hasChanges: boolean) => void;
   onNavigationRequest: (navigationFn: () => void) => void;
@@ -1176,18 +1182,26 @@ function EditInstructionForm({
 
               {type === "link" && (
                 <div className={styles.formGroup}>
-                  <label className={styles.label}>Target Mission ID</label>
-                  <input
-                    type="text"
+                  <label className={styles.label}>Target Mission</label>
+                  <select
                     className={styles.input}
                     value={missionId}
                     onChange={(e) => setMissionId(e.target.value)}
-                    placeholder="e.g., beginner-setup"
-                  />
+                  >
+                    <option value="">Select a mission...</option>
+                    {allMissionIds.map((id) => {
+                      const missionData = missions.find(m => m.id === id);
+                      return (
+                        <option key={id} value={id}>
+                          {id}{missionData ? ` - ${missionData.title}` : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
                   <small
                     style={{ color: "var(--color-neutral-11)", fontSize: "0.875rem", marginTop: "var(--space-1)" }}
                   >
-                    The mission ID to navigate to when this instruction is clicked
+                    The mission to navigate to when this instruction is clicked
                   </small>
                 </div>
               )}
