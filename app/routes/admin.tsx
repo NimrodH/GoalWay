@@ -18,7 +18,7 @@ import { getAllMissions, getAllMissionsHe, getAllMissionIds, type Mission } from
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const language = url.searchParams.get("lang") || "en";
-  const tab = url.searchParams.get("tab") || "instruction";
+  const tab = url.searchParams.get("tab") || "edit-instruction";
 
   const [instructions, missions, allInstructionIds, allMissionIds] = await Promise.all([
     language === "he" ? getAllInstructionsHe() : getAllInstructions(),
@@ -940,7 +940,9 @@ function EditInstructionForm({
   useEffect(() => {
     const instructionIdFromUrl = searchParams.get("instructionId");
     if (instructionIdFromUrl && allInstructionIds.includes(instructionIdFromUrl)) {
-      handleSelectInstruction(instructionIdFromUrl);
+      if (selectedInstructionId !== instructionIdFromUrl) {
+        handleSelectInstruction(instructionIdFromUrl);
+      }
     }
   }, [searchParams, allInstructionIds]);
 

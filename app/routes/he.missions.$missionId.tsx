@@ -45,8 +45,14 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
   // Get the previous mission from location state or default to home
   const previousMissionId = (location.state as { from?: string })?.from;
 
-  const handleInstructionClick = (instructionId: string) => {
+  const handleInstructionClick = (instructionId: string, event?: React.MouseEvent) => {
     const instruction = missionInstructions.find((inst) => inst?.id === instructionId);
+    
+    // If Shift key is pressed, navigate to admin page with instruction selected
+    if (event?.shiftKey) {
+      navigate(`/admin?tab=instructions&instructionId=${instructionId}`);
+      return;
+    }
     
     // If it's a link type instruction, navigate to the linked mission
     if (instruction?.type === "link" && instruction.missionId) {
@@ -104,7 +110,7 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
                   title={displayTitle}
                   description={instruction.description}
                   selected={selectedInstructionId === instruction.id}
-                  onClick={() => handleInstructionClick(instruction.id)}
+                  onClick={(event) => handleInstructionClick(instruction.id, event)}
                 />
                 {selectedInstructionId === instruction.id && instruction.type !== "link" && (
                   <div className={styles.mobileExplanation}>

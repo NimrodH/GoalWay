@@ -18,13 +18,13 @@ interface InstructionListItemProps {
   /**
    * Callback when the instruction is clicked
    */
-  onClick: () => void;
+  onClick: (event: React.MouseEvent) => void;
   className?: string;
 }
 
 export function InstructionListItem({ title, description, selected, onClick, className }: InstructionListItemProps) {
   return (
-    <div className={classNames(styles.item, { [styles.selected]: selected }, className)} onClick={onClick}>
+    <div className={classNames(styles.item, { [styles.selected]: selected }, className)} onClick={(e) => onClick(e)}>
       <h3 className={styles.title}>{title}</h3>
       {description && <p className={styles.description}>{description}</p>}
     </div>
