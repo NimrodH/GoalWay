@@ -936,15 +936,13 @@ function EditInstructionForm({
     }
   }, [actionData, selectedInstructionId]);
 
-  // Handle newly created instruction or URL parameter
+  // Handle URL parameter for instruction selection
   useEffect(() => {
     const instructionIdFromUrl = searchParams.get("instructionId");
-    if (instructionIdFromUrl && allInstructionIds.includes(instructionIdFromUrl)) {
-      if (selectedInstructionId !== instructionIdFromUrl) {
-        handleSelectInstruction(instructionIdFromUrl);
-      }
+    if (instructionIdFromUrl && allInstructionIds.includes(instructionIdFromUrl) && selectedInstructionId !== instructionIdFromUrl) {
+      handleSelectInstruction(instructionIdFromUrl);
     }
-  }, [searchParams, allInstructionIds]);
+  }, [searchParams, allInstructionIds, selectedInstructionId]);
 
   // Watch for fetcher completion
   useEffect(() => {
