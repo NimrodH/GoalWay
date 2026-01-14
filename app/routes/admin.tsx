@@ -1714,26 +1714,28 @@ function EditMissionForm({
           <div className={styles.formSection}>
             <h2 className={styles.sectionTitle}>Mission Details</h2>
             <div className={styles.formGrid}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Mission ID</label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={id}
-                  onChange={(e) => setId(e.target.value)}
-                  placeholder="e.g., security-basics"
-                />
-              </div>
+              <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
+                <div className={styles.formGroup} style={{ width: 'fit-content' }}>
+                  <label className={styles.label}>Mission ID</label>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={id}
+                    onChange={(e) => setId(e.target.value)}
+                    placeholder="e.g., security-basics"
+                  />
+                </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Title</label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g., Security Fundamentals"
-                />
+                <div className={styles.formGroup} style={{ flex: 1 }}>
+                  <label className={styles.label}>Title</label>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g., Security Fundamentals"
+                  />
+                </div>
               </div>
 
               <div className={styles.formGroup}>
