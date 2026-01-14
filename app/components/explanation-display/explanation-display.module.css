@@ -22,6 +22,7 @@
   color: var(--color-accent-11);
   margin: 0 0 var(--space-6) 0;
   line-height: var(--font-lineheight-1);
+  white-space: pre-wrap;
 }
 
 .content {
@@ -35,6 +36,7 @@
   color: var(--color-neutral-12);
   line-height: var(--font-lineheight-4);
   margin: 0;
+  white-space: pre-wrap;
 }
 
 .image {
