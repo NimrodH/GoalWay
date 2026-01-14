@@ -1691,22 +1691,26 @@ function EditMissionForm({
             {missionFetcher.state !== "idle" ? "Creating..." : "+ Create New Mission"}
           </button>
         </div>
-        <select
-          className={styles.input}
-          value={selectedMissionId}
-          onChange={(e) => handleSelectMission(e.target.value)}
-        >
-          <option value="">Select a mission...</option>
+        <div className={styles.instructionCheckboxList}>
           {allMissionIds.map((id) => {
             const mission = missions.find((m) => m.id === id);
             return (
-              <option key={id} value={id}>
-                {id}
-                {mission ? ` - ${mission.title}` : " (No data for this language)"}
-              </option>
+              <label key={id} className={styles.checkboxLabel} style={{ cursor: "pointer" }}>
+                <input
+                  type="radio"
+                  name="mission"
+                  value={id}
+                  checked={selectedMissionId === id}
+                  onChange={() => handleSelectMission(id)}
+                />
+                <span>
+                  {id}
+                  {mission ? ` - ${mission.title}` : " (No data for this language)"}
+                </span>
+              </label>
             );
           })}
-        </select>
+        </div>
       </div>
 
       {selectedMissionId && (
