@@ -68,10 +68,7 @@ export async function action({ request }: Route.ActionArgs) {
       });
 
       // Get all existing mission IDs
-      const { data: existingMissions, error: fetchError } = await supabase
-        .from("missions")
-        .select("id")
-        .order("created_at", { ascending: true });
+      const { data: existingMissions, error: fetchError } = await supabase.from("missions").select("id").order("created_at", { ascending: true });
 
       if (fetchError) {
         return { success: false, error: fetchError.message };
@@ -875,6 +872,8 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
   );
 }
 
+
+
 function EditInstructionForm({
   actionData,
   clearActionData,
@@ -940,11 +939,7 @@ function EditInstructionForm({
   // Handle URL parameter for instruction selection
   useEffect(() => {
     const instructionIdFromUrl = searchParams.get("instructionId");
-    if (
-      instructionIdFromUrl &&
-      allInstructionIds.includes(instructionIdFromUrl) &&
-      selectedInstructionId !== instructionIdFromUrl
-    ) {
+    if (instructionIdFromUrl && allInstructionIds.includes(instructionIdFromUrl) && selectedInstructionId !== instructionIdFromUrl) {
       updateFormFields(instructionIdFromUrl);
     }
   }, [searchParams, allInstructionIds, selectedInstructionId]);
@@ -974,7 +969,7 @@ function EditInstructionForm({
       formData.append("newId", newId);
       formData.append("language", language);
       formData.append("accessToken", session?.access_token || "");
-
+      
       fetcher.submit(formData, { method: "post" });
     });
   };
@@ -1192,14 +1187,17 @@ function EditInstructionForm({
               {type === "link" && (
                 <div className={styles.formGroup}>
                   <label className={styles.label}>Target Mission</label>
-                  <select className={styles.input} value={missionId} onChange={(e) => setMissionId(e.target.value)}>
+                  <select
+                    className={styles.input}
+                    value={missionId}
+                    onChange={(e) => setMissionId(e.target.value)}
+                  >
                     <option value="">Select a mission...</option>
                     {allMissionIds.map((id) => {
-                      const missionData = missions.find((m) => m.id === id);
+                      const missionData = missions.find(m => m.id === id);
                       return (
                         <option key={id} value={id}>
-                          {id}
-                          {missionData ? ` - ${missionData.title}` : ""}
+                          {id}{missionData ? ` - ${missionData.title}` : ''}
                         </option>
                       );
                     })}
@@ -1373,7 +1371,7 @@ function EditMissionForm({
       formData.append("newId", newId);
       formData.append("language", language);
       formData.append("accessToken", session?.access_token || "");
-
+      
       instructionFetcher.submit(formData, { method: "post" });
     });
   };
@@ -1583,14 +1581,14 @@ function EditMissionForm({
         if (pendingId && selectedMissionId) {
           // Add the new instruction to the selected instructions list
           setSelectedInstructions([...selectedInstructions, pendingId]);
-
+          
           // Close the dialog and reset
           setShowNewInstructionDialog(false);
           setNewInstructionTitle("");
-
+          
           // Clear the pending ID
           delete (window as any).__pendingNewInstructionId;
-
+          
           // Reload the page to refresh the instruction list
           window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${selectedMissionId}`;
         } else if (instructionFetcher.data.newInstructionId) {
@@ -1609,7 +1607,7 @@ function EditMissionForm({
       const formData = new FormData();
       formData.append("actionType", "createMission");
       formData.append("accessToken", session?.access_token || "");
-
+      
       missionFetcher.submit(formData, { method: "post" });
     });
   };
@@ -1693,22 +1691,26 @@ function EditMissionForm({
             {missionFetcher.state !== "idle" ? "Creating..." : "+ Create New Mission"}
           </button>
         </div>
-        <select
-          className={styles.input}
-          value={selectedMissionId}
-          onChange={(e) => handleSelectMission(e.target.value)}
-        >
-          <option value="">Select a mission...</option>
+        <div className={styles.instructionCheckboxList}>
           {allMissionIds.map((id) => {
             const mission = missions.find((m) => m.id === id);
             return (
-              <option key={id} value={id}>
-                {id}
-                {mission ? ` - ${mission.title}` : " (No data for this language)"}
-              </option>
+              <label key={id} className={styles.checkboxLabel} style={{ cursor: "pointer" }}>
+                <input
+                  type="radio"
+                  name="mission"
+                  value={id}
+                  checked={selectedMissionId === id}
+                  onChange={() => handleSelectMission(id)}
+                />
+                <span>
+                  {id}
+                  {mission ? ` - ${mission.title}` : " (No data for this language)"}
+                </span>
+              </label>
             );
           })}
-        </select>
+        </div>
       </div>
 
       {selectedMissionId && (
@@ -1716,28 +1718,26 @@ function EditMissionForm({
           <div className={styles.formSection}>
             <h2 className={styles.sectionTitle}>Mission Details</h2>
             <div className={styles.formGrid}>
-              <div style={{ display: "flex", gap: "var(--space-4)" }}>
-                <div className={styles.formGroup} style={{ width: "fit-content" }}>
-                  <label className={styles.label}>Mission ID</label>
-                  <input
-                    type="text"
-                    className={styles.input}
-                    value={id}
-                    onChange={(e) => setId(e.target.value)}
-                    placeholder="e.g., security-basics"
-                  />
-                  Title
-                  <input
-                    type="text"
-                    className={styles.input}
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g., Security Fundamentals"
-                  />
-                </div>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Mission ID</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={id}
+                  onChange={(e) => setId(e.target.value)}
+                  placeholder="e.g., security-basics"
+                />
+              </div>
 
-                <label className={styles.label}></label>
-                <div className={styles.formGroup} style={{ flex: 1 }}></div>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Title</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g., Security Fundamentals"
+                />
               </div>
 
               <div className={styles.formGroup}>
@@ -1981,3 +1981,5 @@ function EditMissionForm({
     </div>
   );
 }
+
+
