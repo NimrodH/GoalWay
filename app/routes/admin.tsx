@@ -1737,7 +1737,6 @@ function EditMissionForm({
                 </div>
 
                 <label className={styles.label}></label>
-                <div className={styles.formGroup} style={{ flex: 1 }}></div>
               </div>
 
               <div className={styles.formGroup}>
