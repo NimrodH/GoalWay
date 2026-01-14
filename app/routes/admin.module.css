@@ -531,5 +531,6 @@
     display: grid;
     grid-template-columns: auto 1fr;
     gap: var(--space-4);
+    align-items: start;
   }
 }
