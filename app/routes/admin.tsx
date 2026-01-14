@@ -1691,26 +1691,22 @@ function EditMissionForm({
             {missionFetcher.state !== "idle" ? "Creating..." : "+ Create New Mission"}
           </button>
         </div>
-        <div className={styles.instructionCheckboxList}>
+        <select
+          className={styles.input}
+          value={selectedMissionId}
+          onChange={(e) => handleSelectMission(e.target.value)}
+        >
+          <option value="">Select a mission...</option>
           {allMissionIds.map((id) => {
             const mission = missions.find((m) => m.id === id);
             return (
-              <label key={id} className={styles.checkboxLabel} style={{ cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name="mission"
-                  value={id}
-                  checked={selectedMissionId === id}
-                  onChange={() => handleSelectMission(id)}
-                />
-                <span>
-                  {id}
-                  {mission ? ` - ${mission.title}` : " (No data for this language)"}
-                </span>
-              </label>
+              <option key={id} value={id}>
+                {id}
+                {mission ? ` - ${mission.title}` : " (No data for this language)"}
+              </option>
             );
           })}
-        </div>
+        </select>
       </div>
 
       {selectedMissionId && (
@@ -1718,26 +1714,28 @@ function EditMissionForm({
           <div className={styles.formSection}>
             <h2 className={styles.sectionTitle}>Mission Details</h2>
             <div className={styles.formGrid}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Mission ID</label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={id}
-                  onChange={(e) => setId(e.target.value)}
-                  placeholder="e.g., security-basics"
-                />
-              </div>
+              <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
+                <div className={styles.formGroup} style={{ width: 'fit-content' }}>
+                  <label className={styles.label}>Mission ID</label>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={id}
+                    onChange={(e) => setId(e.target.value)}
+                    placeholder="e.g., security-basics"
+                  />
+                </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Title</label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g., Security Fundamentals"
-                />
+                <div className={styles.formGroup} style={{ flex: 1 }}>
+                  <label className={styles.label}>Title</label>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g., Security Fundamentals"
+                  />
+                </div>
               </div>
 
               <div className={styles.formGroup}>

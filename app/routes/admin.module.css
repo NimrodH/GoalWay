@@ -32,8 +32,6 @@
   border-radius: var(--radius-3);
   padding: var(--space-6);
   margin-bottom: var(--space-6);
-  display: grid;
-  flex-direction: column;
 }
 
 .sectionTitle {
@@ -46,13 +44,13 @@
 
 .formGrid {
   display: grid;
-  grid-template-rows: repeat(3, minmax(0, 0.6fr));
-  column-gap: var(--space-4);
+  gap: var(--space-4);
 }
 
 .formGroup {
   display: flex;
   flex-direction: column;
+  gap: var(--space-2);
 }
 
 .label {
@@ -204,7 +202,6 @@
   background: var(--color-neutral-1);
   color: var(--color-neutral-12);
   cursor: pointer;
-  width: max-content;
 }
 
 .instructionCheckboxList {
