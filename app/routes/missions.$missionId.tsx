@@ -99,16 +99,10 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
         <p className={styles.missionDescription}>{mission.description}</p>
         <div className={styles.instructionList}>
           {missionInstructions.map((instruction) => {
-            // For link type, get the mission title
-            const displayTitle =
-              instruction.type === "link" && instruction.missionId
-                ? allMissions.find((m) => m.id === instruction.missionId)?.title || instruction.title
-                : instruction.title;
-
             return (
               <div key={instruction.id} className={styles.instructionItem}>
                 <InstructionListItem
-                  title={displayTitle}
+                  title={instruction.title}
                   description={instruction.description}
                   selected={selectedInstructionId === instruction.id}
                   onClick={(event) => handleInstructionClick(instruction.id, event)}
