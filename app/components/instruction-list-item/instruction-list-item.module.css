@@ -36,6 +36,7 @@
   color: var(--color-neutral-11);
   margin: var(--space-1) 0 0 0;
   line-height: var(--font-lineheight-2);
+  white-space: pre-line;
 }
 
 .item.selected .description {
