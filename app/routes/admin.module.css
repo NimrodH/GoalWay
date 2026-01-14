@@ -204,6 +204,7 @@
   background: var(--color-neutral-1);
   color: var(--color-neutral-12);
   cursor: pointer;
+  width: max-content;
 }
 
 .instructionCheckboxList {
