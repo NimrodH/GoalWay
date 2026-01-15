@@ -1890,6 +1890,59 @@ function EditMissionForm({
             </div>
           </div>
 
+          <div className={styles.formSection}>
+            <h2 className={styles.sectionTitle}>Select Instructions by Arrow</h2>
+            <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "center" }}>
+              {/* Left list - Available instructions */}
+              <div style={{ flex: 1 }}>
+                <h3 style={{ marginBottom: "var(--space-2)", fontSize: "0.875rem", fontWeight: 600 }}>Available Instructions</h3>
+                <div style={{ border: "1px solid var(--color-neutral-6)", borderRadius: "var(--radius-2)", padding: "var(--space-2)", maxHeight: "300px", overflowY: "auto" }}>
+                  {instructions
+                    .filter((instruction) => !selectedInstructions.includes(instruction.id))
+                    .map((instruction) => (
+                      <div key={instruction.id} style={{ padding: "var(--space-2)", borderBottom: "1px solid var(--color-neutral-4)" }}>
+                        {instruction.id} - {instruction.title}
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* Center buttons */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                <button
+                  type="button"
+                  className={styles.addButton}
+                  style={{ width: "80px" }}
+                >
+                  →
+                </button>
+                <button
+                  type="button"
+                  className={styles.addButton}
+                  style={{ width: "80px" }}
+                >
+                  ←
+                </button>
+              </div>
+
+              {/* Right list - Selected instructions */}
+              <div style={{ flex: 1 }}>
+                <h3 style={{ marginBottom: "var(--space-2)", fontSize: "0.875rem", fontWeight: 600 }}>Mission Instructions</h3>
+                <div style={{ border: "1px solid var(--color-neutral-6)", borderRadius: "var(--radius-2)", padding: "var(--space-2)", maxHeight: "300px", overflowY: "auto" }}>
+                  {selectedInstructions.map((instructionId) => {
+                    const instruction = instructions.find((i) => i.id === instructionId);
+                    if (!instruction) return null;
+                    return (
+                      <div key={instruction.id} style={{ padding: "var(--space-2)", borderBottom: "1px solid var(--color-neutral-4)" }}>
+                        {instruction.id} - {instruction.title}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className={styles.previewSection}>
             <h2 className={styles.previewTitle}>Updated Code</h2>
             <p style={{ marginBottom: "var(--space-3)", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
