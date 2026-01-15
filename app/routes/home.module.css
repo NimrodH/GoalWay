@@ -39,6 +39,7 @@
   background: var(--color-neutral-2);
   border-left: 3px solid var(--color-accent-9);
   border-radius: var(--radius-2);
+  white-space: pre-line;
 }
 
 .menuLink {
@@ -118,6 +119,8 @@
     border-radius: var(--radius-3);
     padding: var(--space-5);
     margin-top: var(--space-3);
+    border: solid;
+    border-color: var(--color-accent-9);
     box-shadow: var(--inner-shadow-1);
   }
 
