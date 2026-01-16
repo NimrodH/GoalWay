@@ -1848,7 +1848,18 @@ function EditMissionForm({
                   type="button"
                   onClick={() => {
                     // Add selected available instructions to the mission
-                    const newInstructions = [...selectedInstructions, ...selectedAvailableInstructions];
+                    // If there's a selected mission instruction, insert above it; otherwise append
+                    let newInstructions;
+                    if (selectedMissionInstruction) {
+                      const insertIndex = selectedInstructions.indexOf(selectedMissionInstruction);
+                      newInstructions = [
+                        ...selectedInstructions.slice(0, insertIndex),
+                        ...selectedAvailableInstructions,
+                        ...selectedInstructions.slice(insertIndex),
+                      ];
+                    } else {
+                      newInstructions = [...selectedInstructions, ...selectedAvailableInstructions];
+                    }
                     setSelectedInstructions(newInstructions);
                     setSelectedAvailableInstructions([]);
                   }}
