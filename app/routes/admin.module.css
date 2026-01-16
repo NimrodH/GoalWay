@@ -533,3 +533,9 @@
     align-items: stretch;
   }
 }
+.div2 {
+  margin-top: var(--space-7);
+}
+.div3 {
+  margin-top: var(--space-2);
+}

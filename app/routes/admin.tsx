@@ -68,7 +68,10 @@ export async function action({ request }: Route.ActionArgs) {
       });
 
       // Get all existing mission IDs
-      const { data: existingMissions, error: fetchError } = await supabase.from("missions").select("id").order("created_at", { ascending: true });
+      const { data: existingMissions, error: fetchError } = await supabase
+        .from("missions")
+        .select("id")
+        .order("created_at", { ascending: true });
 
       if (fetchError) {
         return { success: false, error: fetchError.message };
@@ -872,8 +875,6 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
   );
 }
 
-
-
 function EditInstructionForm({
   actionData,
   clearActionData,
@@ -939,7 +940,11 @@ function EditInstructionForm({
   // Handle URL parameter for instruction selection
   useEffect(() => {
     const instructionIdFromUrl = searchParams.get("instructionId");
-    if (instructionIdFromUrl && allInstructionIds.includes(instructionIdFromUrl) && selectedInstructionId !== instructionIdFromUrl) {
+    if (
+      instructionIdFromUrl &&
+      allInstructionIds.includes(instructionIdFromUrl) &&
+      selectedInstructionId !== instructionIdFromUrl
+    ) {
       updateFormFields(instructionIdFromUrl);
     }
   }, [searchParams, allInstructionIds, selectedInstructionId]);
@@ -1187,17 +1192,14 @@ function EditInstructionForm({
               {type === "link" && (
                 <div className={styles.formGroup}>
                   <label className={styles.label}>Target Mission</label>
-                  <select
-                    className={styles.input}
-                    value={missionId}
-                    onChange={(e) => setMissionId(e.target.value)}
-                  >
+                  <select className={styles.input} value={missionId} onChange={(e) => setMissionId(e.target.value)}>
                     <option value="">Select a mission...</option>
                     {allMissionIds.map((id) => {
-                      const missionData = missions.find(m => m.id === id);
+                      const missionData = missions.find((m) => m.id === id);
                       return (
                         <option key={id} value={id}>
-                          {id}{missionData ? ` - ${missionData.title}` : ''}
+                          {id}
+                          {missionData ? ` - ${missionData.title}` : ""}
                         </option>
                       );
                     })}
@@ -1792,21 +1794,41 @@ function EditMissionForm({
           {/* Select Instructions by Arrow */}
           <div className={styles.formSection}>
             <h2 className={styles.sectionTitle}>Select Instructions by Arrow</h2>
-            <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-start" }}>
               {/* Left list - Available instructions */}
-              <div style={{ flex: 1 }}>
-                <h3 style={{ marginBottom: "var(--space-2)", fontSize: "0.875rem", fontWeight: 600 }}>Available Instructions</h3>
-                <div style={{ border: "1px solid var(--color-neutral-6)", borderRadius: "var(--radius-2)", padding: "var(--space-2)", maxHeight: "300px", overflowY: "auto" }}>
+              <div style={{ flex: 1 }} className={styles.div3}>
+                <h3 style={{ marginBottom: "var(--space-2)", fontSize: "0.875rem", fontWeight: 600 }}>
+                  Available Instructions
+                </h3>
+                <div
+                  style={{
+                    border: "1px solid var(--color-neutral-6)",
+                    borderRadius: "var(--radius-2)",
+                    padding: "var(--space-2)",
+                    maxHeight: "300px",
+                    overflowY: "auto",
+                  }}
+                >
                   {instructions
                     .filter((instruction) => !selectedInstructions.includes(instruction.id))
                     .map((instruction) => (
-                      <label key={instruction.id} className={styles.checkboxLabel} style={{ padding: "var(--space-2)", borderBottom: "1px solid var(--color-neutral-4)", margin: 0 }}>
+                      <label
+                        key={instruction.id}
+                        className={styles.checkboxLabel}
+                        style={{
+                          padding: "var(--space-2)",
+                          borderBottom: "1px solid var(--color-neutral-4)",
+                          margin: 0,
+                        }}
+                      >
                         <input
                           type="checkbox"
                           checked={selectedAvailableInstructions.includes(instruction.id)}
                           onChange={() => {
                             if (selectedAvailableInstructions.includes(instruction.id)) {
-                              setSelectedAvailableInstructions(selectedAvailableInstructions.filter(id => id !== instruction.id));
+                              setSelectedAvailableInstructions(
+                                selectedAvailableInstructions.filter((id) => id !== instruction.id),
+                              );
                             } else {
                               setSelectedAvailableInstructions([...selectedAvailableInstructions, instruction.id]);
                             }
@@ -1821,7 +1843,7 @@ function EditMissionForm({
               </div>
 
               {/* Center buttons */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }} className={styles.div2}>
                 <button
                   type="button"
                   onClick={() => {
@@ -1841,7 +1863,7 @@ function EditMissionForm({
                   onClick={() => {
                     if (selectedMissionInstruction) {
                       // Remove from selected instructions
-                      setSelectedInstructions(selectedInstructions.filter(id => id !== selectedMissionInstruction));
+                      setSelectedInstructions(selectedInstructions.filter((id) => id !== selectedMissionInstruction));
                       setSelectedMissionInstruction(null);
                     }
                   }}
@@ -1918,15 +1940,31 @@ function EditMissionForm({
                     </button>
                   </div>
                 </div>
-                <div style={{ border: "1px solid var(--color-neutral-6)", borderRadius: "var(--radius-2)", padding: "var(--space-2)", maxHeight: "300px", overflowY: "auto" }}>
+                <div
+                  style={{
+                    border: "1px solid var(--color-neutral-6)",
+                    borderRadius: "var(--radius-2)",
+                    padding: "var(--space-2)",
+                    maxHeight: "300px",
+                    overflowY: "auto",
+                  }}
+                >
                   {selectedInstructions.map((instructionId) => {
                     const instruction = instructions.find((i) => i.id === instructionId);
                     if (!instruction) return null;
                     return (
-                      <label key={instruction.id} className={styles.checkboxLabel} style={{ padding: "var(--space-2)", borderBottom: "1px solid var(--color-neutral-4)", margin: 0 }}>
-                        <input 
-                          type="radio" 
-                          name="missionInstructionRadio" 
+                      <label
+                        key={instruction.id}
+                        className={styles.checkboxLabel}
+                        style={{
+                          padding: "var(--space-2)",
+                          borderBottom: "1px solid var(--color-neutral-4)",
+                          margin: 0,
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="missionInstructionRadio"
                           checked={selectedMissionInstruction === instruction.id}
                           onChange={() => setSelectedMissionInstruction(instruction.id)}
                         />
@@ -2028,5 +2066,3 @@ function EditMissionForm({
     </div>
   );
 }
-
-
