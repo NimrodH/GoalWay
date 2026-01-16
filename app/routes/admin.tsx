@@ -1316,7 +1316,6 @@ function EditMissionForm({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedInstructions, setSelectedInstructions] = useState<string[]>([]);
-  const [selectedInstructionForReorder, setSelectedInstructionForReorder] = useState<string | null>(null);
   const [selectedAvailableInstructions, setSelectedAvailableInstructions] = useState<string[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
@@ -1529,9 +1528,9 @@ function EditMissionForm({
 
   const moveInstructionUp = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!selectedInstructionForReorder) return;
+    if (!selectedMissionInstruction) return;
 
-    const index = selectedInstructions.indexOf(selectedInstructionForReorder);
+    const index = selectedInstructions.indexOf(selectedMissionInstruction);
     if (index <= 0) return; // Already at the top or not found
 
     const newOrder = [...selectedInstructions];
@@ -1541,9 +1540,9 @@ function EditMissionForm({
 
   const moveInstructionDown = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!selectedInstructionForReorder) return;
+    if (!selectedMissionInstruction) return;
 
-    const index = selectedInstructions.indexOf(selectedInstructionForReorder);
+    const index = selectedInstructions.indexOf(selectedMissionInstruction);
     if (index === -1 || index >= selectedInstructions.length - 1) return; // Already at the bottom or not found
 
     const newOrder = [...selectedInstructions];
@@ -1790,107 +1789,6 @@ function EditMissionForm({
             </div>
           </div>
 
-          <div className={styles.formSection}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "var(--space-3)",
-              }}
-              className={styles.div1}
-            >
-              <h2 className={styles.sectionTitle}>Select Instructions</h2>
-              <div style={{ display: "flex", gap: "var(--space-2)" }}>
-                <button
-                  type="button"
-                  onClick={moveInstructionUp}
-                  className={styles.addButton}
-                  disabled={
-                    !selectedInstructionForReorder || selectedInstructions.indexOf(selectedInstructionForReorder) === 0
-                  }
-                  title="Move selected instruction up"
-                >
-                  ↑ Move Up
-                </button>
-                <button
-                  type="button"
-                  onClick={moveInstructionDown}
-                  className={styles.addButton}
-                  disabled={
-                    !selectedInstructionForReorder ||
-                    selectedInstructions.indexOf(selectedInstructionForReorder) === selectedInstructions.length - 1
-                  }
-                  title="Move selected instruction down"
-                >
-                  ↓ Move Down
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (selectedInstructionForReorder) {
-                      onNavigationRequest(() => {
-                        window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${selectedInstructionForReorder}`;
-                      });
-                    } else {
-                      alert("Please select an instruction from the list using the radio button first");
-                    }
-                  }}
-                  className={styles.addButton}
-                  disabled={!selectedInstructionForReorder}
-                >
-                  Edit Selected Instruction
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowNewInstructionDialog(true)}
-                  className={styles.addButton}
-                  disabled={!selectedMissionId || !session}
-                >
-                  + Create & Add Instruction
-                </button>
-              </div>
-            </div>
-            <div className={styles.instructionCheckboxList}>
-              {/* First show selected instructions in order */}
-              {selectedInstructions.map((instructionId) => {
-                const instruction = instructions.find((i) => i.id === instructionId);
-                if (!instruction) return null;
-                return (
-                  <label key={instruction.id} className={styles.checkboxLabel}>
-                    <input
-                      type="radio"
-                      name="instructionForReorder"
-                      checked={selectedInstructionForReorder === instruction.id}
-                      onChange={() => setSelectedInstructionForReorder(instruction.id)}
-                    />
-                    <input type="checkbox" checked={true} onChange={() => toggleInstruction(instruction.id)} />
-                    <span>
-                      {instruction.id} - {instruction.title}
-                    </span>
-                  </label>
-                );
-              })}
-              {/* Then show unselected instructions */}
-              {instructions
-                .filter((instruction) => !selectedInstructions.includes(instruction.id))
-                .map((instruction) => (
-                  <label key={instruction.id} className={styles.checkboxLabel}>
-                    <input
-                      type="radio"
-                      name="instructionForReorder"
-                      checked={false}
-                      onChange={() => setSelectedInstructionForReorder(instruction.id)}
-                      disabled={true}
-                    />
-                    <input type="checkbox" checked={false} onChange={() => toggleInstruction(instruction.id)} />
-                    <span>
-                      {instruction.id} - {instruction.title}
-                    </span>
-                  </label>
-                ))}
-            </div>
-          </div>
           {/* Select Instructions by Arrow */}
           <div className={styles.formSection}>
             <h2 className={styles.sectionTitle}>Select Instructions by Arrow</h2>
@@ -1955,9 +1853,71 @@ function EditMissionForm({
                 </button>
               </div>
 
-              {/* Right list - Selected instructions */}
+              {/* Right list - Mission Instructions */}
               <div style={{ flex: 1 }}>
-                <h3 style={{ marginBottom: "var(--space-2)", fontSize: "0.875rem", fontWeight: 600 }}>Mission Instructions</h3>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "var(--space-2)",
+                  }}
+                >
+                  <h3 style={{ fontSize: "0.875rem", fontWeight: 600 }}>Mission Instructions</h3>
+                  <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                    <button
+                      type="button"
+                      onClick={moveInstructionUp}
+                      className={styles.addButton}
+                      disabled={
+                        !selectedMissionInstruction || selectedInstructions.indexOf(selectedMissionInstruction) === 0
+                      }
+                      title="Move selected instruction up"
+                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                    >
+                      ↑ Up
+                    </button>
+                    <button
+                      type="button"
+                      onClick={moveInstructionDown}
+                      className={styles.addButton}
+                      disabled={
+                        !selectedMissionInstruction ||
+                        selectedInstructions.indexOf(selectedMissionInstruction) === selectedInstructions.length - 1
+                      }
+                      title="Move selected instruction down"
+                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                    >
+                      ↓ Down
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedMissionInstruction) {
+                          onNavigationRequest(() => {
+                            window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${selectedMissionInstruction}`;
+                          });
+                        } else {
+                          alert("Please select an instruction from the list using the radio button first");
+                        }
+                      }}
+                      className={styles.addButton}
+                      disabled={!selectedMissionInstruction}
+                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewInstructionDialog(true)}
+                      className={styles.addButton}
+                      disabled={!selectedMissionId || !session}
+                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                    >
+                      + New
+                    </button>
+                  </div>
+                </div>
                 <div style={{ border: "1px solid var(--color-neutral-6)", borderRadius: "var(--radius-2)", padding: "var(--space-2)", maxHeight: "300px", overflowY: "auto" }}>
                   {selectedInstructions.map((instructionId) => {
                     const instruction = instructions.find((i) => i.id === instructionId);
