@@ -1934,7 +1934,7 @@ function EditMissionForm({
                     if (!instruction) return null;
                     return (
                       <label key={instruction.id} className={styles.checkboxLabel} style={{ padding: "var(--space-2)", borderBottom: "1px solid var(--color-neutral-4)", margin: 0 }}>
-                        <input type="checkbox" />
+                        <input type="radio" name="missionInstructionRadio" />
                         <span>
                           {instruction.id} - {instruction.title}
                         </span>
