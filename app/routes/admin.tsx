@@ -1096,6 +1096,9 @@ function EditInstructionForm({
     }
   };
 
+  // Track if there are unsaved changes
+  const hasUnsavedChanges = selectedInstructionId && originalCode !== "" && generateCode() !== originalCode;
+
   return (
     <div>
       <div className={styles.formSection}>
@@ -1107,7 +1110,9 @@ function EditInstructionForm({
             marginBottom: "var(--space-3)",
           }}
         >
-          <h2 className={styles.sectionTitle}>Select Instruction to Edit</h2>
+          <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
+            Select Instruction to Edit
+          </h2>
           <button
             type="button"
             onClick={handleAddNewInstruction}
@@ -1142,7 +1147,9 @@ function EditInstructionForm({
       {selectedInstructionId && (
         <>
           <div className={styles.formSection}>
-            <h2 className={styles.sectionTitle}>Instruction Details</h2>
+            <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
+              Instruction Details
+            </h2>
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
                 <label className={styles.label}>Instruction ID</label>
@@ -1216,7 +1223,9 @@ function EditInstructionForm({
 
           {type === "default" && (
             <div className={styles.formSection}>
-              <h2 className={styles.sectionTitle}>Explanation Content</h2>
+              <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
+                Explanation Content
+              </h2>
 
               {explanation.map((item, index) => (
                 <ExplanationContentItem
@@ -1243,7 +1252,9 @@ function EditInstructionForm({
           )}
 
           <div className={styles.previewSection}>
-            <h2 className={styles.previewTitle}>Updated Code</h2>
+            <h2 className={styles.previewTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
+              Updated Code
+            </h2>
             <p style={{ marginBottom: "var(--space-3)", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
               Copy this object and replace the existing instruction with ID "{id}" in{" "}
               <code>app/data/instructions.ts</code>
@@ -1520,8 +1531,8 @@ function EditMissionForm({
   const toggleInstruction = (instructionId: string) => {
     if (selectedInstructions.includes(instructionId)) {
       setSelectedInstructions(selectedInstructions.filter((id) => id !== instructionId));
-      if (selectedInstructionForReorder === instructionId) {
-        setSelectedInstructionForReorder(null);
+      if (selectedMissionInstruction === instructionId) {
+        setSelectedMissionInstruction(null);
       }
     } else {
       setSelectedInstructions([...selectedInstructions, instructionId]);
@@ -1615,6 +1626,9 @@ function EditMissionForm({
     });
   };
 
+  // Track if there are unsaved changes
+  const hasUnsavedChangesMission = selectedMissionId && originalCode !== "" && generateCode() !== originalCode;
+
   const handleTranslateAndSwitch = async () => {
     if (!title || !description) {
       alert("Please fill in the title and description before translating");
@@ -1673,6 +1687,9 @@ function EditMissionForm({
     }
   };
 
+  // Track if there are unsaved changes
+  const hasUnsavedChanges = selectedMissionId && originalCode !== "" && generateCode() !== originalCode;
+
   return (
     <div>
       <div className={styles.formSection}>
@@ -1684,7 +1701,9 @@ function EditMissionForm({
             marginBottom: "var(--space-3)",
           }}
         >
-          <h2 className={styles.sectionTitle}>Select Mission to Edit</h2>
+          <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}>
+            Select Mission to Edit
+          </h2>
           <button
             type="button"
             onClick={handleClearForNewMission}
@@ -1715,7 +1734,9 @@ function EditMissionForm({
       {selectedMissionId && (
         <>
           <div className={styles.formSection}>
-            <h2 className={styles.sectionTitle}>Mission Details</h2>
+            <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}>
+              Mission Details
+            </h2>
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
                 <label className={styles.label}>Mission ID</label>
@@ -1752,7 +1773,9 @@ function EditMissionForm({
           </div>
 
           <div className={styles.formSection}>
-            <h2 className={styles.sectionTitle}>Mission Image (Optional)</h2>
+            <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}>
+              Mission Image (Optional)
+            </h2>
             <div className={styles.formGroup}>
               <label className={styles.label}>Upload Image</label>
               <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
@@ -1793,7 +1816,9 @@ function EditMissionForm({
 
           {/* Select Instructions by Arrow */}
           <div className={styles.formSection}>
-            <h2 className={styles.sectionTitle}>Select Instructions by Arrow</h2>
+            <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}>
+              Select Instructions by Arrow
+            </h2>
             <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-start" }}>
               {/* Left list - Available instructions */}
               <div style={{ flex: 1 }} className={styles.div3}>
@@ -1991,7 +2016,9 @@ function EditMissionForm({
           </div>
 
           <div className={styles.previewSection}>
-            <h2 className={styles.previewTitle}>Updated Code</h2>
+            <h2 className={styles.previewTitle} style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}>
+              Updated Code
+            </h2>
             <p style={{ marginBottom: "var(--space-3)", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
               Copy this object and replace the existing mission with ID "{id}" in <code>app/data/missions.ts</code>
             </p>
