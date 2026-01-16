@@ -1328,6 +1328,7 @@ function EditMissionForm({
   const instructionFetcher = useFetcher<typeof action>();
   const [showNewInstructionDialog, setShowNewInstructionDialog] = useState(false);
   const [newInstructionTitle, setNewInstructionTitle] = useState("");
+  const [selectedMissionInstruction, setSelectedMissionInstruction] = useState<string | null>(null);
 
   // Track changes
   useEffect(() => {
@@ -1918,8 +1919,16 @@ function EditMissionForm({
                 </button>
                 <button
                   type="button"
+                  onClick={() => {
+                    if (selectedMissionInstruction) {
+                      // Remove from selected instructions
+                      setSelectedInstructions(selectedInstructions.filter(id => id !== selectedMissionInstruction));
+                      setSelectedMissionInstruction(null);
+                    }
+                  }}
                   className={styles.addButton}
                   style={{ width: "80px" }}
+                  disabled={!selectedMissionInstruction}
                 >
                   ←
                 </button>
@@ -1934,7 +1943,12 @@ function EditMissionForm({
                     if (!instruction) return null;
                     return (
                       <label key={instruction.id} className={styles.checkboxLabel} style={{ padding: "var(--space-2)", borderBottom: "1px solid var(--color-neutral-4)", margin: 0 }}>
-                        <input type="radio" name="missionInstructionRadio" />
+                        <input 
+                          type="radio" 
+                          name="missionInstructionRadio" 
+                          checked={selectedMissionInstruction === instruction.id}
+                          onChange={() => setSelectedMissionInstruction(instruction.id)}
+                        />
                         <span>
                           {instruction.id} - {instruction.title}
                         </span>
