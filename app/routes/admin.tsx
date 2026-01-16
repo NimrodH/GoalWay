@@ -1933,9 +1933,12 @@ function EditMissionForm({
                     const instruction = instructions.find((i) => i.id === instructionId);
                     if (!instruction) return null;
                     return (
-                      <div key={instruction.id} style={{ padding: "var(--space-2)", borderBottom: "1px solid var(--color-neutral-4)" }}>
-                        {instruction.id} - {instruction.title}
-                      </div>
+                      <label key={instruction.id} className={styles.checkboxLabel} style={{ padding: "var(--space-2)", borderBottom: "1px solid var(--color-neutral-4)", margin: 0 }}>
+                        <input type="checkbox" />
+                        <span>
+                          {instruction.id} - {instruction.title}
+                        </span>
+                      </label>
                     );
                   })}
                 </div>
