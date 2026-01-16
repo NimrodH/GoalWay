@@ -969,7 +969,7 @@ function EditInstructionForm({
       formData.append("newId", newId);
       formData.append("language", language);
       formData.append("accessToken", session?.access_token || "");
-      
+
       fetcher.submit(formData, { method: "post" });
     });
   };
@@ -1371,7 +1371,7 @@ function EditMissionForm({
       formData.append("newId", newId);
       formData.append("language", language);
       formData.append("accessToken", session?.access_token || "");
-      
+
       instructionFetcher.submit(formData, { method: "post" });
     });
   };
@@ -1581,14 +1581,14 @@ function EditMissionForm({
         if (pendingId && selectedMissionId) {
           // Add the new instruction to the selected instructions list
           setSelectedInstructions([...selectedInstructions, pendingId]);
-          
+
           // Close the dialog and reset
           setShowNewInstructionDialog(false);
           setNewInstructionTitle("");
-          
+
           // Clear the pending ID
           delete (window as any).__pendingNewInstructionId;
-          
+
           // Reload the page to refresh the instruction list
           window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${selectedMissionId}`;
         } else if (instructionFetcher.data.newInstructionId) {
@@ -1607,7 +1607,7 @@ function EditMissionForm({
       const formData = new FormData();
       formData.append("actionType", "createMission");
       formData.append("accessToken", session?.access_token || "");
-      
+
       missionFetcher.submit(formData, { method: "post" });
     });
   };
@@ -1889,7 +1889,7 @@ function EditMissionForm({
                 ))}
             </div>
           </div>
-
+          {/* Select Instructions by Arrow */}
           <div className={styles.formSection}>
             <h2 className={styles.sectionTitle}>Select Instructions by Arrow</h2>
             <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "center" }}>
