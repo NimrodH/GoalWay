@@ -1317,6 +1317,7 @@ function EditMissionForm({
   const [description, setDescription] = useState("");
   const [selectedInstructions, setSelectedInstructions] = useState<string[]>([]);
   const [selectedInstructionForReorder, setSelectedInstructionForReorder] = useState<string | null>(null);
+  const [selectedAvailableInstructions, setSelectedAvailableInstructions] = useState<string[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
@@ -1901,9 +1902,22 @@ function EditMissionForm({
                   {instructions
                     .filter((instruction) => !selectedInstructions.includes(instruction.id))
                     .map((instruction) => (
-                      <div key={instruction.id} style={{ padding: "var(--space-2)", borderBottom: "1px solid var(--color-neutral-4)" }}>
-                        {instruction.id} - {instruction.title}
-                      </div>
+                      <label key={instruction.id} className={styles.checkboxLabel} style={{ padding: "var(--space-2)", borderBottom: "1px solid var(--color-neutral-4)", margin: 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedAvailableInstructions.includes(instruction.id)}
+                          onChange={() => {
+                            if (selectedAvailableInstructions.includes(instruction.id)) {
+                              setSelectedAvailableInstructions(selectedAvailableInstructions.filter(id => id !== instruction.id));
+                            } else {
+                              setSelectedAvailableInstructions([...selectedAvailableInstructions, instruction.id]);
+                            }
+                          }}
+                        />
+                        <span>
+                          {instruction.id} - {instruction.title}
+                        </span>
+                      </label>
                     ))}
                 </div>
               </div>
@@ -1912,8 +1926,15 @@ function EditMissionForm({
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
                 <button
                   type="button"
+                  onClick={() => {
+                    // Add selected available instructions to the mission
+                    const newInstructions = [...selectedInstructions, ...selectedAvailableInstructions];
+                    setSelectedInstructions(newInstructions);
+                    setSelectedAvailableInstructions([]);
+                  }}
                   className={styles.addButton}
                   style={{ width: "80px" }}
+                  disabled={selectedAvailableInstructions.length === 0}
                 >
                   →
                 </button>
