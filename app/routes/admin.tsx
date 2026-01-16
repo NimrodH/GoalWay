@@ -1330,9 +1330,6 @@ function EditMissionForm({
   const [description, setDescription] = useState("");
   const [selectedInstructions, setSelectedInstructions] = useState<string[]>([]);
   const [selectedAvailableInstructions, setSelectedAvailableInstructions] = useState<string[]>([]);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
-  const [isUploading, setIsUploading] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const { session } = useAuth();
   const [originalCode, setOriginalCode] = useState("");
@@ -1422,89 +1419,7 @@ function EditMissionForm({
     instructionFetcher.submit(formData, { method: "post" });
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
-  const handlePasteFromClipboard = async () => {
-    try {
-      const permissionStatus = await navigator.permissions.query({ name: "clipboard-read" as PermissionName });
-      console.log("Clipboard permission:", permissionStatus.state);
-
-      const clipboardItems = await navigator.clipboard.read();
-      console.log("Clipboard items count:", clipboardItems.length);
-
-      for (const item of clipboardItems) {
-        console.log("Available clipboard types:", item.types);
-
-        const imageType = item.types.find((type) => type.startsWith("image/"));
-
-        if (imageType) {
-          console.log("Found image type:", imageType);
-          const blob = await item.getType(imageType);
-          console.log("Blob size:", blob.size, "bytes");
-
-          const timestamp = Date.now();
-          const extension = imageType.split("/")[1] || "png";
-          const file = new File([blob], `pasted-image-${timestamp}.${extension}`, { type: blob.type });
-
-          setImageFile(file);
-
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            setImagePreview(reader.result as string);
-          };
-          reader.readAsDataURL(blob);
-
-          alert(`Image pasted successfully! (${Math.round(blob.size / 1024)}KB)`);
-          return;
-        }
-      }
-
-      const allTypes = clipboardItems.flatMap((item) => item.types).join(", ");
-      alert(
-        `No image found in clipboard.\n\nAvailable formats: ${allTypes || "none"}\n\nPlease copy an image (right-click on image → Copy Image, or use a screenshot tool).`,
-      );
-    } catch (error) {
-      console.error("Clipboard error details:", error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-
-      if (errorMessage.includes("denied") || errorMessage.includes("permission")) {
-        alert(
-          'Clipboard access denied.\n\nPlease allow clipboard access in your browser settings, or try:\n1. Copy an image using Ctrl+C (or Cmd+C on Mac)\n2. Right-click on an image and select "Copy Image"\n3. Use a screenshot tool and copy to clipboard',
-        );
-      } else if (errorMessage.includes("not supported")) {
-        alert("Clipboard API not supported.\n\nPlease use the file input instead.");
-      } else {
-        alert(
-          `Failed to read clipboard: ${errorMessage}\n\nTry:\n1. Copy an image to clipboard\n2. Make sure you\'re using a modern browser (Chrome, Edge, Firefox)\n3. If using a screenshot tool, ensure it copies to clipboard`,
-        );
-      }
-    }
-  };
-
-  const handleImageUpload = async () => {
-    if (!imageFile) return;
-
-    setIsUploading(true);
-    const result = await uploadImage(imageFile, "missions");
-    setIsUploading(false);
-
-    if ("error" in result) {
-      alert(`Upload failed: ${result.error}`);
-    } else {
-      setImagePreview(result.url);
-      alert(`Image uploaded successfully! URL: ${result.url}`);
-    }
-  };
 
   const updateMissionFormFields = (missionId: string) => {
     setSelectedMissionId(missionId);
@@ -1769,48 +1684,6 @@ function EditMissionForm({
                   placeholder="Enter mission description..."
                 />
               </div>
-            </div>
-          </div>
-
-          <div className={styles.formSection}>
-            <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}>
-              Mission Image (Optional)
-            </h2>
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Upload Image</label>
-              <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-                <button type="button" onClick={handlePasteFromClipboard} className={styles.addButton}>
-                  📋 Paste from Clipboard
-                </button>
-              </div>
-              <input type="file" accept="image/*" onChange={handleImageChange} className={styles.input} />
-              {imagePreview && (
-                <div style={{ marginTop: "var(--space-3)" }}>
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    style={{ maxWidth: "300px", borderRadius: "var(--radius-3)" }}
-                  />
-                </div>
-              )}
-              {imageFile && !isUploading && (
-                <button
-                  type="button"
-                  onClick={handleImageUpload}
-                  className={styles.addButton}
-                  style={{ marginTop: "var(--space-3)" }}
-                >
-                  Upload Image to Supabase
-                </button>
-              )}
-              {isUploading && (
-                <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>Uploading...</p>
-              )}
-              {actionData?.imageUrl && (
-                <p style={{ marginTop: "var(--space-2)", fontSize: "0.875rem", color: "var(--color-success-11)" }}>
-                  Image URL: {actionData.imageUrl}
-                </p>
-              )}
             </div>
           </div>
 
