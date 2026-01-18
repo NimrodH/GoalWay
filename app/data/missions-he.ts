@@ -3,6 +3,7 @@ export interface Mission {
   title: string;
   description: string;
   instructionIds: string[];
+  instructionTitles?: Record<string, string>; // Optional: alternative titles for instructions
 }
 
 export const missionsHe: Mission[] = [

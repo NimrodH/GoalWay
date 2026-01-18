@@ -1339,6 +1339,10 @@ function EditMissionForm({
   const [showNewInstructionDialog, setShowNewInstructionDialog] = useState(false);
   const [newInstructionTitle, setNewInstructionTitle] = useState("");
   const [selectedMissionInstruction, setSelectedMissionInstruction] = useState<string | null>(null);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [renameInstructionId, setRenameInstructionId] = useState<string | null>(null);
+  const [alternativeTitle, setAlternativeTitle] = useState("");
+  const [instructionTitles, setInstructionTitles] = useState<Record<string, string>>({});
 
   // Track changes
   useEffect(() => {
@@ -1350,7 +1354,7 @@ function EditMissionForm({
         onChangesDetected(currentCode !== originalCode);
       }
     }
-  }, [id, title, description, selectedInstructions, selectedMissionId]);
+  }, [id, title, description, selectedInstructions, instructionTitles, selectedMissionId]);
 
   // Reset on save or mission change
   useEffect(() => {
@@ -1429,12 +1433,14 @@ function EditMissionForm({
       setTitle(mission.title);
       setDescription(mission.description);
       setSelectedInstructions(mission.instructionIds);
+      setInstructionTitles(mission.instructionTitles || {});
     } else {
       // No data for this language, start with empty fields
       setId(missionId);
       setTitle("");
       setDescription("");
       setSelectedInstructions([]);
+      setInstructionTitles({});
     }
   };
 
@@ -1484,6 +1490,7 @@ function EditMissionForm({
       title,
       description,
       instructionIds: selectedInstructions,
+      ...(Object.keys(instructionTitles).length > 0 && { instructionTitles }),
     };
 
     return JSON.stringify(mission, null, 2);
@@ -1847,6 +1854,25 @@ function EditMissionForm({
                     >
                       + New
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedMissionInstruction) {
+                          const instruction = instructions.find((i) => i.id === selectedMissionInstruction);
+                          const currentAltTitle = instructionTitles[selectedMissionInstruction] || "";
+                          setRenameInstructionId(selectedMissionInstruction);
+                          setAlternativeTitle(currentAltTitle);
+                          setShowRenameDialog(true);
+                        } else {
+                          alert("Please select an instruction from the list using the radio button first");
+                        }
+                      }}
+                      className={styles.addButton}
+                      disabled={!selectedMissionInstruction}
+                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                    >
+                      Rename
+                    </button>
                   </div>
                 </div>
                 <div
@@ -1861,6 +1887,7 @@ function EditMissionForm({
                   {selectedInstructions.map((instructionId) => {
                     const instruction = instructions.find((i) => i.id === instructionId);
                     if (!instruction) return null;
+                    const displayTitle = instructionTitles[instructionId] || instruction.title;
                     return (
                       <label
                         key={instruction.id}
@@ -1878,7 +1905,12 @@ function EditMissionForm({
                           onChange={() => setSelectedMissionInstruction(instruction.id)}
                         />
                         <span>
-                          {instruction.id} - {instruction.title}
+                          {instruction.id} - {displayTitle}
+                          {instructionTitles[instructionId] && (
+                            <span style={{ color: "var(--color-accent-11)", fontSize: "0.875rem", marginLeft: "var(--space-2)" }}>
+                              (renamed)
+                            </span>
+                          )}
                         </span>
                       </label>
                     );
@@ -1929,6 +1961,62 @@ function EditMissionForm({
             )}
           </div>
         </>
+      )}
+
+      {/* Rename Instruction Dialog */}
+      {showRenameDialog && (
+        <div className={styles.dialogOverlay} onClick={() => setShowRenameDialog(false)}>
+          <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.dialogHeader}>
+              <h2 className={styles.dialogTitle}>Rename Instruction for This Mission</h2>
+              <button className={styles.dialogClose} onClick={() => setShowRenameDialog(false)}>
+                ✕
+              </button>
+            </div>
+            <div className={styles.formGroup} style={{ marginTop: "var(--space-4)" }}>
+              <label className={styles.label}>Alternative Title (leave empty to use original title)</label>
+              <input
+                type="text"
+                className={styles.input}
+                value={alternativeTitle}
+                onChange={(e) => setAlternativeTitle(e.target.value)}
+                placeholder="Enter alternative title..."
+                autoFocus
+              />
+            </div>
+            <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)" }}>
+              <button
+                type="button"
+                onClick={() => setShowRenameDialog(false)}
+                className={styles.removeButton}
+                style={{ flex: 1 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (renameInstructionId) {
+                    const newTitles = { ...instructionTitles };
+                    if (alternativeTitle.trim()) {
+                      newTitles[renameInstructionId] = alternativeTitle.trim();
+                    } else {
+                      delete newTitles[renameInstructionId];
+                    }
+                    setInstructionTitles(newTitles);
+                    setShowRenameDialog(false);
+                    setRenameInstructionId(null);
+                    setAlternativeTitle("");
+                  }
+                }}
+                className={styles.submitButton}
+                style={{ flex: 1 }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* New Instruction Dialog */}

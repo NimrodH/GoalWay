@@ -5,6 +5,7 @@ export interface Mission {
   title: string;
   description: string;
   instructionIds: string[];
+  instructionTitles?: Record<string, string>; // Optional: alternative titles for instructions
 }
 
 export async function getAllMissions(): Promise<Mission[]> {
