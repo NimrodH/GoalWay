@@ -115,6 +115,7 @@
   font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.2s;
+  margin-right: var(--space-3);
 }
 
 .removeButton:hover {
@@ -164,6 +165,7 @@
 .submitButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  margin-left: var(--space-3);
 }
 
 .previewSection {
@@ -435,6 +437,9 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding-left: var(--space-5);
+  padding-right: var(--space-5);
+  padding-bottom: var(--space-5);
 }
 
 .dialogHeader {
