@@ -1414,6 +1414,9 @@ function EditMissionForm({
       explanation: [],
     };
 
+    // Add the new instruction to the mission's selected instructions immediately
+    setSelectedInstructions([...selectedInstructions, newId]);
+
     // Submit to database using fetcher
     const formData = new FormData();
     formData.append("actionType", "saveInstruction");
@@ -1519,9 +1522,6 @@ function EditMissionForm({
         // Check if this was a "create and add" operation
         const pendingId = (window as any).__pendingNewInstructionId;
         if (pendingId && selectedMissionId) {
-          // Add the new instruction to the selected instructions list
-          setSelectedInstructions([...selectedInstructions, pendingId]);
-
           // Close the dialog and reset
           setShowNewInstructionDialog(false);
           setNewInstructionTitle("");
