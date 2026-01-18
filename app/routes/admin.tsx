@@ -784,9 +784,13 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
             <p className={styles.subtitle}>Create and manage instructions and missions</p>
           </div>
           <div className={styles.userInfo}>
-            <Link to="/" className={styles.homeButton}>
+            <button
+              onClick={() => handleNavigationWithCheck(() => navigate("/"))}
+              className={styles.homeButton}
+              style={{ cursor: "pointer" }}
+            >
               Go to Home
-            </Link>
+            </button>
             <div className={styles.languageToggle}>
               <button
                 type="button"
