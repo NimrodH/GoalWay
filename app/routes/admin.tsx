@@ -1555,8 +1555,8 @@ function EditMissionForm({
             method: "POST",
             body: missionFormData,
           }).then(() => {
-            // Reload the page to refresh the instruction list
-            window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${selectedMissionId}`;
+            // Reload the page to refresh the instruction list and scroll to the instruction list section
+            window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${selectedMissionId}#select-instructions`;
           });
         } else if (instructionFetcher.data.newInstructionId) {
           // Regular "add new instruction" from edit-instruction tab
@@ -1726,7 +1726,7 @@ function EditMissionForm({
           </div>
 
           {/* Select Instructions by Arrow */}
-          <div className={styles.formSection}>
+          <div id="select-instructions" className={styles.formSection}>
             <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}>
               Select Instructions by Arrow
             </h2>
