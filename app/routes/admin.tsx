@@ -1414,20 +1414,33 @@ function EditMissionForm({
       explanation: [],
     };
 
-    // Add the new instruction to the mission's selected instructions immediately
-    setSelectedInstructions([...selectedInstructions, newId]);
+    // Create updated mission with the new instruction added
+    const updatedInstructionIds = [...selectedInstructions, newId];
+    const updatedMission = {
+      id,
+      title,
+      description,
+      instructionIds: updatedInstructionIds,
+      ...(Object.keys(instructionTitles).length > 0 && { instructionTitles }),
+    };
 
-    // Submit to database using fetcher
-    const formData = new FormData();
-    formData.append("actionType", "saveInstruction");
-    formData.append("id", newId);
-    formData.append("dataEn", JSON.stringify(newInstruction));
-    formData.append("language", language);
-    formData.append("accessToken", session?.access_token || "");
+    // First save the instruction
+    const instructionFormData = new FormData();
+    instructionFormData.append("actionType", "saveInstruction");
+    instructionFormData.append("id", newId);
+    instructionFormData.append("dataEn", JSON.stringify(newInstruction));
+    instructionFormData.append("language", language);
+    instructionFormData.append("accessToken", session?.access_token || "");
 
-    // Store the new ID temporarily so we can use it in the useEffect
-    (window as any).__pendingNewInstructionId = newId;
-    instructionFetcher.submit(formData, { method: "post" });
+    // Store mission data to save after instruction creation
+    (window as any).__pendingMissionUpdate = {
+      missionId: selectedMissionId,
+      missionData: JSON.stringify(updatedMission),
+      language,
+      accessToken: session?.access_token || "",
+    };
+
+    instructionFetcher.submit(instructionFormData, { method: "post" });
   };
 
 
@@ -1520,17 +1533,31 @@ function EditMissionForm({
     if (instructionFetcher.data && instructionFetcher.state === "idle") {
       if (instructionFetcher.data.success) {
         // Check if this was a "create and add" operation
-        const pendingId = (window as any).__pendingNewInstructionId;
-        if (pendingId && selectedMissionId) {
+        const pendingMissionUpdate = (window as any).__pendingMissionUpdate;
+        if (pendingMissionUpdate) {
+          // Instruction created successfully, now save the mission with the new instruction
+          const missionFormData = new FormData();
+          missionFormData.append("actionType", "saveMission");
+          missionFormData.append("id", pendingMissionUpdate.missionId);
+          missionFormData.append("dataEn", pendingMissionUpdate.missionData);
+          missionFormData.append("language", pendingMissionUpdate.language);
+          missionFormData.append("accessToken", pendingMissionUpdate.accessToken);
+
+          // Clear the pending data
+          delete (window as any).__pendingMissionUpdate;
+
           // Close the dialog and reset
           setShowNewInstructionDialog(false);
           setNewInstructionTitle("");
 
-          // Clear the pending ID
-          delete (window as any).__pendingNewInstructionId;
-
-          // Reload the page to refresh the instruction list
-          window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${selectedMissionId}`;
+          // Submit mission update
+          fetch("/admin", {
+            method: "POST",
+            body: missionFormData,
+          }).then(() => {
+            // Reload the page to refresh the instruction list
+            window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${selectedMissionId}`;
+          });
         } else if (instructionFetcher.data.newInstructionId) {
           // Regular "add new instruction" from edit-instruction tab
           window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${instructionFetcher.data.newInstructionId}`;
@@ -1539,7 +1566,7 @@ function EditMissionForm({
         alert(`Failed to create instruction: ${instructionFetcher.data.error}`);
       }
     }
-  }, [instructionFetcher.data, instructionFetcher.state, language, selectedMissionId, selectedInstructions]);
+  }, [instructionFetcher.data, instructionFetcher.state, language, selectedMissionId]);
 
   const handleClearForNewMission = () => {
     onNavigationRequest(() => {
