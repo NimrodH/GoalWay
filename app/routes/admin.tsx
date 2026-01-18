@@ -1733,9 +1733,34 @@ function EditMissionForm({
             <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-start" }}>
               {/* Left list - Available instructions */}
               <div style={{ flex: 1 }} className={styles.div3}>
-                <h3 style={{ marginBottom: "var(--space-2)", fontSize: "0.875rem", fontWeight: 600 }}>
-                  Available Instructions
-                </h3>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "var(--space-2)",
+                  }}
+                >
+                  <h3 style={{ fontSize: "0.875rem", fontWeight: 600 }}>Available Instructions</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedAvailableInstructions.length > 0) {
+                        if (window.confirm(`Are you sure you want to delete ${selectedAvailableInstructions.length} instruction(s)? This action cannot be undone.`)) {
+                          // TODO: Implement delete functionality
+                          alert("Delete functionality will be implemented");
+                        }
+                      } else {
+                        alert("Please select at least one instruction to delete");
+                      }
+                    }}
+                    className={styles.removeButton}
+                    disabled={selectedAvailableInstructions.length === 0}
+                    style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                  >
+                    Delete
+                  </button>
+                </div>
                 <div
                   style={{
                     border: "1px solid var(--color-neutral-6)",
