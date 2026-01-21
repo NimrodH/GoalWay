@@ -1105,9 +1105,7 @@ function EditInstructionForm({
 
   // Get missions that include the selected instruction
   const getMissionsForInstruction = (instructionId: string) => {
-    return missions.filter((mission) => 
-      mission.instructions?.some(([id]) => id === instructionId)
-    );
+    return missions.filter((mission) => mission.instructions?.some(([id]) => id === instructionId));
   };
 
   const selectedInstructionMissions = selectedInstructionId ? getMissionsForInstruction(selectedInstructionId) : [];
@@ -1207,7 +1205,13 @@ function EditInstructionForm({
                           {mission.id} - {mission.title}
                         </div>
                         {hasCustomTitle && (
-                          <div style={{ fontSize: "0.75rem", color: "var(--color-accent-11)", marginTop: "var(--space-1)" }}>
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "var(--color-accent-11)",
+                              marginTop: "var(--space-1)",
+                            }}
+                          >
                             Custom title: "{instructionData[1]}"
                           </div>
                         )}
@@ -1224,7 +1228,10 @@ function EditInstructionForm({
       {selectedInstructionId && (
         <>
           <div className={styles.formSection}>
-            <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
+            <h2
+              className={styles.sectionTitle}
+              style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}
+            >
               Instruction Details
             </h2>
             <div className={styles.formGrid}>
@@ -1300,7 +1307,10 @@ function EditInstructionForm({
 
           {type === "default" && (
             <div className={styles.formSection}>
-              <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
+              <h2
+                className={styles.sectionTitle}
+                style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}
+              >
                 Explanation Content
               </h2>
 
@@ -1329,7 +1339,10 @@ function EditInstructionForm({
           )}
 
           <div className={styles.previewSection}>
-            <h2 className={styles.previewTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
+            <h2
+              className={styles.previewTitle}
+              style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}
+            >
               Updated Code
             </h2>
             <p style={{ marginBottom: "var(--space-3)", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
@@ -1456,11 +1469,11 @@ function EditMissionForm({
       localStorage.removeItem("scrollToInstructions");
       // Scroll to the section after a brief delay to ensure DOM is ready
       setTimeout(() => {
-        const sectionTitle = Array.from(document.querySelectorAll('h2')).find(
-          (el) => el.textContent?.includes("Select Instructions by Arrow")
+        const sectionTitle = Array.from(document.querySelectorAll("h2")).find((el) =>
+          el.textContent?.includes("Select Instructions by Arrow"),
         );
         if (sectionTitle) {
-          sectionTitle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          sectionTitle.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       }, 300);
     }
@@ -1531,8 +1544,6 @@ function EditMissionForm({
 
     instructionFetcher.submit(instructionFormData, { method: "post" });
   };
-
-
 
   const updateMissionFormFields = (missionId: string) => {
     setSelectedMissionId(missionId);
@@ -1762,7 +1773,10 @@ function EditMissionForm({
             marginBottom: "var(--space-3)",
           }}
         >
-          <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}>
+          <h2
+            className={styles.sectionTitle}
+            style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}
+          >
             Select Mission to Edit
           </h2>
           <div style={{ display: "flex", gap: "var(--space-2)" }}>
@@ -1805,7 +1819,10 @@ function EditMissionForm({
       {selectedMissionId && (
         <>
           <div className={styles.formSection}>
-            <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}>
+            <h2
+              className={styles.sectionTitle}
+              style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}
+            >
               Mission Details
             </h2>
             <div className={styles.formGrid}>
@@ -1845,8 +1862,11 @@ function EditMissionForm({
 
           {/* Select Instructions by Arrow */}
           <div className={styles.formSection}>
-            <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}>
-              Select Instructions by Arrow
+            <h2
+              className={styles.sectionTitle}
+              style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}
+            >
+              Select Instructions
             </h2>
             <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-start" }}>
               {/* Left list - Available instructions */}
@@ -1864,7 +1884,11 @@ function EditMissionForm({
                     type="button"
                     onClick={() => {
                       if (selectedAvailableInstructions.length > 0) {
-                        if (window.confirm(`Are you sure you want to delete ${selectedAvailableInstructions.length} instruction(s)? This action cannot be undone.`)) {
+                        if (
+                          window.confirm(
+                            `Are you sure you want to delete ${selectedAvailableInstructions.length} instruction(s)? This action cannot be undone.`,
+                          )
+                        ) {
                           // TODO: Implement delete functionality
                           alert("Delete functionality will be implemented");
                         }
@@ -1933,11 +1957,14 @@ function EditMissionForm({
                       const insertIndex = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
                       newInstructions = [
                         ...selectedInstructions.slice(0, insertIndex),
-                        ...selectedAvailableInstructions.map(id => [id] as [string, string?]),
+                        ...selectedAvailableInstructions.map((id) => [id] as [string, string?]),
                         ...selectedInstructions.slice(insertIndex),
                       ];
                     } else {
-                      newInstructions = [...selectedInstructions, ...selectedAvailableInstructions.map(id => [id] as [string, string?])];
+                      newInstructions = [
+                        ...selectedInstructions,
+                        ...selectedAvailableInstructions.map((id) => [id] as [string, string?]),
+                      ];
                     }
                     setSelectedInstructions(newInstructions);
                     setSelectedAvailableInstructions([]);
@@ -1982,7 +2009,8 @@ function EditMissionForm({
                       onClick={moveInstructionUp}
                       className={styles.addButton}
                       disabled={
-                        !selectedMissionInstruction || selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) === 0
+                        !selectedMissionInstruction ||
+                        selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) === 0
                       }
                       title="Move selected instruction up"
                       style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
@@ -1995,7 +2023,8 @@ function EditMissionForm({
                       className={styles.addButton}
                       disabled={
                         !selectedMissionInstruction ||
-                        selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) === selectedInstructions.length - 1
+                        selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) ===
+                          selectedInstructions.length - 1
                       }
                       title="Move selected instruction down"
                       style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
@@ -2036,7 +2065,9 @@ function EditMissionForm({
                       type="button"
                       onClick={() => {
                         if (selectedMissionInstruction) {
-                          const instructionData = selectedInstructions.find(([id]) => id === selectedMissionInstruction);
+                          const instructionData = selectedInstructions.find(
+                            ([id]) => id === selectedMissionInstruction,
+                          );
                           const currentAltTitle = instructionData?.[1] || "";
                           setRenameInstructionId(selectedMissionInstruction);
                           setAlternativeTitle(currentAltTitle);
@@ -2085,7 +2116,13 @@ function EditMissionForm({
                         <span>
                           {instructionId} - {displayTitle}
                           {customTitle && (
-                            <span style={{ color: "var(--color-accent-11)", fontSize: "0.875rem", marginLeft: "var(--space-2)" }}>
+                            <span
+                              style={{
+                                color: "var(--color-accent-11)",
+                                fontSize: "0.875rem",
+                                marginLeft: "var(--space-2)",
+                              }}
+                            >
                               ({instruction.title})
                             </span>
                           )}
@@ -2099,7 +2136,10 @@ function EditMissionForm({
           </div>
 
           <div className={styles.previewSection}>
-            <h2 className={styles.previewTitle} style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}>
+            <h2
+              className={styles.previewTitle}
+              style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}
+            >
               Updated Code
             </h2>
             <p style={{ marginBottom: "var(--space-3)", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
@@ -2177,7 +2217,9 @@ function EditMissionForm({
                   if (renameInstructionId) {
                     const newInstructions = selectedInstructions.map(([id, title]) => {
                       if (id === renameInstructionId) {
-                        return alternativeTitle.trim() ? [id, alternativeTitle.trim()] as [string, string] : [id] as [string, string?];
+                        return alternativeTitle.trim()
+                          ? ([id, alternativeTitle.trim()] as [string, string])
+                          : ([id] as [string, string?]);
                       }
                       return [id, title] as [string, string?];
                     });
