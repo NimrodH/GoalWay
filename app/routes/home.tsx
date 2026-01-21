@@ -52,7 +52,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <p className={styles.missionDescription}>{mission.description}</p>
               <div className={styles.missionFooter}>
                 <span className={styles.instructionCount}>
-                  {mission.instructionIds.length} {mission.instructionIds.length === 1 ? "instruction" : "instructions"}
+                  {mission.instructions.length} {mission.instructions.length === 1 ? "instruction" : "instructions"}
                 </span>
               </div>
             </Link>

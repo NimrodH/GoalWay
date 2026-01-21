@@ -27,7 +27,8 @@ export async function loader({ params }: Route.LoaderArgs) {
     throw data("משימה לא נמצאה", { status: 404 });
   }
 
-  const instructions = await getInstructionsByIdsHe(mission.instructionIds);
+  const instructionIds = mission.instructions.map(([id]) => id);
+  const instructions = await getInstructionsByIdsHe(instructionIds);
 
   return { mission, instructions, allMissions };
 }
@@ -35,7 +36,12 @@ export async function loader({ params }: Route.LoaderArgs) {
 export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
   const { mission, instructions, allMissions } = loaderData;
 
-  const missionInstructions = instructions;
+  // Map instructions to maintain order from mission.instructions and apply custom titles
+  const missionInstructions = mission.instructions.map(([id, customTitle]) => {
+    const instruction = instructions.find(inst => inst.id === id);
+    if (!instruction) return null;
+    return customTitle ? { ...instruction, title: customTitle } : instruction;
+  }).filter(Boolean) as typeof instructions;
 
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
 
@@ -98,12 +104,10 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
         </div>
         <p className={styles.missionDescription}>{mission.description}</p>
         <div className={styles.instructionList}>
-          {missionInstructions.map((instruction) => {
-            const displayTitle = mission.instructionTitles?.[instruction.id] || instruction.title;
-            return (
+          {missionInstructions.map((instruction) => (
               <div key={instruction.id} className={styles.instructionItem}>
                 <InstructionListItem
-                  title={displayTitle}
+                  title={instruction.title}
                   description={instruction.description}
                   selected={selectedInstructionId === instruction.id}
                   onClick={(event) => handleInstructionClick(instruction.id, event)}
@@ -114,8 +118,7 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
                   </div>
                 )}
               </div>
-            );
-          })}
+            ))}
         </div>
       </section>
 

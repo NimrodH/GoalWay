@@ -90,7 +90,7 @@ export async function action({ request }: Route.ActionArgs) {
         id: newId,
         title: "",
         description: "",
-        instructionIds: [],
+        instructions: [],
       };
 
       // Insert the new mission
@@ -1332,7 +1332,7 @@ function EditMissionForm({
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedInstructions, setSelectedInstructions] = useState<string[]>([]);
+  const [selectedInstructions, setSelectedInstructions] = useState<Array<[string, string?]>>([]);
   const [selectedAvailableInstructions, setSelectedAvailableInstructions] = useState<string[]>([]);
   const [isTranslating, setIsTranslating] = useState(false);
   const { session } = useAuth();
@@ -1346,7 +1346,6 @@ function EditMissionForm({
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [renameInstructionId, setRenameInstructionId] = useState<string | null>(null);
   const [alternativeTitle, setAlternativeTitle] = useState("");
-  const [instructionTitles, setInstructionTitles] = useState<Record<string, string>>({});
 
   // Track changes
   useEffect(() => {
@@ -1358,7 +1357,7 @@ function EditMissionForm({
         onChangesDetected(currentCode !== originalCode);
       }
     }
-  }, [id, title, description, selectedInstructions, instructionTitles, selectedMissionId]);
+  }, [id, title, description, selectedInstructions, selectedMissionId]);
 
   // Reset on save or mission change
   useEffect(() => {
@@ -1415,13 +1414,12 @@ function EditMissionForm({
     };
 
     // Create updated mission with the new instruction added
-    const updatedInstructionIds = [...selectedInstructions, newId];
+    const updatedInstructions = [...selectedInstructions, [newId]];
     const updatedMission = {
       id,
       title,
       description,
-      instructionIds: updatedInstructionIds,
-      ...(Object.keys(instructionTitles).length > 0 && { instructionTitles }),
+      instructions: updatedInstructions,
     };
 
     // First save the instruction
@@ -1452,15 +1450,13 @@ function EditMissionForm({
       setId(mission.id);
       setTitle(mission.title);
       setDescription(mission.description);
-      setSelectedInstructions(mission.instructionIds);
-      setInstructionTitles(mission.instructionTitles || {});
+      setSelectedInstructions(mission.instructions);
     } else {
       // No data for this language, start with empty fields
       setId(missionId);
       setTitle("");
       setDescription("");
       setSelectedInstructions([]);
-      setInstructionTitles({});
     }
   };
 
@@ -1470,13 +1466,14 @@ function EditMissionForm({
   };
 
   const toggleInstruction = (instructionId: string) => {
-    if (selectedInstructions.includes(instructionId)) {
-      setSelectedInstructions(selectedInstructions.filter((id) => id !== instructionId));
+    const instructionIndex = selectedInstructions.findIndex(([id]) => id === instructionId);
+    if (instructionIndex !== -1) {
+      setSelectedInstructions(selectedInstructions.filter(([id]) => id !== instructionId));
       if (selectedMissionInstruction === instructionId) {
         setSelectedMissionInstruction(null);
       }
     } else {
-      setSelectedInstructions([...selectedInstructions, instructionId]);
+      setSelectedInstructions([...selectedInstructions, [instructionId]]);
     }
   };
 
@@ -1484,7 +1481,7 @@ function EditMissionForm({
     e.preventDefault();
     if (!selectedMissionInstruction) return;
 
-    const index = selectedInstructions.indexOf(selectedMissionInstruction);
+    const index = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
     if (index <= 0) return; // Already at the top or not found
 
     const newOrder = [...selectedInstructions];
@@ -1496,7 +1493,7 @@ function EditMissionForm({
     e.preventDefault();
     if (!selectedMissionInstruction) return;
 
-    const index = selectedInstructions.indexOf(selectedMissionInstruction);
+    const index = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
     if (index === -1 || index >= selectedInstructions.length - 1) return; // Already at the bottom or not found
 
     const newOrder = [...selectedInstructions];
@@ -1509,8 +1506,7 @@ function EditMissionForm({
       id,
       title,
       description,
-      instructionIds: selectedInstructions,
-      ...(Object.keys(instructionTitles).length > 0 && { instructionTitles }),
+      instructions: selectedInstructions,
     };
 
     return JSON.stringify(mission, null, 2);
@@ -1771,7 +1767,7 @@ function EditMissionForm({
                   }}
                 >
                   {instructions
-                    .filter((instruction) => !selectedInstructions.includes(instruction.id))
+                    .filter((instruction) => !selectedInstructions.some(([id]) => id === instruction.id))
                     .map((instruction) => (
                       <label
                         key={instruction.id}
@@ -1812,14 +1808,14 @@ function EditMissionForm({
                     // If there's a selected mission instruction, insert above it; otherwise append
                     let newInstructions;
                     if (selectedMissionInstruction) {
-                      const insertIndex = selectedInstructions.indexOf(selectedMissionInstruction);
+                      const insertIndex = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
                       newInstructions = [
                         ...selectedInstructions.slice(0, insertIndex),
-                        ...selectedAvailableInstructions,
+                        ...selectedAvailableInstructions.map(id => [id] as [string, string?]),
                         ...selectedInstructions.slice(insertIndex),
                       ];
                     } else {
-                      newInstructions = [...selectedInstructions, ...selectedAvailableInstructions];
+                      newInstructions = [...selectedInstructions, ...selectedAvailableInstructions.map(id => [id] as [string, string?])];
                     }
                     setSelectedInstructions(newInstructions);
                     setSelectedAvailableInstructions([]);
@@ -1835,7 +1831,7 @@ function EditMissionForm({
                   onClick={() => {
                     if (selectedMissionInstruction) {
                       // Remove from selected instructions
-                      setSelectedInstructions(selectedInstructions.filter((id) => id !== selectedMissionInstruction));
+                      setSelectedInstructions(selectedInstructions.filter(([id]) => id !== selectedMissionInstruction));
                       setSelectedMissionInstruction(null);
                     }
                   }}
@@ -1864,7 +1860,7 @@ function EditMissionForm({
                       onClick={moveInstructionUp}
                       className={styles.addButton}
                       disabled={
-                        !selectedMissionInstruction || selectedInstructions.indexOf(selectedMissionInstruction) === 0
+                        !selectedMissionInstruction || selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) === 0
                       }
                       title="Move selected instruction up"
                       style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
@@ -1877,7 +1873,7 @@ function EditMissionForm({
                       className={styles.addButton}
                       disabled={
                         !selectedMissionInstruction ||
-                        selectedInstructions.indexOf(selectedMissionInstruction) === selectedInstructions.length - 1
+                        selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) === selectedInstructions.length - 1
                       }
                       title="Move selected instruction down"
                       style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
@@ -1914,8 +1910,8 @@ function EditMissionForm({
                       type="button"
                       onClick={() => {
                         if (selectedMissionInstruction) {
-                          const instruction = instructions.find((i) => i.id === selectedMissionInstruction);
-                          const currentAltTitle = instructionTitles[selectedMissionInstruction] || "";
+                          const instructionData = selectedInstructions.find(([id]) => id === selectedMissionInstruction);
+                          const currentAltTitle = instructionData?.[1] || "";
                           setRenameInstructionId(selectedMissionInstruction);
                           setAlternativeTitle(currentAltTitle);
                           setShowRenameDialog(true);
@@ -1940,13 +1936,13 @@ function EditMissionForm({
                     overflowY: "auto",
                   }}
                 >
-                  {selectedInstructions.map((instructionId) => {
+                  {selectedInstructions.map(([instructionId, customTitle]) => {
                     const instruction = instructions.find((i) => i.id === instructionId);
                     if (!instruction) return null;
-                    const displayTitle = instructionTitles[instructionId] || instruction.title;
+                    const displayTitle = customTitle || instruction.title;
                     return (
                       <label
-                        key={instruction.id}
+                        key={instructionId}
                         className={styles.checkboxLabel}
                         style={{
                           padding: "var(--space-2)",
@@ -1957,12 +1953,12 @@ function EditMissionForm({
                         <input
                           type="radio"
                           name="missionInstructionRadio"
-                          checked={selectedMissionInstruction === instruction.id}
-                          onChange={() => setSelectedMissionInstruction(instruction.id)}
+                          checked={selectedMissionInstruction === instructionId}
+                          onChange={() => setSelectedMissionInstruction(instructionId)}
                         />
                         <span>
-                          {instruction.id} - {displayTitle}
-                          {instructionTitles[instructionId] && (
+                          {instructionId} - {displayTitle}
+                          {customTitle && (
                             <span style={{ color: "var(--color-accent-11)", fontSize: "0.875rem", marginLeft: "var(--space-2)" }}>
                               (renamed)
                             </span>
@@ -2053,13 +2049,13 @@ function EditMissionForm({
                 type="button"
                 onClick={() => {
                   if (renameInstructionId) {
-                    const newTitles = { ...instructionTitles };
-                    if (alternativeTitle.trim()) {
-                      newTitles[renameInstructionId] = alternativeTitle.trim();
-                    } else {
-                      delete newTitles[renameInstructionId];
-                    }
-                    setInstructionTitles(newTitles);
+                    const newInstructions = selectedInstructions.map(([id, title]) => {
+                      if (id === renameInstructionId) {
+                        return alternativeTitle.trim() ? [id, alternativeTitle.trim()] as [string, string] : [id] as [string, string?];
+                      }
+                      return [id, title] as [string, string?];
+                    });
+                    setSelectedInstructions(newInstructions);
                     setShowRenameDialog(false);
                     setRenameInstructionId(null);
                     setAlternativeTitle("");
