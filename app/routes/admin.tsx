@@ -1103,6 +1103,15 @@ function EditInstructionForm({
   // Track if there are unsaved changes
   const hasUnsavedChanges = selectedInstructionId && originalCode !== "" && generateCode() !== originalCode;
 
+  // Get missions that include the selected instruction
+  const getMissionsForInstruction = (instructionId: string) => {
+    return missions.filter((mission) => 
+      mission.instructions?.some(([id]) => id === instructionId)
+    );
+  };
+
+  const selectedInstructionMissions = selectedInstructionId ? getMissionsForInstruction(selectedInstructionId) : [];
+
   return (
     <div>
       <div className={styles.formSection}>
@@ -1126,25 +1135,85 @@ function EditInstructionForm({
             {fetcher.state !== "idle" ? "Creating..." : "+ Add New Instruction"}
           </button>
         </div>
-        <div className={styles.instructionCheckboxList}>
-          {allInstructionIds.map((id) => {
-            const instruction = instructions.find((i) => i.id === id);
-            return (
-              <label key={id} className={styles.checkboxLabel} style={{ cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name="instruction"
-                  value={id}
-                  checked={selectedInstructionId === id}
-                  onChange={() => handleSelectInstruction(id)}
-                />
-                <span>
-                  {id}
-                  {instruction ? ` - ${instruction.title}` : " (No data for this language)"}
-                </span>
-              </label>
-            );
-          })}
+        <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-start" }}>
+          {/* Left list - Instructions */}
+          <div style={{ flex: 1, maxWidth: "400px" }}>
+            <div className={styles.instructionCheckboxList}>
+              {allInstructionIds.map((id) => {
+                const instruction = instructions.find((i) => i.id === id);
+                return (
+                  <label key={id} className={styles.checkboxLabel} style={{ cursor: "pointer" }}>
+                    <input
+                      type="radio"
+                      name="instruction"
+                      value={id}
+                      checked={selectedInstructionId === id}
+                      onChange={() => handleSelectInstruction(id)}
+                    />
+                    <span>
+                      {id}
+                      {instruction ? ` - ${instruction.title}` : " (No data for this language)"}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Right panel - Missions using this instruction */}
+          <div style={{ flex: 1 }}>
+            <h3 style={{ fontSize: "0.875rem", fontWeight: 600, marginBottom: "var(--space-2)" }}>
+              {selectedInstructionId ? "Missions using this instruction" : "Select an instruction to see missions"}
+            </h3>
+            <div
+              style={{
+                border: "1px solid var(--color-neutral-6)",
+                borderRadius: "var(--radius-2)",
+                padding: "var(--space-3)",
+                background: "var(--color-neutral-3)",
+                maxHeight: "300px",
+                overflowY: "auto",
+              }}
+            >
+              {selectedInstructionId && selectedInstructionMissions.length === 0 && (
+                <p style={{ color: "var(--color-neutral-11)", fontSize: "0.875rem", textAlign: "center" }}>
+                  This instruction is not used in any missions
+                </p>
+              )}
+              {selectedInstructionId && selectedInstructionMissions.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                  {selectedInstructionMissions.map((mission) => {
+                    const instructionData = mission.instructions?.find(([id]) => id === selectedInstructionId);
+                    const hasCustomTitle = instructionData && instructionData[1];
+                    return (
+                      <div
+                        key={mission.id}
+                        style={{
+                          padding: "var(--space-2)",
+                          borderBottom: "1px solid var(--color-neutral-4)",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => {
+                          onNavigationRequest(() => {
+                            window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${mission.id}`;
+                          });
+                        }}
+                      >
+                        <div style={{ fontSize: "0.875rem", color: "var(--color-neutral-12)", fontWeight: 500 }}>
+                          {mission.id} - {mission.title}
+                        </div>
+                        {hasCustomTitle && (
+                          <div style={{ fontSize: "0.75rem", color: "var(--color-accent-11)", marginTop: "var(--space-1)" }}>
+                            Custom title: "{instructionData[1]}"
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
