@@ -1194,6 +1194,10 @@ function EditInstructionForm({
                           cursor: "pointer",
                         }}
                         onClick={() => {
+                          // Store the current instruction selection before navigating
+                          if (selectedInstructionId) {
+                            localStorage.setItem("lastSelectedInstructionId", selectedInstructionId);
+                          }
                           onNavigationRequest(() => {
                             window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${mission.id}`;
                           });
@@ -1514,6 +1518,8 @@ function EditMissionForm({
 
   const updateMissionFormFields = (missionId: string) => {
     setSelectedMissionId(missionId);
+    // Store the selected mission in localStorage
+    localStorage.setItem("lastSelectedMissionId", missionId);
     const mission = missions.find((m) => m.id === missionId);
     if (mission) {
       setId(mission.id);
@@ -1635,6 +1641,10 @@ function EditMissionForm({
 
   const handleClearForNewMission = () => {
     onNavigationRequest(() => {
+      // Store the current mission before navigating
+      if (selectedMissionId) {
+        localStorage.setItem("lastSelectedMissionId", selectedMissionId);
+      }
       // Create the new mission via fetcher
       const formData = new FormData();
       formData.append("actionType", "createMission");
@@ -1642,6 +1652,19 @@ function EditMissionForm({
 
       missionFetcher.submit(formData, { method: "post" });
     });
+  };
+
+  const handleSelectLastMission = () => {
+    const lastMissionId = localStorage.getItem("lastSelectedMissionId");
+    if (lastMissionId && allMissionIds.includes(lastMissionId)) {
+      onNavigationRequest(() => {
+        updateMissionFormFields(lastMissionId);
+        // Update URL to reflect the selection
+        window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${lastMissionId}`;
+      });
+    } else {
+      alert("No previous mission found or the mission no longer exists");
+    }
   };
 
   // Track if there are unsaved changes
@@ -1722,14 +1745,24 @@ function EditMissionForm({
           <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}>
             Select Mission to Edit
           </h2>
-          <button
-            type="button"
-            onClick={handleClearForNewMission}
-            className={styles.addButton}
-            disabled={missionFetcher.state !== "idle" || !session}
-          >
-            {missionFetcher.state !== "idle" ? "Creating..." : "+ Create New Mission"}
-          </button>
+          <div style={{ display: "flex", gap: "var(--space-2)" }}>
+            <button
+              type="button"
+              onClick={handleSelectLastMission}
+              className={styles.addButton}
+              disabled={!localStorage.getItem("lastSelectedMissionId")}
+            >
+              Select Last Mission
+            </button>
+            <button
+              type="button"
+              onClick={handleClearForNewMission}
+              className={styles.addButton}
+              disabled={missionFetcher.state !== "idle" || !session}
+            >
+              {missionFetcher.state !== "idle" ? "Creating..." : "+ Create New Mission"}
+            </button>
+          </div>
         </div>
         <select
           className={styles.input}
@@ -1953,6 +1986,10 @@ function EditMissionForm({
                       type="button"
                       onClick={() => {
                         if (selectedMissionInstruction) {
+                          // Store the current mission before navigating
+                          if (selectedMissionId) {
+                            localStorage.setItem("lastSelectedMissionId", selectedMissionId);
+                          }
                           onNavigationRequest(() => {
                             window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${selectedMissionInstruction}`;
                           });
