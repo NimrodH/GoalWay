@@ -1960,7 +1960,7 @@ function EditMissionForm({
                           {instructionId} - {displayTitle}
                           {customTitle && (
                             <span style={{ color: "var(--color-accent-11)", fontSize: "0.875rem", marginLeft: "var(--space-2)" }}>
-                              (renamed)
+                              ({instruction.title})
                             </span>
                           )}
                         </span>
