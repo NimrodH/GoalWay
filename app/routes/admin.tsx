@@ -1450,7 +1450,7 @@ function EditMissionForm({
       setId(mission.id);
       setTitle(mission.title);
       setDescription(mission.description);
-      setSelectedInstructions(mission.instructions);
+      setSelectedInstructions(mission.instructions || []);
     } else {
       // No data for this language, start with empty fields
       setId(missionId);
