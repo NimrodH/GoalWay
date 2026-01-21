@@ -7,6 +7,36 @@ export interface Mission {
   instructions: Array<[string, string?]>; // [instructionId, customTitle?]
 }
 
+// Legacy format from database (before migration)
+interface LegacyMission {
+  id: string;
+  title: string;
+  description: string;
+  instructionIds?: string[];
+  instructionTitles?: Record<string, string>;
+}
+
+// Migrate legacy mission format to new format
+function migrateLegacyMission(legacy: LegacyMission | Mission): Mission {
+  // Check if already in new format
+  if ('instructions' in legacy) {
+    return legacy as Mission;
+  }
+  
+  // Convert old format to new format
+  const instructions: Array<[string, string?]> = (legacy.instructionIds || []).map(id => {
+    const customTitle = legacy.instructionTitles?.[id];
+    return customTitle ? [id, customTitle] : [id];
+  });
+  
+  return {
+    id: legacy.id,
+    title: legacy.title,
+    description: legacy.description,
+    instructions,
+  };
+}
+
 export async function getAllMissions(): Promise<Mission[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
@@ -21,7 +51,7 @@ export async function getAllMissions(): Promise<Mission[]> {
 
   return (data || [])
     .filter((row: any) => row.data_en !== null)
-    .map((row: any) => row.data_en as Mission);
+    .map((row: any) => migrateLegacyMission(row.data_en));
 }
 
 export async function getAllMissionsHe(): Promise<Mission[]> {
@@ -38,7 +68,7 @@ export async function getAllMissionsHe(): Promise<Mission[]> {
 
   return (data || [])
     .filter((row: any) => row.data_he !== null)
-    .map((row: any) => row.data_he as Mission);
+    .map((row: any) => migrateLegacyMission(row.data_he));
 }
 
 export async function getMissionById(missionId: string): Promise<Mission | null> {
@@ -54,7 +84,7 @@ export async function getMissionById(missionId: string): Promise<Mission | null>
     return null;
   }
 
-  return data.data_en as Mission;
+  return migrateLegacyMission(data.data_en);
 }
 
 export async function getMissionByIdHe(missionId: string): Promise<Mission | null> {
@@ -70,7 +100,7 @@ export async function getMissionByIdHe(missionId: string): Promise<Mission | nul
     return null;
   }
 
-  return data.data_he as Mission;
+  return migrateLegacyMission(data.data_he);
 }
 
 export async function getAllMissionIds(): Promise<string[]> {
