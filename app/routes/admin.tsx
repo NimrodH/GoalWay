@@ -1862,12 +1862,27 @@ function EditMissionForm({
 
           {/* Select Instructions by Arrow */}
           <div className={styles.formSection}>
-            <h2
-              className={styles.sectionTitle}
-              style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}
-            >
-              Select Instructions
-            </h2>
+            <div style={{ marginBottom: "var(--space-3)" }}>
+              <h2
+                className={styles.sectionTitle}
+                style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)", marginBottom: "var(--space-2)" }}
+              >
+                Select Instructions by Arrow
+              </h2>
+              <div
+                style={{
+                  fontSize: "0.875rem",
+                  color: "var(--color-accent-11)",
+                  fontWeight: 500,
+                  padding: "var(--space-2)",
+                  background: "var(--color-accent-3)",
+                  borderRadius: "var(--radius-2)",
+                  border: "1px solid var(--color-accent-6)",
+                }}
+              >
+                Current Mission: {id} - {title || "(Untitled)"}
+              </div>
+            </div>
             <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-start" }}>
               {/* Left list - Available instructions */}
               <div style={{ flex: 1 }} className={styles.div3}>
