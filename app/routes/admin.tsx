@@ -1461,23 +1461,7 @@ function EditMissionForm({
     }
   }, [searchParams, allMissionIds, selectedMissionId]);
 
-  // Handle scroll to instructions section if flag is set
-  useEffect(() => {
-    const shouldScroll = localStorage.getItem("scrollToInstructions");
-    if (shouldScroll === "true" && selectedMissionId) {
-      // Clear the flag
-      localStorage.removeItem("scrollToInstructions");
-      // Scroll to the section after a brief delay to ensure DOM is ready
-      setTimeout(() => {
-        const sectionTitle = Array.from(document.querySelectorAll("h2")).find((el) =>
-          el.textContent?.includes("Select Instructions by Arrow"),
-        );
-        if (sectionTitle) {
-          sectionTitle.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }, 300);
-    }
-  }, [selectedMissionId]);
+
 
   const handleAddNewInstruction = () => {
     onNavigationRequest(() => {
@@ -1547,8 +1531,6 @@ function EditMissionForm({
 
   const updateMissionFormFields = (missionId: string) => {
     setSelectedMissionId(missionId);
-    // Store the selected mission in localStorage
-    localStorage.setItem("lastSelectedMissionId", missionId);
     const mission = missions.find((m) => m.id === missionId);
     if (mission) {
       setId(mission.id);
@@ -1670,10 +1652,6 @@ function EditMissionForm({
 
   const handleClearForNewMission = () => {
     onNavigationRequest(() => {
-      // Store the current mission before navigating
-      if (selectedMissionId) {
-        localStorage.setItem("lastSelectedMissionId", selectedMissionId);
-      }
       // Create the new mission via fetcher
       const formData = new FormData();
       formData.append("actionType", "createMission");
@@ -1683,20 +1661,7 @@ function EditMissionForm({
     });
   };
 
-  const handleSelectLastMission = () => {
-    const lastMissionId = localStorage.getItem("lastSelectedMissionId");
-    if (lastMissionId && allMissionIds.includes(lastMissionId)) {
-      onNavigationRequest(() => {
-        updateMissionFormFields(lastMissionId);
-        // Set flag to scroll after page loads
-        localStorage.setItem("scrollToInstructions", "true");
-        // Update URL to reflect the selection
-        window.location.href = `/admin?tab=edit-mission&lang=${language}&missionId=${lastMissionId}`;
-      });
-    } else {
-      alert("No previous mission found or the mission no longer exists");
-    }
-  };
+
 
   // Track if there are unsaved changes
   const hasUnsavedChangesMission = selectedMissionId && originalCode !== "" && generateCode() !== originalCode;
@@ -1779,16 +1744,7 @@ function EditMissionForm({
           >
             Select Mission to Edit
           </h2>
-          <div style={{ display: "flex", gap: "var(--space-2)" }}>
-            <button
-              type="button"
-              onClick={handleSelectLastMission}
-              className={styles.addButton}
-              disabled={!localStorage.getItem("lastSelectedMissionId")}
-            >
-              Select Last Mission
-            </button>
-            <button
+          <button
               type="button"
               onClick={handleClearForNewMission}
               className={styles.addButton}
@@ -1796,7 +1752,6 @@ function EditMissionForm({
             >
               {missionFetcher.state !== "idle" ? "Creating..." : "+ Create New Mission"}
             </button>
-          </div>
         </div>
         <select
           className={styles.input}
