@@ -1898,28 +1898,6 @@ function EditMissionForm({
                   }}
                 >
                   <h3 style={{ fontSize: "0.875rem", fontWeight: 600 }}>Available Instructions</h3>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedAvailableInstructions.length > 0) {
-                        if (
-                          window.confirm(
-                            `Are you sure you want to delete ${selectedAvailableInstructions.length} instruction(s)? This action cannot be undone.`,
-                          )
-                        ) {
-                          // TODO: Implement delete functionality
-                          alert("Delete functionality will be implemented");
-                        }
-                      } else {
-                        alert("Please select at least one instruction to delete");
-                      }
-                    }}
-                    className={styles.removeButton}
-                    disabled={selectedAvailableInstructions.length === 0}
-                    style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                  >
-                    Delete
-                  </button>
                 </div>
                 <div
                   style={{
