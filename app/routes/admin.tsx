@@ -1419,6 +1419,7 @@ function EditMissionForm({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedInstructions, setSelectedInstructions] = useState<Array<[string, string?]>>([]);
+  const [selectedAvailableInstructions, setSelectedAvailableInstructions] = useState<string[]>([]);
   const [isTranslating, setIsTranslating] = useState(false);
   const { session } = useAuth();
   const [originalCode, setOriginalCode] = useState("");
@@ -1888,7 +1889,38 @@ function EditMissionForm({
             <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-start" }}>
               {/* Left list - Available instructions */}
               <div style={{ flex: 1 }} className={styles.div3}>
-                <h3 style={{ fontSize: "0.875rem", fontWeight: 600, marginBottom: "var(--space-2)" }}>Available Instructions</h3>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "var(--space-2)",
+                  }}
+                >
+                  <h3 style={{ fontSize: "0.875rem", fontWeight: 600 }}>Available Instructions</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedAvailableInstructions.length > 0) {
+                        if (
+                          window.confirm(
+                            `Are you sure you want to delete ${selectedAvailableInstructions.length} instruction(s)? This action cannot be undone.`,
+                          )
+                        ) {
+                          // TODO: Implement delete functionality
+                          alert("Delete functionality will be implemented");
+                        }
+                      } else {
+                        alert("Please select at least one instruction to delete");
+                      }
+                    }}
+                    className={styles.removeButton}
+                    disabled={selectedAvailableInstructions.length === 0}
+                    style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                  >
+                    Delete
+                  </button>
+                </div>
                 <div
                   style={{
                     border: "1px solid var(--color-neutral-6)",
@@ -1901,16 +1933,32 @@ function EditMissionForm({
                   {instructions
                     .filter((instruction) => !selectedInstructions.some(([id]) => id === instruction.id))
                     .map((instruction) => (
-                      <div
+                      <label
                         key={instruction.id}
+                        className={styles.checkboxLabel}
                         style={{
                           padding: "var(--space-2)",
                           borderBottom: "1px solid var(--color-neutral-4)",
-                          cursor: "pointer",
+                          margin: 0,
                         }}
                       >
-                        {instruction.id} - {instruction.title}
-                      </div>
+                        <input
+                          type="checkbox"
+                          checked={selectedAvailableInstructions.includes(instruction.id)}
+                          onChange={() => {
+                            if (selectedAvailableInstructions.includes(instruction.id)) {
+                              setSelectedAvailableInstructions(
+                                selectedAvailableInstructions.filter((id) => id !== instruction.id),
+                              );
+                            } else {
+                              setSelectedAvailableInstructions([...selectedAvailableInstructions, instruction.id]);
+                            }
+                          }}
+                        />
+                        <span>
+                          {instruction.id} - {instruction.title}
+                        </span>
+                      </label>
                     ))}
                 </div>
               </div>
@@ -1920,11 +1968,28 @@ function EditMissionForm({
                 <button
                   type="button"
                   onClick={() => {
-                    alert("Please use drag-and-drop to add instructions");
+                    // Add selected available instructions to the mission
+                    // If there's a selected mission instruction, insert above it; otherwise append
+                    let newInstructions;
+                    if (selectedMissionInstruction) {
+                      const insertIndex = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
+                      newInstructions = [
+                        ...selectedInstructions.slice(0, insertIndex),
+                        ...selectedAvailableInstructions.map((id) => [id] as [string, string?]),
+                        ...selectedInstructions.slice(insertIndex),
+                      ];
+                    } else {
+                      newInstructions = [
+                        ...selectedInstructions,
+                        ...selectedAvailableInstructions.map((id) => [id] as [string, string?]),
+                      ];
+                    }
+                    setSelectedInstructions(newInstructions);
+                    setSelectedAvailableInstructions([]);
                   }}
                   className={styles.addButton}
                   style={{ width: "80px" }}
-                  disabled={true}
+                  disabled={selectedAvailableInstructions.length === 0}
                 >
                   →
                 </button>
