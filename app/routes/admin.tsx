@@ -48,6 +48,48 @@ export async function action({ request }: Route.ActionArgs) {
   const language = formData.get("language") as string;
   const accessToken = formData.get("accessToken") as string | null;
 
+  // Handle delete instruction action
+  if (actionType === "deleteInstruction") {
+    const accessToken = formData.get("accessToken") as string | null;
+    const instructionId = formData.get("instructionId") as string | null;
+
+    if (!accessToken) {
+      return { success: false, error: "Unauthorized: Authentication required" };
+    }
+
+    if (!instructionId) {
+      return { success: false, error: "Instruction ID is required" };
+    }
+
+    try {
+      // Create authenticated Supabase client
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+        global: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      });
+
+      // Delete the instruction
+      const { error } = await supabase.from("instructions").delete().eq("id", instructionId);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return {
+        success: true,
+        message: `Instruction ${instructionId} deleted successfully!`,
+        deletedInstructionId: instructionId,
+      };
+    } catch (error) {
+      console.error("Error in deleteInstruction:", error);
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
   // Handle delete mission action
   if (actionType === "deleteMission") {
     const accessToken = formData.get("accessToken") as string | null;
@@ -962,6 +1004,7 @@ function EditInstructionForm({
   const navigate = useNavigate();
   const [originalCode, setOriginalCode] = useState("");
   const fetcher = useFetcher<typeof action>();
+  const deleteInstructionFetcher = useFetcher<typeof action>();
 
   // Track changes
   useEffect(() => {
@@ -1007,6 +1050,19 @@ function EditInstructionForm({
     }
   }, [fetcher.data, fetcher.state, language]);
 
+  // Watch for delete instruction fetcher completion
+  useEffect(() => {
+    if (deleteInstructionFetcher.data && deleteInstructionFetcher.state === "idle") {
+      if (deleteInstructionFetcher.data.success) {
+        alert(deleteInstructionFetcher.data.message || "Instruction deleted successfully!");
+        // Clear the selected instruction and reload the page
+        window.location.href = `/admin?tab=edit-instruction&lang=${language}`;
+      } else if (deleteInstructionFetcher.data.error) {
+        alert(`Failed to delete instruction: ${deleteInstructionFetcher.data.error}`);
+      }
+    }
+  }, [deleteInstructionFetcher.data, deleteInstructionFetcher.state, language]);
+
   const handleAddNewInstruction = () => {
     onNavigationRequest(() => {
       // Find the highest ID from existing instructions
@@ -1023,6 +1079,32 @@ function EditInstructionForm({
 
       fetcher.submit(formData, { method: "post" });
     });
+  };
+
+  const handleDeleteInstruction = () => {
+    if (!selectedInstructionId) {
+      alert("Please select an instruction first");
+      return;
+    }
+
+    const instruction = instructions.find((i) => i.id === selectedInstructionId);
+    const instructionTitle = instruction ? instruction.title : "(No title)";
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete instruction "${selectedInstructionId} - ${instructionTitle}"?\n\nThis action cannot be undone and will remove the instruction from the database.`,
+    );
+
+    if (!confirmDelete) {
+      return;
+    }
+
+    // Create the delete request
+    const formData = new FormData();
+    formData.append("actionType", "deleteInstruction");
+    formData.append("instructionId", selectedInstructionId);
+    formData.append("accessToken", session?.access_token || "");
+
+    deleteInstructionFetcher.submit(formData, { method: "post" });
   };
 
   const updateFormFields = (instructionId: string) => {
@@ -1166,14 +1248,24 @@ function EditInstructionForm({
           <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
             Select Instruction to Edit
           </h2>
-          <button
-            type="button"
-            onClick={handleAddNewInstruction}
-            className={styles.addButton}
-            disabled={fetcher.state !== "idle" || !session}
-          >
-            {fetcher.state !== "idle" ? "Creating..." : "+ Add New Instruction"}
-          </button>
+          <div style={{ display: "flex", gap: "var(--space-2)" }}>
+            <button
+              type="button"
+              onClick={handleDeleteInstruction}
+              className={styles.removeButton}
+              disabled={!selectedInstructionId || deleteInstructionFetcher.state !== "idle" || !session}
+            >
+              {deleteInstructionFetcher.state !== "idle" ? "Deleting..." : "Delete"}
+            </button>
+            <button
+              type="button"
+              onClick={handleAddNewInstruction}
+              className={styles.addButton}
+              disabled={fetcher.state !== "idle" || !session}
+            >
+              {fetcher.state !== "idle" ? "Creating..." : "+ Add New Instruction"}
+            </button>
+          </div>
         </div>
         <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-start" }}>
           {/* Left list - Instructions */}
