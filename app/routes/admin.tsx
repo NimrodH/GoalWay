@@ -72,6 +72,56 @@ export async function action({ request }: Route.ActionArgs) {
         },
       });
 
+      // First, get all missions that use this instruction
+      const { data: allMissions, error: fetchError } = await supabase.from("missions").select("*");
+
+      if (fetchError) {
+        return { success: false, error: fetchError.message };
+      }
+
+      // Update each mission to remove the instruction
+      if (allMissions && allMissions.length > 0) {
+        const updatePromises = allMissions.map(async (missionRow: any) => {
+          let updated = false;
+          const updatedRow: any = { updated_at: new Date().toISOString() };
+
+          // Check and update data_en
+          if (missionRow.data_en && Array.isArray(missionRow.data_en.instructions)) {
+            const filteredInstructions = missionRow.data_en.instructions.filter(
+              (inst: [string, string?]) => inst[0] !== instructionId,
+            );
+            if (filteredInstructions.length !== missionRow.data_en.instructions.length) {
+              updatedRow.data_en = {
+                ...missionRow.data_en,
+                instructions: filteredInstructions,
+              };
+              updated = true;
+            }
+          }
+
+          // Check and update data_he
+          if (missionRow.data_he && Array.isArray(missionRow.data_he.instructions)) {
+            const filteredInstructions = missionRow.data_he.instructions.filter(
+              (inst: [string, string?]) => inst[0] !== instructionId,
+            );
+            if (filteredInstructions.length !== missionRow.data_he.instructions.length) {
+              updatedRow.data_he = {
+                ...missionRow.data_he,
+                instructions: filteredInstructions,
+              };
+              updated = true;
+            }
+          }
+
+          // Update the mission if it was modified
+          if (updated) {
+            await supabase.from("missions").update(updatedRow).eq("id", missionRow.id);
+          }
+        });
+
+        await Promise.all(updatePromises);
+      }
+
       // Delete the instruction
       const { error } = await supabase.from("instructions").delete().eq("id", instructionId);
 
@@ -81,7 +131,7 @@ export async function action({ request }: Route.ActionArgs) {
 
       return {
         success: true,
-        message: `Instruction ${instructionId} deleted successfully!`,
+        message: `Instruction ${instructionId} deleted successfully and removed from all missions!`,
         deletedInstructionId: instructionId,
       };
     } catch (error) {
