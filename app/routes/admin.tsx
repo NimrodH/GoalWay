@@ -1865,9 +1865,12 @@ function EditMissionForm({
             <div style={{ marginBottom: "var(--space-3)" }}>
               <h2
                 className={styles.sectionTitle}
-                style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)", marginBottom: "var(--space-2)" }}
+                style={{
+                  color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)",
+                  marginBottom: "var(--space-2)",
+                }}
               >
-                Select Instructions by Arrow
+                Select Instructions
               </h2>
               <div
                 style={{
