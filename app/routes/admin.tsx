@@ -48,6 +48,48 @@ export async function action({ request }: Route.ActionArgs) {
   const language = formData.get("language") as string;
   const accessToken = formData.get("accessToken") as string | null;
 
+  // Handle delete mission action
+  if (actionType === "deleteMission") {
+    const accessToken = formData.get("accessToken") as string | null;
+    const missionId = formData.get("missionId") as string | null;
+
+    if (!accessToken) {
+      return { success: false, error: "Unauthorized: Authentication required" };
+    }
+
+    if (!missionId) {
+      return { success: false, error: "Mission ID is required" };
+    }
+
+    try {
+      // Create authenticated Supabase client
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+        global: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      });
+
+      // Delete the mission
+      const { error } = await supabase.from("missions").delete().eq("id", missionId);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return {
+        success: true,
+        message: `Mission ${missionId} deleted successfully!`,
+        deletedMissionId: missionId,
+      };
+    } catch (error) {
+      console.error("Error in deleteMission:", error);
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
   // Handle create new mission action
   if (actionType === "createMission") {
     const accessToken = formData.get("accessToken") as string | null;
@@ -1426,6 +1468,7 @@ function EditMissionForm({
   const [searchParams] = useSearchParams();
   const missionFetcher = useFetcher<typeof action>();
   const instructionFetcher = useFetcher<typeof action>();
+  const deleteMissionFetcher = useFetcher<typeof action>();
   const [showNewInstructionDialog, setShowNewInstructionDialog] = useState(false);
   const [newInstructionTitle, setNewInstructionTitle] = useState("");
   const [selectedMissionInstruction, setSelectedMissionInstruction] = useState<string | null>(null);
@@ -1628,6 +1671,19 @@ function EditMissionForm({
     }
   }, [missionFetcher.data, missionFetcher.state, language]);
 
+  // Watch for delete mission fetcher completion
+  useEffect(() => {
+    if (deleteMissionFetcher.data && deleteMissionFetcher.state === "idle") {
+      if (deleteMissionFetcher.data.success) {
+        alert(deleteMissionFetcher.data.message || "Mission deleted successfully!");
+        // Clear the selected mission and reload the page
+        window.location.href = `/admin?tab=edit-mission&lang=${language}`;
+      } else if (deleteMissionFetcher.data.error) {
+        alert(`Failed to delete mission: ${deleteMissionFetcher.data.error}`);
+      }
+    }
+  }, [deleteMissionFetcher.data, deleteMissionFetcher.state, language]);
+
   // Watch for instruction fetcher completion
   useEffect(() => {
     if (instructionFetcher.data && instructionFetcher.state === "idle") {
@@ -1696,6 +1752,29 @@ function EditMissionForm({
     } else {
       alert("No previous mission found or the mission no longer exists");
     }
+  };
+
+  const handleDeleteMission = () => {
+    if (!selectedMissionId) {
+      alert("Please select a mission first");
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete mission "${id} - ${title}"?\n\nThis action cannot be undone and will remove the mission from the database.`,
+    );
+
+    if (!confirmDelete) {
+      return;
+    }
+
+    // Create the delete request
+    const formData = new FormData();
+    formData.append("actionType", "deleteMission");
+    formData.append("missionId", selectedMissionId);
+    formData.append("accessToken", session?.access_token || "");
+
+    deleteMissionFetcher.submit(formData, { method: "post" });
   };
 
   // Track if there are unsaved changes
@@ -1780,6 +1859,14 @@ function EditMissionForm({
             Select Mission to Edit
           </h2>
           <div style={{ display: "flex", gap: "var(--space-2)" }}>
+            <button
+              type="button"
+              onClick={handleDeleteMission}
+              className={styles.removeButton}
+              disabled={!selectedMissionId || deleteMissionFetcher.state !== "idle" || !session}
+            >
+              {deleteMissionFetcher.state !== "idle" ? "Deleting..." : "Delete"}
+            </button>
             <button
               type="button"
               onClick={handleSelectLastMission}
