@@ -1617,6 +1617,7 @@ function EditMissionForm({
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [renameInstructionId, setRenameInstructionId] = useState<string | null>(null);
   const [alternativeTitle, setAlternativeTitle] = useState("");
+  const [instructionFilter, setInstructionFilter] = useState("");
 
   // Track changes
   useEffect(() => {
@@ -2128,6 +2129,26 @@ function EditMissionForm({
                 >
                   <h3 style={{ fontSize: "0.875rem", fontWeight: 600 }}>Available Instructions</h3>
                 </div>
+                {/* Filter controls */}
+                <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={instructionFilter}
+                    onChange={(e) => setInstructionFilter(e.target.value)}
+                    placeholder="Filter by title or description..."
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setInstructionFilter("")}
+                    className={styles.addButton}
+                    disabled={!instructionFilter}
+                    style={{ minWidth: "80px" }}
+                  >
+                    Clear
+                  </button>
+                </div>
                 <div
                   style={{
                     border: "1px solid var(--color-neutral-6)",
@@ -2139,6 +2160,13 @@ function EditMissionForm({
                 >
                   {instructions
                     .filter((instruction) => !selectedInstructions.some(([id]) => id === instruction.id))
+                    .filter((instruction) => {
+                      if (!instructionFilter.trim()) return true;
+                      const searchTerm = instructionFilter.toLowerCase().trim();
+                      const title = instruction.title?.toLowerCase() || "";
+                      const description = instruction.description?.toLowerCase() || "";
+                      return title.includes(searchTerm) || description.includes(searchTerm);
+                    })
                     .map((instruction) => (
                       <label
                         key={instruction.id}
