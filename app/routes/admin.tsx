@@ -1529,10 +1529,6 @@ function EditInstructionForm({
             >
               Updated Code
             </h2>
-            <p style={{ marginBottom: "var(--space-3)", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
-              Copy this object and replace the existing instruction with ID "{id}" in{" "}
-              <code>app/data/instructions.ts</code>
-            </p>
             <pre className={styles.outputCode}>{generateCode()}</pre>
 
             <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-4)" }}>
