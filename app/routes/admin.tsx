@@ -1069,6 +1069,7 @@ function EditInstructionForm({
   const fetcher = useFetcher<typeof action>();
   const deleteInstructionFetcher = useFetcher<typeof action>();
   const [selectedContentIndex, setSelectedContentIndex] = useState<number | null>(null);
+  const [instructionFilterEdit, setInstructionFilterEdit] = useState("");
 
   // Track changes
   useEffect(() => {
@@ -1358,11 +1359,40 @@ function EditInstructionForm({
             </button>
           </div>
         </div>
+        {/* Filter controls */}
+        <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
+          <input
+            type="text"
+            className={styles.input}
+            value={instructionFilterEdit}
+            onChange={(e) => setInstructionFilterEdit(e.target.value)}
+            placeholder="Filter by ID or title..."
+            style={{ flex: 1 }}
+          />
+          <button
+            type="button"
+            onClick={() => setInstructionFilterEdit("")}
+            className={styles.addButton}
+            disabled={!instructionFilterEdit}
+            style={{ minWidth: "80px" }}
+          >
+            Clear
+          </button>
+        </div>
         <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-start" }}>
           {/* Left list - Instructions */}
           <div style={{ flex: 1, maxWidth: "400px" }}>
             <div className={styles.instructionCheckboxList}>
-              {allInstructionIds.map((id) => {
+              {allInstructionIds
+                .filter((id) => {
+                  if (!instructionFilterEdit.trim()) return true;
+                  const searchTerm = instructionFilterEdit.toLowerCase().trim();
+                  const instruction = instructions.find((i) => i.id === id);
+                  const idMatch = id.toLowerCase().includes(searchTerm);
+                  const titleMatch = instruction?.title?.toLowerCase().includes(searchTerm) || false;
+                  return idMatch || titleMatch;
+                })
+                .map((id) => {
                 const instruction = instructions.find((i) => i.id === id);
                 return (
                   <label key={id} className={styles.checkboxLabel} style={{ cursor: "pointer" }}>
