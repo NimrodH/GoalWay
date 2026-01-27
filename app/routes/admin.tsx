@@ -13,9 +13,6 @@ import {
   type Instruction,
   type InstructionContent,
 } from "~/services/instructions.server";
-
-// Internal type for UI with unique keys for proper React rendering
-type InstructionContentWithKey = InstructionContent & { _key?: string };
 import { getAllMissions, getAllMissionsHe, getAllMissionIds, type Mission } from "~/services/missions.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -521,15 +518,11 @@ function ExplanationContentItem({
   index,
   onUpdate,
   onRemove,
-  isSelected,
-  onSelect,
 }: {
-  item: InstructionContentWithKey;
+  item: InstructionContent;
   index: number;
   onUpdate: (index: number, content: string) => void;
   onRemove: (index: number) => void;
-  isSelected: boolean;
-  onSelect: (index: number) => void;
 }) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>(item.type === "image" ? item.content : "");
@@ -632,18 +625,9 @@ function ExplanationContentItem({
   };
 
   return (
-    <div className={styles.contentItem} style={{ border: isSelected ? '2px solid var(--color-accent-9)' : undefined }}>
+    <div className={styles.contentItem}>
       <div className={styles.contentItemHeader}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-          <input
-            type="radio"
-            name="contentItemRadio"
-            checked={isSelected}
-            onChange={() => onSelect(index)}
-            style={{ cursor: 'pointer' }}
-          />
-          <span className={styles.contentItemType}>{item.type}</span>
-        </div>
+        <span className={styles.contentItemType}>{item.type}</span>
         <button className={styles.removeButton} onClick={() => onRemove(index)}>
           Remove
         </button>
@@ -1064,15 +1048,13 @@ function EditInstructionForm({
   const [description, setDescription] = useState("");
   const [type, setType] = useState<"default" | "link">("default");
   const [missionId, setMissionId] = useState("");
-  const [explanation, setExplanation] = useState<InstructionContentWithKey[]>([]);
+  const [explanation, setExplanation] = useState<InstructionContent[]>([]);
   const [isTranslating, setIsTranslating] = useState(false);
   const { session } = useAuth();
   const navigate = useNavigate();
   const [originalCode, setOriginalCode] = useState("");
   const fetcher = useFetcher<typeof action>();
   const deleteInstructionFetcher = useFetcher<typeof action>();
-  const [selectedContentIndex, setSelectedContentIndex] = useState<number | null>(null);
-  const [instructionFilterEdit, setInstructionFilterEdit] = useState("");
 
   // Track changes
   useEffect(() => {
@@ -1184,12 +1166,7 @@ function EditInstructionForm({
       setDescription(instruction.description || "");
       setType(instruction.type || "default");
       setMissionId(instruction.missionId || "");
-      // Add unique keys to explanation items if they don't have them
-      const explanationWithKeys: InstructionContentWithKey[] = (instruction.explanation || []).map((item, idx) => ({
-        ...item,
-        _key: `content-${Date.now()}-${idx}-${Math.random()}`
-      }));
-      setExplanation(explanationWithKeys);
+      setExplanation(instruction.explanation || []);
     } else {
       // No data for this language, start with empty fields
       setId(instructionId);
@@ -1207,12 +1184,7 @@ function EditInstructionForm({
   };
 
   const addContent = (type: "text" | "image" | "video") => {
-    const newItem: InstructionContentWithKey = { 
-      type, 
-      content: "", 
-      _key: `content-${Date.now()}-${Math.random()}` 
-    };
-    setExplanation([...explanation, newItem]);
+    setExplanation([...explanation, { type, content: "" }]);
   };
 
   const updateContent = (index: number, content: string) => {
@@ -1223,44 +1195,14 @@ function EditInstructionForm({
 
   const removeContent = (index: number) => {
     setExplanation(explanation.filter((_, i) => i !== index));
-    if (selectedContentIndex === index) {
-      setSelectedContentIndex(null);
-    } else if (selectedContentIndex !== null && selectedContentIndex > index) {
-      setSelectedContentIndex(selectedContentIndex - 1);
-    }
-  };
-
-  const moveContentUp = () => {
-    if (selectedContentIndex === null || selectedContentIndex === 0) return;
-    const updated = [...explanation];
-    [updated[selectedContentIndex - 1], updated[selectedContentIndex]] = [
-      updated[selectedContentIndex],
-      updated[selectedContentIndex - 1],
-    ];
-    setExplanation(updated);
-    setSelectedContentIndex(selectedContentIndex - 1);
-  };
-
-  const moveContentDown = () => {
-    if (selectedContentIndex === null || selectedContentIndex >= explanation.length - 1) return;
-    const updated = [...explanation];
-    [updated[selectedContentIndex], updated[selectedContentIndex + 1]] = [
-      updated[selectedContentIndex + 1],
-      updated[selectedContentIndex],
-    ];
-    setExplanation(updated);
-    setSelectedContentIndex(selectedContentIndex + 1);
   };
 
   const generateCode = () => {
-    // Remove internal _key property before generating code
-    const cleanExplanation: InstructionContent[] = explanation.map(({ _key, ...item }) => item);
-    
     const instruction: Instruction = {
       id,
       title,
       ...(description && { description }),
-      explanation: cleanExplanation,
+      explanation,
       ...(type === "link" && { type, missionId }),
     };
 
@@ -1375,40 +1317,11 @@ function EditInstructionForm({
             </button>
           </div>
         </div>
-        {/* Filter controls */}
-        <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
-          <input
-            type="text"
-            className={styles.input}
-            value={instructionFilterEdit}
-            onChange={(e) => setInstructionFilterEdit(e.target.value)}
-            placeholder="Filter by ID or title..."
-            style={{ flex: 1 }}
-          />
-          <button
-            type="button"
-            onClick={() => setInstructionFilterEdit("")}
-            className={styles.addButton}
-            disabled={!instructionFilterEdit}
-            style={{ minWidth: "80px" }}
-          >
-            Clear
-          </button>
-        </div>
         <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-start" }}>
           {/* Left list - Instructions */}
           <div style={{ flex: 1, maxWidth: "400px" }}>
             <div className={styles.instructionCheckboxList}>
-              {allInstructionIds
-                .filter((id) => {
-                  if (!instructionFilterEdit.trim()) return true;
-                  const searchTerm = instructionFilterEdit.toLowerCase().trim();
-                  const instruction = instructions.find((i) => i.id === id);
-                  const idMatch = id.toLowerCase().includes(searchTerm);
-                  const titleMatch = instruction?.title?.toLowerCase().includes(searchTerm) || false;
-                  return idMatch || titleMatch;
-                })
-                .map((id) => {
+              {allInstructionIds.map((id) => {
                 const instruction = instructions.find((i) => i.id === id);
                 return (
                   <label key={id} className={styles.checkboxLabel} style={{ cursor: "pointer" }}>
@@ -1578,44 +1491,20 @@ function EditInstructionForm({
 
           {type === "default" && (
             <div className={styles.formSection}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
-                <h2
-                  className={styles.sectionTitle}
-                  style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)", marginBottom: 0 }}
-                >
-                  Explanation Content
-                </h2>
-                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                  <button
-                    type="button"
-                    onClick={moveContentUp}
-                    className={styles.addButton}
-                    disabled={selectedContentIndex === null || selectedContentIndex === 0}
-                    title="Move selected content up"
-                  >
-                    ↑ Up
-                  </button>
-                  <button
-                    type="button"
-                    onClick={moveContentDown}
-                    className={styles.addButton}
-                    disabled={selectedContentIndex === null || selectedContentIndex >= explanation.length - 1}
-                    title="Move selected content down"
-                  >
-                    ↓ Down
-                  </button>
-                </div>
-              </div>
+              <h2
+                className={styles.sectionTitle}
+                style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}
+              >
+                Explanation Content
+              </h2>
 
               {explanation.map((item, index) => (
                 <ExplanationContentItem
-                  key={item._key || `fallback-${index}`}
+                  key={index}
                   item={item}
                   index={index}
                   onUpdate={updateContent}
                   onRemove={removeContent}
-                  isSelected={selectedContentIndex === index}
-                  onSelect={setSelectedContentIndex}
                 />
               ))}
 
