@@ -51,6 +51,124 @@ export async function action({ request }: Route.ActionArgs) {
   const language = formData.get("language") as string;
   const accessToken = formData.get("accessToken") as string | null;
 
+  // Handle replace instruction action
+  if (actionType === "replaceInstruction") {
+    const accessToken = formData.get("accessToken") as string | null;
+    const oldInstructionId = formData.get("oldInstructionId") as string | null;
+    const newInstructionId = formData.get("newInstructionId") as string | null;
+
+    if (!accessToken) {
+      return { success: false, error: "Unauthorized: Authentication required" };
+    }
+
+    if (!oldInstructionId || !newInstructionId) {
+      return { success: false, error: "Both old and new instruction IDs are required" };
+    }
+
+    if (oldInstructionId === newInstructionId) {
+      return { success: false, error: "Old and new instruction IDs cannot be the same" };
+    }
+
+    try {
+      // Create authenticated Supabase client
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+        global: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      });
+
+      // First, verify that the new instruction exists
+      const { data: newInstructionExists, error: checkError } = await supabase
+        .from("instructions")
+        .select("id")
+        .eq("id", newInstructionId)
+        .single();
+
+      if (checkError || !newInstructionExists) {
+        return { success: false, error: `New instruction ${newInstructionId} does not exist` };
+      }
+
+      // Get all missions that use the old instruction
+      const { data: allMissions, error: fetchError } = await supabase.from("missions").select("*");
+
+      if (fetchError) {
+        return { success: false, error: fetchError.message };
+      }
+
+      let missionsUpdated = 0;
+
+      // Update each mission to replace the old instruction with the new one
+      if (allMissions && allMissions.length > 0) {
+        const updatePromises = allMissions.map(async (missionRow: any) => {
+          let updated = false;
+          const updatedRow: any = { updated_at: new Date().toISOString() };
+
+          // Check and update data_en
+          if (missionRow.data_en && Array.isArray(missionRow.data_en.instructions)) {
+            const updatedInstructions = missionRow.data_en.instructions.map(
+              (inst: [string, string?]) => {
+                if (inst[0] === oldInstructionId) {
+                  // Replace the instruction ID but keep any custom title
+                  return [newInstructionId, inst[1]] as [string, string?];
+                }
+                return inst;
+              },
+            );
+            // Check if anything was actually replaced
+            if (JSON.stringify(updatedInstructions) !== JSON.stringify(missionRow.data_en.instructions)) {
+              updatedRow.data_en = {
+                ...missionRow.data_en,
+                instructions: updatedInstructions,
+              };
+              updated = true;
+            }
+          }
+
+          // Check and update data_he
+          if (missionRow.data_he && Array.isArray(missionRow.data_he.instructions)) {
+            const updatedInstructions = missionRow.data_he.instructions.map(
+              (inst: [string, string?]) => {
+                if (inst[0] === oldInstructionId) {
+                  // Replace the instruction ID but keep any custom title
+                  return [newInstructionId, inst[1]] as [string, string?];
+                }
+                return inst;
+              },
+            );
+            // Check if anything was actually replaced
+            if (JSON.stringify(updatedInstructions) !== JSON.stringify(missionRow.data_he.instructions)) {
+              updatedRow.data_he = {
+                ...missionRow.data_he,
+                instructions: updatedInstructions,
+              };
+              updated = true;
+            }
+          }
+
+          // Update the mission if it was modified
+          if (updated) {
+            await supabase.from("missions").update(updatedRow).eq("id", missionRow.id);
+            missionsUpdated++;
+          }
+        });
+
+        await Promise.all(updatePromises);
+      }
+
+      return {
+        success: true,
+        message: `Instruction ${oldInstructionId} replaced with ${newInstructionId} in ${missionsUpdated} mission(s)!`,
+        missionsUpdated,
+      };
+    } catch (error) {
+      console.error("Error in replaceInstruction:", error);
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
   // Handle delete instruction action
   if (actionType === "deleteInstruction") {
     const accessToken = formData.get("accessToken") as string | null;
@@ -1071,8 +1189,11 @@ function EditInstructionForm({
   const [originalCode, setOriginalCode] = useState("");
   const fetcher = useFetcher<typeof action>();
   const deleteInstructionFetcher = useFetcher<typeof action>();
+  const replaceInstructionFetcher = useFetcher<typeof action>();
   const [selectedContentIndex, setSelectedContentIndex] = useState<number | null>(null);
   const [instructionFilterEdit, setInstructionFilterEdit] = useState("");
+  const [showReplaceDialog, setShowReplaceDialog] = useState(false);
+  const [replacementInstructionId, setReplacementInstructionId] = useState("");
 
   // Track changes
   useEffect(() => {
@@ -1131,6 +1252,22 @@ function EditInstructionForm({
     }
   }, [deleteInstructionFetcher.data, deleteInstructionFetcher.state, language]);
 
+  // Watch for replace instruction fetcher completion
+  useEffect(() => {
+    if (replaceInstructionFetcher.data && replaceInstructionFetcher.state === "idle") {
+      if (replaceInstructionFetcher.data.success) {
+        alert(replaceInstructionFetcher.data.message || "Instruction replaced successfully!");
+        // Close the dialog
+        setShowReplaceDialog(false);
+        setReplacementInstructionId("");
+        // Reload the page to refresh the mission list
+        window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${selectedInstructionId}`;
+      } else if (replaceInstructionFetcher.data.error) {
+        alert(`Failed to replace instruction: ${replaceInstructionFetcher.data.error}`);
+      }
+    }
+  }, [replaceInstructionFetcher.data, replaceInstructionFetcher.state, language, selectedInstructionId]);
+
   const handleAddNewInstruction = () => {
     onNavigationRequest(() => {
       // Find the highest ID from existing instructions
@@ -1173,6 +1310,38 @@ function EditInstructionForm({
     formData.append("accessToken", session?.access_token || "");
 
     deleteInstructionFetcher.submit(formData, { method: "post" });
+  };
+
+  const handleReplaceInstruction = () => {
+    if (!selectedInstructionId) {
+      alert("Please select an instruction first");
+      return;
+    }
+
+    if (!replacementInstructionId.trim()) {
+      alert("Please enter a replacement instruction ID");
+      return;
+    }
+
+    const instruction = instructions.find((i) => i.id === selectedInstructionId);
+    const instructionTitle = instruction ? instruction.title : "(No title)";
+
+    const confirmReplace = window.confirm(
+      `Are you sure you want to replace instruction "${selectedInstructionId} - ${instructionTitle}" with instruction "${replacementInstructionId}" in all missions?\n\nThis action will update all missions that use this instruction.`,
+    );
+
+    if (!confirmReplace) {
+      return;
+    }
+
+    // Create the replace request
+    const formData = new FormData();
+    formData.append("actionType", "replaceInstruction");
+    formData.append("oldInstructionId", selectedInstructionId);
+    formData.append("newInstructionId", replacementInstructionId.trim());
+    formData.append("accessToken", session?.access_token || "");
+
+    replaceInstructionFetcher.submit(formData, { method: "post" });
   };
 
   const updateFormFields = (instructionId: string) => {
@@ -1344,6 +1513,83 @@ function EditInstructionForm({
 
   return (
     <div>
+      {/* Replace Instruction Dialog */}
+      {showReplaceDialog && (
+        <div className={styles.dialogOverlay} onClick={() => setShowReplaceDialog(false)}>
+          <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.dialogHeader}>
+              <h2 className={styles.dialogTitle}>Replace Instruction</h2>
+              <button className={styles.dialogClose} onClick={() => setShowReplaceDialog(false)}>
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: "var(--space-4)" }}>
+              <p style={{ marginBottom: "var(--space-3)", color: "var(--color-neutral-11)" }}>
+                Replace instruction <strong>{selectedInstructionId}</strong> with another instruction in all missions that use it.
+              </p>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>New Instruction ID</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={replacementInstructionId}
+                  onChange={(e) => setReplacementInstructionId(e.target.value)}
+                  placeholder="Enter instruction ID (e.g., 42)"
+                  autoFocus
+                />
+              </div>
+              {selectedInstructionMissions.length > 0 && (
+                <div style={{ marginTop: "var(--space-3)" }}>
+                  <p style={{ fontSize: "0.875rem", fontWeight: 600, marginBottom: "var(--space-2)" }}>
+                    This instruction is used in {selectedInstructionMissions.length} mission(s):
+                  </p>
+                  <div
+                    style={{
+                      maxHeight: "150px",
+                      overflowY: "auto",
+                      padding: "var(--space-2)",
+                      background: "var(--color-neutral-3)",
+                      borderRadius: "var(--radius-2)",
+                      border: "1px solid var(--color-neutral-6)",
+                    }}
+                  >
+                    {selectedInstructionMissions.map((mission) => (
+                      <div
+                        key={mission.id}
+                        style={{
+                          fontSize: "0.75rem",
+                          padding: "var(--space-1)",
+                          borderBottom: "1px solid var(--color-neutral-4)",
+                        }}
+                      >
+                        {mission.id} - {mission.title}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowReplaceDialog(false)}
+                  className={styles.addButton}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReplaceInstruction}
+                  className={styles.submitButton}
+                  disabled={!replacementInstructionId.trim() || replaceInstructionFetcher.state !== "idle"}
+                >
+                  {replaceInstructionFetcher.state !== "idle" ? "Replacing..." : "Replace"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className={styles.formSection}>
         <div
           style={{
@@ -1364,6 +1610,14 @@ function EditInstructionForm({
               disabled={!selectedInstructionId || deleteInstructionFetcher.state !== "idle" || !session}
             >
               {deleteInstructionFetcher.state !== "idle" ? "Deleting..." : "Delete"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowReplaceDialog(true)}
+              className={styles.addButton}
+              disabled={!selectedInstructionId || !session}
+            >
+              Replace Instruction
             </button>
             <button
               type="button"
