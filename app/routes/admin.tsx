@@ -13,6 +13,9 @@ import {
   type Instruction,
   type InstructionContent,
 } from "~/services/instructions.server";
+
+// Internal type for UI with unique keys for proper React rendering
+type InstructionContentWithKey = InstructionContent & { _key?: string };
 import { getAllMissions, getAllMissionsHe, getAllMissionIds, type Mission } from "~/services/missions.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -521,7 +524,7 @@ function ExplanationContentItem({
   isSelected,
   onSelect,
 }: {
-  item: InstructionContent;
+  item: InstructionContentWithKey;
   index: number;
   onUpdate: (index: number, content: string) => void;
   onRemove: (index: number) => void;
@@ -1061,7 +1064,7 @@ function EditInstructionForm({
   const [description, setDescription] = useState("");
   const [type, setType] = useState<"default" | "link">("default");
   const [missionId, setMissionId] = useState("");
-  const [explanation, setExplanation] = useState<InstructionContent[]>([]);
+  const [explanation, setExplanation] = useState<InstructionContentWithKey[]>([]);
   const [isTranslating, setIsTranslating] = useState(false);
   const { session } = useAuth();
   const navigate = useNavigate();
@@ -1181,7 +1184,12 @@ function EditInstructionForm({
       setDescription(instruction.description || "");
       setType(instruction.type || "default");
       setMissionId(instruction.missionId || "");
-      setExplanation(instruction.explanation || []);
+      // Add unique keys to explanation items if they don't have them
+      const explanationWithKeys: InstructionContentWithKey[] = (instruction.explanation || []).map((item, idx) => ({
+        ...item,
+        _key: `content-${Date.now()}-${idx}-${Math.random()}`
+      }));
+      setExplanation(explanationWithKeys);
     } else {
       // No data for this language, start with empty fields
       setId(instructionId);
@@ -1199,7 +1207,12 @@ function EditInstructionForm({
   };
 
   const addContent = (type: "text" | "image" | "video") => {
-    setExplanation([...explanation, { type, content: "" }]);
+    const newItem: InstructionContentWithKey = { 
+      type, 
+      content: "", 
+      _key: `content-${Date.now()}-${Math.random()}` 
+    };
+    setExplanation([...explanation, newItem]);
   };
 
   const updateContent = (index: number, content: string) => {
@@ -1240,11 +1253,14 @@ function EditInstructionForm({
   };
 
   const generateCode = () => {
+    // Remove internal _key property before generating code
+    const cleanExplanation: InstructionContent[] = explanation.map(({ _key, ...item }) => item);
+    
     const instruction: Instruction = {
       id,
       title,
       ...(description && { description }),
-      explanation,
+      explanation: cleanExplanation,
       ...(type === "link" && { type, missionId }),
     };
 
@@ -1593,7 +1609,7 @@ function EditInstructionForm({
 
               {explanation.map((item, index) => (
                 <ExplanationContentItem
-                  key={index}
+                  key={item._key || `fallback-${index}`}
                   item={item}
                   index={index}
                   onUpdate={updateContent}
