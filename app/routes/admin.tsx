@@ -632,15 +632,15 @@ function ExplanationContentItem({
   };
 
   return (
-    <div className={styles.contentItem} style={{ border: isSelected ? '2px solid var(--color-accent-9)' : undefined }}>
+    <div className={styles.contentItem} style={{ border: isSelected ? "2px solid var(--color-accent-9)" : undefined }}>
       <div className={styles.contentItemHeader}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
           <input
             type="radio"
             name="contentItemRadio"
             checked={isSelected}
             onChange={() => onSelect(index)}
-            style={{ cursor: 'pointer' }}
+            style={{ cursor: "pointer" }}
           />
           <span className={styles.contentItemType}>{item.type}</span>
         </div>
@@ -1187,7 +1187,7 @@ function EditInstructionForm({
       // Add unique keys to explanation items if they don't have them
       const explanationWithKeys: InstructionContentWithKey[] = (instruction.explanation || []).map((item, idx) => ({
         ...item,
-        _key: `content-${Date.now()}-${idx}-${Math.random()}`
+        _key: `content-${Date.now()}-${idx}-${Math.random()}`,
       }));
       setExplanation(explanationWithKeys);
     } else {
@@ -1207,10 +1207,10 @@ function EditInstructionForm({
   };
 
   const addContent = (type: "text" | "image" | "video") => {
-    const newItem: InstructionContentWithKey = { 
-      type, 
-      content: "", 
-      _key: `content-${Date.now()}-${Math.random()}` 
+    const newItem: InstructionContentWithKey = {
+      type,
+      content: "",
+      _key: `content-${Date.now()}-${Math.random()}`,
     };
     setExplanation([...explanation, newItem]);
   };
@@ -1255,7 +1255,7 @@ function EditInstructionForm({
   const generateCode = () => {
     // Remove internal _key property before generating code
     const cleanExplanation: InstructionContent[] = explanation.map(({ _key, ...item }) => item);
-    
+
     const instruction: Instruction = {
       id,
       title,
@@ -1409,23 +1409,23 @@ function EditInstructionForm({
                   return idMatch || titleMatch;
                 })
                 .map((id) => {
-                const instruction = instructions.find((i) => i.id === id);
-                return (
-                  <label key={id} className={styles.checkboxLabel} style={{ cursor: "pointer" }}>
-                    <input
-                      type="radio"
-                      name="instruction"
-                      value={id}
-                      checked={selectedInstructionId === id}
-                      onChange={() => handleSelectInstruction(id)}
-                    />
-                    <span>
-                      {id}
-                      {instruction ? ` - ${instruction.title}` : " (No data for this language)"}
-                    </span>
-                  </label>
-                );
-              })}
+                  const instruction = instructions.find((i) => i.id === id);
+                  return (
+                    <label key={id} className={styles.checkboxLabel} style={{ cursor: "pointer" }}>
+                      <input
+                        type="radio"
+                        name="instruction"
+                        value={id}
+                        checked={selectedInstructionId === id}
+                        onChange={() => handleSelectInstruction(id)}
+                      />
+                      <span>
+                        {id}
+                        {instruction ? ` - ${instruction.title}` : " (No data for this language)"}
+                      </span>
+                    </label>
+                  );
+                })}
             </div>
           </div>
 
@@ -1518,7 +1518,10 @@ function EditInstructionForm({
               </div>
 
               <div className={styles.formGroup}>
-                <label className={styles.label}>Title</label>
+                <label className={styles.label}>
+                  Title.  (Can be used as admin comment to identify the instruction. we can set the title for end user
+                  in the mission  by rename)
+                </label>
                 <input
                   type="text"
                   className={styles.input}
@@ -1529,7 +1532,9 @@ function EditInstructionForm({
               </div>
 
               <div className={styles.formGroup}>
-                <label className={styles.label}>Description</label>
+                <label className={styles.label}>
+                  Description (to be shown to the end user under  the renamed title before he click the instruction)
+                </label>
                 <input
                   type="text"
                   className={styles.input}
@@ -1578,14 +1583,21 @@ function EditInstructionForm({
 
           {type === "default" && (
             <div className={styles.formSection}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "var(--space-3)",
+                }}
+              >
                 <h2
                   className={styles.sectionTitle}
                   style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)", marginBottom: 0 }}
                 >
                   Explanation Content
                 </h2>
-                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                <div style={{ display: "flex", gap: "var(--space-2)" }}>
                   <button
                     type="button"
                     onClick={moveContentUp}
