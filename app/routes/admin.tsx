@@ -126,6 +126,25 @@ export async function action({ request }: Route.ActionArgs) {
               updated = true;
             }
           }
+          // Also check for legacy instructionIds format
+          if (missionRow.data_en && Array.isArray(missionRow.data_en.instructionIds)) {
+            const updatedInstructionIds = missionRow.data_en.instructionIds.map(
+              (instId: string) => {
+                if (instId === oldInstructionId) {
+                  return newInstructionId;
+                }
+                return instId;
+              },
+            );
+            // Check if anything was actually replaced
+            if (JSON.stringify(updatedInstructionIds) !== JSON.stringify(missionRow.data_en.instructionIds)) {
+              updatedRow.data_en = {
+                ...missionRow.data_en,
+                instructionIds: updatedInstructionIds,
+              };
+              updated = true;
+            }
+          }
 
           // Check and update data_he
           if (missionRow.data_he && Array.isArray(missionRow.data_he.instructions)) {
@@ -143,6 +162,25 @@ export async function action({ request }: Route.ActionArgs) {
               updatedRow.data_he = {
                 ...missionRow.data_he,
                 instructions: updatedInstructions,
+              };
+              updated = true;
+            }
+          }
+          // Also check for legacy instructionIds format
+          if (missionRow.data_he && Array.isArray(missionRow.data_he.instructionIds)) {
+            const updatedInstructionIds = missionRow.data_he.instructionIds.map(
+              (instId: string) => {
+                if (instId === oldInstructionId) {
+                  return newInstructionId;
+                }
+                return instId;
+              },
+            );
+            // Check if anything was actually replaced
+            if (JSON.stringify(updatedInstructionIds) !== JSON.stringify(missionRow.data_he.instructionIds)) {
+              updatedRow.data_he = {
+                ...missionRow.data_he,
+                instructionIds: updatedInstructionIds,
               };
               updated = true;
             }
