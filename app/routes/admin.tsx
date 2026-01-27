@@ -518,11 +518,15 @@ function ExplanationContentItem({
   index,
   onUpdate,
   onRemove,
+  isSelected,
+  onSelect,
 }: {
   item: InstructionContent;
   index: number;
   onUpdate: (index: number, content: string) => void;
   onRemove: (index: number) => void;
+  isSelected: boolean;
+  onSelect: (index: number) => void;
 }) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>(item.type === "image" ? item.content : "");
@@ -625,9 +629,18 @@ function ExplanationContentItem({
   };
 
   return (
-    <div className={styles.contentItem}>
+    <div className={styles.contentItem} style={{ border: isSelected ? '2px solid var(--color-accent-9)' : undefined }}>
       <div className={styles.contentItemHeader}>
-        <span className={styles.contentItemType}>{item.type}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <input
+            type="radio"
+            name="contentItemRadio"
+            checked={isSelected}
+            onChange={() => onSelect(index)}
+            style={{ cursor: 'pointer' }}
+          />
+          <span className={styles.contentItemType}>{item.type}</span>
+        </div>
         <button className={styles.removeButton} onClick={() => onRemove(index)}>
           Remove
         </button>
@@ -1055,6 +1068,7 @@ function EditInstructionForm({
   const [originalCode, setOriginalCode] = useState("");
   const fetcher = useFetcher<typeof action>();
   const deleteInstructionFetcher = useFetcher<typeof action>();
+  const [selectedContentIndex, setSelectedContentIndex] = useState<number | null>(null);
 
   // Track changes
   useEffect(() => {
@@ -1195,6 +1209,33 @@ function EditInstructionForm({
 
   const removeContent = (index: number) => {
     setExplanation(explanation.filter((_, i) => i !== index));
+    if (selectedContentIndex === index) {
+      setSelectedContentIndex(null);
+    } else if (selectedContentIndex !== null && selectedContentIndex > index) {
+      setSelectedContentIndex(selectedContentIndex - 1);
+    }
+  };
+
+  const moveContentUp = () => {
+    if (selectedContentIndex === null || selectedContentIndex === 0) return;
+    const updated = [...explanation];
+    [updated[selectedContentIndex - 1], updated[selectedContentIndex]] = [
+      updated[selectedContentIndex],
+      updated[selectedContentIndex - 1],
+    ];
+    setExplanation(updated);
+    setSelectedContentIndex(selectedContentIndex - 1);
+  };
+
+  const moveContentDown = () => {
+    if (selectedContentIndex === null || selectedContentIndex >= explanation.length - 1) return;
+    const updated = [...explanation];
+    [updated[selectedContentIndex], updated[selectedContentIndex + 1]] = [
+      updated[selectedContentIndex + 1],
+      updated[selectedContentIndex],
+    ];
+    setExplanation(updated);
+    setSelectedContentIndex(selectedContentIndex + 1);
   };
 
   const generateCode = () => {
@@ -1491,12 +1532,34 @@ function EditInstructionForm({
 
           {type === "default" && (
             <div className={styles.formSection}>
-              <h2
-                className={styles.sectionTitle}
-                style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}
-              >
-                Explanation Content
-              </h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
+                <h2
+                  className={styles.sectionTitle}
+                  style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)", marginBottom: 0 }}
+                >
+                  Explanation Content
+                </h2>
+                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                  <button
+                    type="button"
+                    onClick={moveContentUp}
+                    className={styles.addButton}
+                    disabled={selectedContentIndex === null || selectedContentIndex === 0}
+                    title="Move selected content up"
+                  >
+                    ↑ Up
+                  </button>
+                  <button
+                    type="button"
+                    onClick={moveContentDown}
+                    className={styles.addButton}
+                    disabled={selectedContentIndex === null || selectedContentIndex >= explanation.length - 1}
+                    title="Move selected content down"
+                  >
+                    ↓ Down
+                  </button>
+                </div>
+              </div>
 
               {explanation.map((item, index) => (
                 <ExplanationContentItem
@@ -1505,6 +1568,8 @@ function EditInstructionForm({
                   index={index}
                   onUpdate={updateContent}
                   onRemove={removeContent}
+                  isSelected={selectedContentIndex === index}
+                  onSelect={setSelectedContentIndex}
                 />
               ))}
 
