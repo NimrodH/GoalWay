@@ -1219,6 +1219,7 @@ function EditInstructionForm({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState<"default" | "link">("default");
+  const [status, setStatus] = useState<"only title" | "partial explanation" | "full explanation">("only title");
   const [missionId, setMissionId] = useState("");
   const [explanation, setExplanation] = useState<InstructionContentWithKey[]>([]);
   const [isTranslating, setIsTranslating] = useState(false);
@@ -1243,7 +1244,7 @@ function EditInstructionForm({
         onChangesDetected(currentCode !== originalCode);
       }
     }
-  }, [id, title, description, type, missionId, explanation, selectedInstructionId]);
+  }, [id, title, description, type, status, missionId, explanation, selectedInstructionId]);
 
   // Reset on save or instruction change
   useEffect(() => {
@@ -1390,6 +1391,7 @@ function EditInstructionForm({
       setTitle(instruction.title);
       setDescription(instruction.description || "");
       setType(instruction.type || "default");
+      setStatus(instruction.status || "only title");
       setMissionId(instruction.missionId || "");
       // Add unique keys to explanation items if they don't have them
       const explanationWithKeys: InstructionContentWithKey[] = (instruction.explanation || []).map((item, idx) => ({
@@ -1403,6 +1405,7 @@ function EditInstructionForm({
       setTitle("");
       setDescription("");
       setType("default");
+      setStatus("only title");
       setMissionId("");
       setExplanation([]);
     }
@@ -1467,6 +1470,7 @@ function EditInstructionForm({
       id,
       title,
       ...(description && { description }),
+      status,
       explanation: cleanExplanation,
       ...(type === "link" && { type, missionId }),
     };
@@ -1845,6 +1849,19 @@ function EditInstructionForm({
                 >
                   <option value="default">Default (Standard Instruction)</option>
                   <option value="link">Link (Navigate to Another Mission)</option>
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Instruction Status</label>
+                <select
+                  className={styles.input}
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as "only title" | "partial explanation" | "full explanation")}
+                >
+                  <option value="only title">Only Title</option>
+                  <option value="partial explanation">Partial Explanation</option>
+                  <option value="full explanation">Full Explanation</option>
                 </select>
               </div>
 

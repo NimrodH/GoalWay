@@ -9,6 +9,7 @@ export interface Instruction {
   id: string;
   title: string;
   description?: string;
+  status?: "only title" | "partial explanation" | "full explanation";
   explanation: InstructionContent[];
   type?: "default" | "link";
   missionId?: string;
