@@ -914,6 +914,30 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
   const [pendingTab, setPendingTab] = useState<string | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
 
+  // Add Ctrl+S keyboard shortcut to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl+S (Windows/Linux) or Cmd+S (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault(); // Prevent browser save dialog
+        
+        // Find and click the save button
+        const saveButton = document.querySelector('button[type="submit"]') as HTMLButtonElement;
+        if (saveButton && !saveButton.disabled) {
+          saveButton.click();
+        }
+      }
+    };
+
+    // Attach event listener
+    document.addEventListener("keydown", handleKeyDown);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   // Initialize Supabase on the client
   useEffect(() => {
     initSupabase(supabaseUrl, supabaseKey);
