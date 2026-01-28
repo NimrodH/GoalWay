@@ -2776,6 +2776,7 @@ function EditMissionForm({
                 >
                   {selectedInstructions.map(([instructionId, customTitle]) => {
                     const instruction = instructions.find((i) => i.id === instructionId);
+                    const hasFullExplanation = instruction?.status === "full explanation";
                     if (!instruction) return null;
                     const displayTitle = customTitle || instruction.title;
                     return (
@@ -2795,7 +2796,7 @@ function EditMissionForm({
                           onChange={() => setSelectedMissionInstruction(instructionId)}
                         />
                         <span>
-                          {instructionId} - {displayTitle}
+                          <span style={{ color: instruction?.status === "full explanation" ? "green" : "inherit" }}>{instructionId}</span> - {displayTitle}
                           {customTitle && (
                             <span
                               style={{
