@@ -914,10 +914,10 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
   const [pendingTab, setPendingTab] = useState<string | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
 
-  // Add Ctrl+S keyboard shortcut to save
+  // Add keyboard shortcuts: Ctrl+S to save, Ctrl+M for Edit Mission tab, Ctrl+I for Edit Instruction tab
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Check for Ctrl+S (Windows/Linux) or Cmd+S (Mac)
+      // Check for Ctrl+S (Windows/Linux) or Cmd+S (Mac) - Save
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault(); // Prevent browser save dialog
         
@@ -926,6 +926,18 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
         if (saveButton && !saveButton.disabled) {
           saveButton.click();
         }
+      }
+      
+      // Check for Ctrl+M (Windows/Linux) or Cmd+M (Mac) - Edit Mission tab
+      if ((e.ctrlKey || e.metaKey) && e.key === "m") {
+        e.preventDefault();
+        setCurrentTab("edit-mission");
+      }
+      
+      // Check for Ctrl+I (Windows/Linux) or Cmd+I (Mac) - Edit Instruction tab
+      if ((e.ctrlKey || e.metaKey) && e.key === "i") {
+        e.preventDefault();
+        setCurrentTab("edit-instruction");
       }
     };
 
