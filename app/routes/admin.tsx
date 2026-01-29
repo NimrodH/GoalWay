@@ -2492,9 +2492,10 @@ function EditMissionForm({
           <option value="">Select a mission...</option>
           {allMissionIds.map((id) => {
             const mission = missions.find((m) => m.id === id);
+            const isHidden = mission?.status === "Hide";
             return (
               <option key={id} value={id}>
-                {id}
+                {isHidden && "🔴 "}{id}
                 {mission ? ` - ${mission.title}` : " (No data for this language)"}
               </option>
             );
