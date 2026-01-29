@@ -25,6 +25,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const [missionFilter, setMissionFilter] = useState("");
 
   const filteredMissions = missions.filter((mission) => {
+    // Filter out missions with status "Hide"
+    if (mission.status === "Hide") return false;
+    
+    // Apply search filter
     if (!missionFilter.trim()) return true;
     const searchTerm = missionFilter.toLowerCase().trim();
     const title = mission.title?.toLowerCase() || "";

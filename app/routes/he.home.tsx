@@ -21,6 +21,10 @@ export async function loader({}: Route.LoaderArgs) {
 
 export default function HeHome({ loaderData }: Route.ComponentProps) {
   const { missionsHe } = loaderData;
+  
+  // Filter out missions with status "Hide"
+  const visibleMissions = missionsHe.filter(mission => mission.status !== "Hide");
+  
   return (
     <div className={styles.menuContainer} dir="rtl">
       <div className={styles.menuContent}>
@@ -35,7 +39,7 @@ export default function HeHome({ loaderData }: Route.ComponentProps) {
         </div>
 
         <div className={styles.missionsGrid}>
-          {missionsHe.map((mission) => (
+          {visibleMissions.map((mission) => (
             <Link key={mission.id} to={`/he/missions/${mission.id}`} className={styles.missionCard}>
               <div className={styles.missionHeader}>
                 <BookOpen className={styles.missionIcon} />
