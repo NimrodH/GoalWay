@@ -5,6 +5,7 @@ export interface Mission {
   title: string;
   description: string;
   instructions: Array<[string, string?]>; // [instructionId, customTitle?]
+  status?: "Hide" | "For all" | "Only Adama" | "Only Bazn";
 }
 
 // Legacy format from database (before migration)

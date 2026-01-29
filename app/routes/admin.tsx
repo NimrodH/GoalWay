@@ -2054,6 +2054,7 @@ function EditMissionForm({
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [status, setStatus] = useState<"Hide" | "For all" | "Only Adama" | "Only Bazn">("For all");
   const [selectedInstructions, setSelectedInstructions] = useState<Array<[string, string?]>>([]);
   const [selectedAvailableInstructions, setSelectedAvailableInstructions] = useState<string[]>([]);
   const [isTranslating, setIsTranslating] = useState(false);
@@ -2081,7 +2082,7 @@ function EditMissionForm({
         onChangesDetected(currentCode !== originalCode);
       }
     }
-  }, [id, title, description, selectedInstructions, selectedMissionId]);
+  }, [id, title, description, status, selectedInstructions, selectedMissionId]);
 
   // Reset on save or mission change
   useEffect(() => {
@@ -2192,12 +2193,14 @@ function EditMissionForm({
       setId(mission.id);
       setTitle(mission.title);
       setDescription(mission.description);
+      setStatus(mission.status || "For all");
       setSelectedInstructions(mission.instructions || []);
     } else {
       // No data for this language, start with empty fields
       setId(missionId);
       setTitle("");
       setDescription("");
+      setStatus("For all");
       setSelectedInstructions([]);
     }
   };
@@ -2249,6 +2252,7 @@ function EditMissionForm({
       title,
       description,
       instructions: selectedInstructions,
+      status,
     };
 
     return JSON.stringify(mission, null, 2);
@@ -2538,6 +2542,20 @@ function EditMissionForm({
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Enter mission description..."
                 />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Mission Status</label>
+                <select
+                  className={styles.input}
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as "Hide" | "For all" | "Only Adama" | "Only Bazn")}
+                >
+                  <option value="Hide">Hide</option>
+                  <option value="For all">For all</option>
+                  <option value="Only Adama">Only Adama</option>
+                  <option value="Only Bazn">Only Bazn</option>
+                </select>
               </div>
             </div>
           </div>
