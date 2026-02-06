@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { data, Link, useNavigate, useLocation } from "react-router";
 import type { Route } from "./+types/missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
-import { BookOpen, ArrowLeft } from "lucide-react";
+import { BookOpen, ArrowLeft, ChevronUp, ChevronDown } from "lucide-react";
 import styles from "./home.module.css";
 import { getMissionById, getAllMissions } from "~/services/missions.server";
 import { getInstructionsByIds } from "~/services/instructions.server";
+import type { Instruction } from "~/data/instructions";
 
 export function meta({ data }: Route.MetaArgs) {
   const mission = data?.mission;
@@ -44,12 +45,58 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   }).filter(Boolean) as typeof instructions;
 
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
+  const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
+  const [loadingLinkInstructions, setLoadingLinkInstructions] = useState<Set<string>>(new Set());
 
   const navigate = useNavigate();
   const location = useLocation();
 
   // Get the previous mission from location state or default to home
   const previousMissionId = (location.state as { from?: string })?.from;
+
+  const handleLinkInstructionClick = async (instructionId: string, linkedMissionId: string) => {
+    // Toggle expansion state
+    if (expandedLinkInstructions.has(instructionId)) {
+      // Collapse - remove from map
+      const newMap = new Map(expandedLinkInstructions);
+      newMap.delete(instructionId);
+      setExpandedLinkInstructions(newMap);
+    } else {
+      // Expand - fetch linked mission instructions
+      setLoadingLinkInstructions(new Set([...loadingLinkInstructions, instructionId]));
+      
+      try {
+        // Fetch linked mission data
+        const response = await fetch(`/api/missions/${linkedMissionId}`);
+        if (!response.ok) {
+          console.error('Failed to fetch linked mission');
+          return;
+        }
+        
+        const linkedMissionData = await response.json();
+        const linkedMission = linkedMissionData.mission;
+        const linkedInstructions = linkedMissionData.instructions;
+        
+        // Map linked mission instructions with custom titles
+        const linkedMissionInstructions = linkedMission.instructions.map(([id, customTitle]: [string, string?]) => {
+          const instruction = linkedInstructions.find((inst: Instruction) => inst.id === id);
+          if (!instruction) return null;
+          return customTitle ? { ...instruction, title: customTitle } : instruction;
+        }).filter(Boolean) as Instruction[];
+        
+        // Add to expanded map
+        const newMap = new Map(expandedLinkInstructions);
+        newMap.set(instructionId, linkedMissionInstructions);
+        setExpandedLinkInstructions(newMap);
+      } catch (error) {
+        console.error('Error fetching linked mission:', error);
+      } finally {
+        const newLoading = new Set(loadingLinkInstructions);
+        newLoading.delete(instructionId);
+        setLoadingLinkInstructions(newLoading);
+      }
+    }
+  };
 
   const handleInstructionClick = (instructionId: string, event?: React.MouseEvent) => {
     const instruction = missionInstructions.find((inst) => inst?.id === instructionId);
@@ -60,11 +107,9 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
       return;
     }
 
-    // If it's a link type instruction, navigate to the linked mission
+    // If it's a link type instruction, expand/collapse inline
     if (instruction?.type === "link" && instruction.missionId) {
-      navigate(`/missions/${instruction.missionId}`, {
-        state: { from: mission.id },
-      });
+      handleLinkInstructionClick(instructionId, instruction.missionId);
       return;
     }
 
@@ -104,21 +149,67 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
         </div>
         <p className={styles.missionDescription}>{mission.description}</p>
         <div className={styles.instructionList}>
-          {missionInstructions.map((instruction) => (
-              <div key={instruction.id} className={styles.instructionItem}>
-                <InstructionListItem
-                  title={instruction.title}
-                  description={instruction.description}
-                  selected={selectedInstructionId === instruction.id}
-                  onClick={(event) => handleInstructionClick(instruction.id, event)}
-                />
-                {selectedInstructionId === instruction.id && instruction.type !== "link" && (
-                  <div className={styles.mobileExplanation}>
-                    <ExplanationDisplay instruction={instruction} />
+          {missionInstructions.map((instruction) => {
+            const isExpanded = expandedLinkInstructions.has(instruction.id);
+            const isLoading = loadingLinkInstructions.has(instruction.id);
+            const expandedInstructions = expandedLinkInstructions.get(instruction.id);
+            
+            return (
+              <div key={instruction.id}>
+                <div className={styles.instructionItem}>
+                  <InstructionListItem
+                    title={instruction.title}
+                    description={instruction.description}
+                    selected={selectedInstructionId === instruction.id}
+                    onClick={(event) => handleInstructionClick(instruction.id, event)}
+                  />
+                  {instruction.type === "link" && (
+                    <div style={{ marginLeft: '1rem', fontSize: '0.875rem', color: 'var(--color-neutral-11)' }}>
+                      {isLoading ? "Loading..." : (isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
+                    </div>
+                  )}
+                  {selectedInstructionId === instruction.id && instruction.type !== "link" && (
+                    <div className={styles.mobileExplanation}>
+                      <ExplanationDisplay instruction={instruction} />
+                    </div>
+                  )}
+                </div>
+                
+                {/* Render expanded linked mission instructions */}
+                {isExpanded && expandedInstructions && (
+                  <div style={{ marginLeft: '2rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    {expandedInstructions.map((linkedInstruction) => (
+                      <div key={linkedInstruction.id} className={styles.instructionItem}>
+                        <InstructionListItem
+                          title={linkedInstruction.title}
+                          description={linkedInstruction.description}
+                          selected={selectedInstructionId === linkedInstruction.id}
+                          onClick={(event) => {
+                            // If Shift key is pressed, navigate to admin page
+                            if (event?.shiftKey) {
+                              navigate(`/admin?tab=instructions&instructionId=${linkedInstruction.id}`);
+                              return;
+                            }
+                            // Toggle selection
+                            if (selectedInstructionId === linkedInstruction.id) {
+                              setSelectedInstructionId(null);
+                            } else {
+                              setSelectedInstructionId(linkedInstruction.id);
+                            }
+                          }}
+                        />
+                        {selectedInstructionId === linkedInstruction.id && linkedInstruction.type !== "link" && (
+                          <div className={styles.mobileExplanation}>
+                            <ExplanationDisplay instruction={linkedInstruction} />
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
-            ))}
+            );
+          })}
         </div>
       </section>
 
