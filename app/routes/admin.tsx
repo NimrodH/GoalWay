@@ -2747,6 +2747,15 @@ function EditMissionForm({
                   <div style={{ display: "flex", gap: "var(--space-2)" }}>
                     <button
                       type="button"
+                      onClick={() => setShowCommentDialog(true)}
+                      className={styles.addButton}
+                      disabled={!selectedMissionId || !session}
+                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                    >
+                      💬 Comment
+                    </button>
+                    <button
+                      type="button"
                       onClick={moveInstructionUp}
                       className={styles.addButton}
                       disabled={
@@ -3017,6 +3026,53 @@ function EditMissionForm({
               >
                 Save
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comment Dialog */}
+      {showCommentDialog && (
+        <div className={styles.dialogOverlay} onClick={() => setShowCommentDialog(false)}>
+          <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.dialogHeader}>
+              <h2 className={styles.dialogTitle}>Add Comment to Mission</h2>
+              <button className={styles.dialogClose} onClick={() => setShowCommentDialog(false)}>
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: "var(--space-4)" }}>
+              <p style={{ marginBottom: "var(--space-3)", color: "var(--color-neutral-11)" }}>
+                Add a comment that will appear in the mission's instruction list. Comments are mission-specific and are not saved to the instructions table.
+              </p>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Comment Text</label>
+                <textarea
+                  className={styles.textarea}
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Enter your comment..."
+                  rows={3}
+                  autoFocus
+                />
+              </div>
+              <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCommentDialog(false)}
+                  className={styles.removeButton}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddComment}
+                  className={styles.submitButton}
+                  disabled={!commentText.trim()}
+                >
+                  Add Comment
+                </button>
+              </div>
             </div>
           </div>
         </div>
