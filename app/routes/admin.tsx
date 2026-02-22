@@ -2071,6 +2071,8 @@ function EditMissionForm({
   const [renameInstructionId, setRenameInstructionId] = useState<string | null>(null);
   const [alternativeTitle, setAlternativeTitle] = useState("");
   const [instructionFilter, setInstructionFilter] = useState("");
+  const [showCommentDialog, setShowCommentDialog] = useState(false);
+  const [commentText, setCommentText] = useState("");
 
   // Track changes
   useEffect(() => {
@@ -2182,6 +2184,21 @@ function EditMissionForm({
     };
 
     instructionFetcher.submit(instructionFormData, { method: "post" });
+  };
+
+  const handleAddComment = () => {
+    if (!commentText.trim()) {
+      alert("Please enter a comment");
+      return;
+    }
+
+    // Add comment as instruction with ID "0" and custom title
+    const updatedInstructions: Array<[string, string?]> = [...selectedInstructions, ["0", commentText.trim()]];
+    setSelectedInstructions(updatedInstructions);
+    
+    // Close dialog and reset
+    setShowCommentDialog(false);
+    setCommentText("");
   };
 
   const updateMissionFormFields = (missionId: string) => {
@@ -2901,6 +2918,50 @@ function EditMissionForm({
             )}
           </div>
         </>
+      )}
+
+      {/* Comment Dialog */}
+      {showCommentDialog && (
+        <div className={styles.dialogOverlay} onClick={() => setShowCommentDialog(false)}>
+          <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.dialogHeader}>
+              <h2 className={styles.dialogTitle}>Add Comment</h2>
+              <button className={styles.dialogClose} onClick={() => setShowCommentDialog(false)}>
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: "var(--space-4)" }}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Comment Text</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Enter comment text..."
+                  autoFocus
+                />
+              </div>
+              <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end", marginTop: "var(--space-4)" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCommentDialog(false)}
+                  className={styles.removeButton}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddComment}
+                  className={styles.submitButton}
+                  disabled={!commentText.trim()}
+                >
+                  Add Comment
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Rename Instruction Dialog */}
