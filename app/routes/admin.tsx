@@ -2865,10 +2865,17 @@ function EditMissionForm({
                   }}
                 >
                   {selectedInstructions.map(([instructionId, customTitle]) => {
-                    const instruction = instructions.find((i) => i.id === instructionId);
+                    // Handle comments (ID "0") differently - they don't have a matching instruction
+                    const isComment = instructionId === "0";
+                    const instruction = !isComment ? instructions.find((i) => i.id === instructionId) : null;
                     const hasFullExplanation = instruction?.status === "full explanation";
-                    if (!instruction) return null;
-                    const displayTitle = customTitle || instruction.title;
+                    
+                    // Skip rendering if it's not a comment and instruction doesn't exist
+                    if (!isComment && !instruction) return null;
+                    
+                    // For comments, display the custom title (which contains the comment text)
+                    // For regular instructions, display custom title if present, otherwise instruction title
+                    const displayTitle = isComment ? customTitle : (customTitle || instruction?.title || "");
                     return (
                       <label
                         key={instructionId}
@@ -2886,8 +2893,14 @@ function EditMissionForm({
                           onChange={() => setSelectedMissionInstruction(instructionId)}
                         />
                         <span>
-                          <span style={{ color: instruction?.status === "full explanation" ? "green" : "inherit" }}>{instructionId}</span> - {displayTitle}
-                          {customTitle && (
+                          {/* Show comment indicator for ID "0", otherwise show instruction ID */}
+                          {isComment ? (
+                            <span style={{ color: "var(--color-accent-11)", fontStyle: "italic" }}>💬 Comment:</span>
+                          ) : (
+                            <span style={{ color: instruction?.status === "full explanation" ? "green" : "inherit" }}>{instructionId}</span>
+                          )}
+                          {!isComment && " - "}{displayTitle}
+                          {!isComment && customTitle && (
                             <span
                               style={{
                                 color: "var(--color-accent-11)",
@@ -2895,7 +2908,8 @@ function EditMissionForm({
                                 marginLeft: "var(--space-2)",
                               }}
                             >
-                              ({instruction.title})
+                              {/* For comments, don't show original title since there isn't one */}
+                              {!isComment && instruction && `(${instruction.title})`}
                             </span>
                           )}
                         </span>
