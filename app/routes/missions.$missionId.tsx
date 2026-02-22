@@ -40,8 +40,8 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   // Map instructions to maintain order from mission.instructions and apply custom titles
   // Comments (ID "0") are handled separately as they don't exist in the database
   const missionInstructions = mission.instructions.map(([id, customTitle]) => {
-    // Handle comments (ID "0") - they don't have a database entry
-    if (id === "0") {
+    // Handle comments (ID starts with "comment-" or is "0" for legacy comments) - they don't have a database entry
+    if (id.startsWith("comment-") || id === "0") {
       return {
         id: "0",
         title: customTitle || "",

@@ -2192,6 +2192,9 @@ function EditMissionForm({
       return;
     }
 
+    // Generate unique comment ID using timestamp and random number
+    const commentId = `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
     // Insert comment after the selected instruction (or at the end if none selected)
     let updatedInstructions: Array<[string, string?]>;
     
@@ -2203,16 +2206,16 @@ function EditMissionForm({
         // Insert comment after the selected instruction
         updatedInstructions = [
           ...selectedInstructions.slice(0, selectedIndex + 1),
-          ["0", commentText.trim()],
+          [commentId, commentText.trim()],
           ...selectedInstructions.slice(selectedIndex + 1)
         ];
       } else {
         // If selected instruction not found, add at the end
-        updatedInstructions = [...selectedInstructions, ["0", commentText.trim()]];
+        updatedInstructions = [...selectedInstructions, [commentId, commentText.trim()]];
       }
     } else {
       // No instruction selected, add at the end
-      updatedInstructions = [...selectedInstructions, ["0", commentText.trim()]];
+      updatedInstructions = [...selectedInstructions, [commentId, commentText.trim()]];
     }
     
     setSelectedInstructions(updatedInstructions);
@@ -2865,8 +2868,8 @@ function EditMissionForm({
                   }}
                 >
                   {selectedInstructions.map(([instructionId, customTitle]) => {
-                    // Handle comments (ID "0") differently - they don't have a matching instruction
-                    const isComment = instructionId === "0";
+                    // Handle comments (ID starts with "comment-" or is "0" for legacy comments) differently - they don't have a matching instruction
+                    const isComment = instructionId.startsWith("comment-") || instructionId === "0";
                     const instruction = !isComment ? instructions.find((i) => i.id === instructionId) : null;
                     const hasFullExplanation = instruction?.status === "full explanation";
                     
