@@ -38,11 +38,24 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   const { mission, instructions, allMissions } = loaderData;
 
   // Map instructions to maintain order from mission.instructions and apply custom titles
+  // Comments (ID "0") are handled separately as they don't exist in the database
   const missionInstructions = mission.instructions.map(([id, customTitle]) => {
+    // Handle comments (ID "0") - they don't have a database entry
+    if (id === "0") {
+      return {
+        id: "0",
+        title: customTitle || "",
+        description: "",
+        status: "comment" as const,
+        type: "comment" as const,
+        explanation: [], // Comments don't have explanations
+      };
+    }
+    
     const instruction = instructions.find(inst => inst.id === id);
     if (!instruction) return null;
     return customTitle ? { ...instruction, title: customTitle } : instruction;
-  }).filter(Boolean) as typeof instructions;
+  }).filter(Boolean) as (typeof instructions[number] | { id: string; title: string; description: string; status: "comment"; type: "comment"; explanation: [] })[];
 
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
   const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
@@ -130,6 +143,9 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   };
 
   const selectedInstruction = missionInstructions.find((inst) => inst?.id === selectedInstructionId) || null;
+  
+  // Don't pass comments to ExplanationDisplay - they don't have explanations
+  const instructionToDisplay = selectedInstruction?.type === "comment" ? null : selectedInstruction;
 
   return (
     <div className={styles.container}>
@@ -150,9 +166,31 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
         <p className={styles.missionDescription}>{mission.description}</p>
         <div className={styles.instructionList}>
           {missionInstructions.map((instruction) => {
+            const isComment = instruction.type === "comment";
             const isExpanded = expandedLinkInstructions.has(instruction.id);
             const isLoading = loadingLinkInstructions.has(instruction.id);
             const expandedInstructions = expandedLinkInstructions.get(instruction.id);
+            
+            // Render comments differently (non-clickable, styled)
+            if (isComment) {
+              return (
+                <div key={instruction.id} className={styles.instructionItem}>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    padding: 'var(--space-3) var(--space-4)',
+                    color: 'var(--color-accent-11)',
+                    fontStyle: 'italic',
+                    fontSize: '0.9rem',
+                    cursor: 'default',
+                    opacity: 0.8
+                  }}>
+                    <span style={{ marginRight: 'var(--space-2)' }}>💬</span>
+                    <span>{instruction.title}</span>
+                  </div>
+                </div>
+              );
+            }
             
             return (
               <div key={instruction.id}>
@@ -163,14 +201,14 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                     selected={selectedInstructionId === instruction.id}
                     onClick={(event) => handleInstructionClick(instruction.id, event)}
                   />
-                  {instruction.type === "link" && (
+                  {instruction.type === "link" && 'missionId' in instruction && (
                     <div style={{ marginLeft: '1rem', fontSize: '0.875rem', color: 'var(--color-neutral-11)' }}>
                       {isLoading ? "Loading..." : (isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
                     </div>
                   )}
-                  {selectedInstructionId === instruction.id && instruction.type !== "link" && (
+                  {selectedInstructionId === instruction.id && instruction.type !== "link" && !isComment && 'explanation' in instruction && instruction.explanation.length > 0 && (
                     <div className={styles.mobileExplanation}>
-                      <ExplanationDisplay instruction={instruction} />
+                      <ExplanationDisplay instruction={instruction as Instruction} />
                     </div>
                   )}
                 </div>
@@ -214,7 +252,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
       </section>
 
       <section className={styles.explanationSection}>
-        <ExplanationDisplay instruction={selectedInstruction} className={styles.explanationContainer} />
+        <ExplanationDisplay instruction={instructionToDisplay} className={styles.explanationContainer} />
       </section>
     </div>
   );
