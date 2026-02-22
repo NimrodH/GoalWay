@@ -1985,7 +1985,43 @@ function EditInstructionForm({
             >
               Updated Code
             </h2>
-            <pre className={styles.outputCode}>{generateCode()}</pre>
+            <textarea
+              className={styles.codeEditor}
+              value={generateCode()}
+              onChange={(e) => {
+                try {
+                  const parsed = JSON.parse(e.target.value);
+                  // Update form fields from the edited JSON
+                  setId(parsed.id || "");
+                  setTitle(parsed.title || "");
+                  setDescription(parsed.description || "");
+                  setType(parsed.type || "default");
+                  setStatus(parsed.status || "only title");
+                  setMissionId(parsed.missionId || "");
+                  // Handle explanation with unique keys
+                  const explanationWithKeys: InstructionContentWithKey[] = (parsed.explanation || []).map((item: InstructionContent, idx: number) => ({
+                    ...item,
+                    _key: `content-${Date.now()}-${idx}-${Math.random()}`,
+                  }));
+                  setExplanation(explanationWithKeys);
+                } catch (err) {
+                  // Invalid JSON - don't update
+                }
+              }}
+              spellCheck={false}
+              style={{
+                width: "100%",
+                minHeight: "400px",
+                fontFamily: "monospace",
+                fontSize: "0.875rem",
+                padding: "var(--space-3)",
+                border: "1px solid var(--color-neutral-6)",
+                borderRadius: "var(--radius-2)",
+                backgroundColor: "var(--color-neutral-2)",
+                color: "var(--color-neutral-12)",
+                resize: "vertical",
+              }}
+            />
 
             <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-4)" }}>
               <button
@@ -2931,7 +2967,36 @@ function EditMissionForm({
             >
               Updated Code
             </h2>
-            <pre className={styles.outputCode}>{generateCode()}</pre>
+            <textarea
+              className={styles.codeEditor}
+              value={generateCode()}
+              onChange={(e) => {
+                try {
+                  const parsed = JSON.parse(e.target.value);
+                  // Update form fields from the edited JSON
+                  setId(parsed.id || "");
+                  setTitle(parsed.title || "");
+                  setDescription(parsed.description || "");
+                  setStatus(parsed.status || "For all");
+                  setSelectedInstructions(parsed.instructions || []);
+                } catch (err) {
+                  // Invalid JSON - don't update
+                }
+              }}
+              spellCheck={false}
+              style={{
+                width: "100%",
+                minHeight: "400px",
+                fontFamily: "monospace",
+                fontSize: "0.875rem",
+                padding: "var(--space-3)",
+                border: "1px solid var(--color-neutral-6)",
+                borderRadius: "var(--radius-2)",
+                backgroundColor: "var(--color-neutral-2)",
+                color: "var(--color-neutral-12)",
+                resize: "vertical",
+              }}
+            />
 
             <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-4)" }}>
               <button
