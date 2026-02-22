@@ -2192,8 +2192,29 @@ function EditMissionForm({
       return;
     }
 
-    // Add comment as instruction with ID "0" and custom title
-    const updatedInstructions: Array<[string, string?]> = [...selectedInstructions, ["0", commentText.trim()]];
+    // Insert comment after the selected instruction (or at the end if none selected)
+    let updatedInstructions: Array<[string, string?]>;
+    
+    if (selectedMissionInstruction) {
+      // Find the index of the selected instruction
+      const selectedIndex = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
+      
+      if (selectedIndex !== -1) {
+        // Insert comment after the selected instruction
+        updatedInstructions = [
+          ...selectedInstructions.slice(0, selectedIndex + 1),
+          ["0", commentText.trim()],
+          ...selectedInstructions.slice(selectedIndex + 1)
+        ];
+      } else {
+        // If selected instruction not found, add at the end
+        updatedInstructions = [...selectedInstructions, ["0", commentText.trim()]];
+      }
+    } else {
+      // No instruction selected, add at the end
+      updatedInstructions = [...selectedInstructions, ["0", commentText.trim()]];
+    }
+    
     setSelectedInstructions(updatedInstructions);
     
     // Close dialog and reset
