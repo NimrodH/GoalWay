@@ -27,7 +27,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const filteredMissions = missions.filter((mission) => {
     // Filter out missions with status "Hide"
     if (mission.status === "Hide") return false;
-    
+
     // Apply search filter
     if (!missionFilter.trim()) return true;
     const searchTerm = missionFilter.toLowerCase().trim();
@@ -48,11 +48,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           }}
         >
           <div>
-            <h1 className={styles.menuTitle}>Mission Control</h1>
+            <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
             <p className={styles.menuDescription}>
               Welcome to the Mission Control center. Each mission contains a curated set of instructions designed to
-              help you master specific aspects of the platform. Choose a mission below to begin your learning journey.
-              Missions can share common instructions, allowing you to build knowledge progressively.
+              help you master specific aspects of the platform. Filter to find the relevant mission. 
             </p>
           </div>
         </div>
