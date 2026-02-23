@@ -108,15 +108,13 @@ export async function action({ request }: Route.ActionArgs) {
 
           // Check and update data_en
           if (missionRow.data_en && Array.isArray(missionRow.data_en.instructions)) {
-            const updatedInstructions = missionRow.data_en.instructions.map(
-              (inst: [string, string?]) => {
-                if (inst[0] === oldInstructionId) {
-                  // Replace the instruction ID but keep any custom title
-                  return [newInstructionId, inst[1]] as [string, string?];
-                }
-                return inst;
-              },
-            );
+            const updatedInstructions = missionRow.data_en.instructions.map((inst: [string, string?]) => {
+              if (inst[0] === oldInstructionId) {
+                // Replace the instruction ID but keep any custom title
+                return [newInstructionId, inst[1]] as [string, string?];
+              }
+              return inst;
+            });
             // Check if anything was actually replaced
             if (JSON.stringify(updatedInstructions) !== JSON.stringify(missionRow.data_en.instructions)) {
               updatedRow.data_en = {
@@ -128,14 +126,12 @@ export async function action({ request }: Route.ActionArgs) {
           }
           // Also check for legacy instructionIds format
           if (missionRow.data_en && Array.isArray(missionRow.data_en.instructionIds)) {
-            const updatedInstructionIds = missionRow.data_en.instructionIds.map(
-              (instId: string) => {
-                if (instId === oldInstructionId) {
-                  return newInstructionId;
-                }
-                return instId;
-              },
-            );
+            const updatedInstructionIds = missionRow.data_en.instructionIds.map((instId: string) => {
+              if (instId === oldInstructionId) {
+                return newInstructionId;
+              }
+              return instId;
+            });
             // Check if anything was actually replaced
             if (JSON.stringify(updatedInstructionIds) !== JSON.stringify(missionRow.data_en.instructionIds)) {
               updatedRow.data_en = {
@@ -148,15 +144,13 @@ export async function action({ request }: Route.ActionArgs) {
 
           // Check and update data_he
           if (missionRow.data_he && Array.isArray(missionRow.data_he.instructions)) {
-            const updatedInstructions = missionRow.data_he.instructions.map(
-              (inst: [string, string?]) => {
-                if (inst[0] === oldInstructionId) {
-                  // Replace the instruction ID but keep any custom title
-                  return [newInstructionId, inst[1]] as [string, string?];
-                }
-                return inst;
-              },
-            );
+            const updatedInstructions = missionRow.data_he.instructions.map((inst: [string, string?]) => {
+              if (inst[0] === oldInstructionId) {
+                // Replace the instruction ID but keep any custom title
+                return [newInstructionId, inst[1]] as [string, string?];
+              }
+              return inst;
+            });
             // Check if anything was actually replaced
             if (JSON.stringify(updatedInstructions) !== JSON.stringify(missionRow.data_he.instructions)) {
               updatedRow.data_he = {
@@ -168,14 +162,12 @@ export async function action({ request }: Route.ActionArgs) {
           }
           // Also check for legacy instructionIds format
           if (missionRow.data_he && Array.isArray(missionRow.data_he.instructionIds)) {
-            const updatedInstructionIds = missionRow.data_he.instructionIds.map(
-              (instId: string) => {
-                if (instId === oldInstructionId) {
-                  return newInstructionId;
-                }
-                return instId;
-              },
-            );
+            const updatedInstructionIds = missionRow.data_he.instructionIds.map((instId: string) => {
+              if (instId === oldInstructionId) {
+                return newInstructionId;
+              }
+              return instId;
+            });
             // Check if anything was actually replaced
             if (JSON.stringify(updatedInstructionIds) !== JSON.stringify(missionRow.data_he.instructionIds)) {
               updatedRow.data_he = {
@@ -920,7 +912,7 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
       // Check for Ctrl+S (Windows/Linux) or Cmd+S (Mac)
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault(); // Prevent browser save dialog
-        
+
         // Find and click the save button
         const saveButton = document.querySelector('button[type="submit"]') as HTMLButtonElement;
         if (saveButton && !saveButton.disabled) {
@@ -1591,7 +1583,8 @@ function EditInstructionForm({
             </div>
             <div style={{ padding: "var(--space-4)" }}>
               <p style={{ marginBottom: "var(--space-3)", color: "var(--color-neutral-11)" }}>
-                Replace instruction <strong>{selectedInstructionId}</strong> with another instruction in all missions that use it.
+                Replace instruction <strong>{selectedInstructionId}</strong> with another instruction in all missions
+                that use it.
               </p>
               <div className={styles.formGroup}>
                 <label className={styles.label}>New Instruction ID</label>
@@ -1634,12 +1627,15 @@ function EditInstructionForm({
                   </div>
                 </div>
               )}
-              <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)", justifyContent: "flex-end" }}>
-                <button
-                  type="button"
-                  onClick={() => setShowReplaceDialog(false)}
-                  className={styles.addButton}
-                >
+              <div
+                style={{
+                  display: "flex",
+                  gap: "var(--space-2)",
+                  marginTop: "var(--space-4)",
+                  justifyContent: "flex-end",
+                }}
+              >
+                <button type="button" onClick={() => setShowReplaceDialog(false)} className={styles.addButton}>
                   Cancel
                 </button>
                 <button
@@ -1881,7 +1877,9 @@ function EditInstructionForm({
                 <select
                   className={styles.input}
                   value={status}
-                  onChange={(e) => setStatus(e.target.value as "only title" | "partial explanation" | "full explanation")}
+                  onChange={(e) =>
+                    setStatus(e.target.value as "only title" | "partial explanation" | "full explanation")
+                  }
                 >
                   <option value="only title">Only Title</option>
                   <option value="partial explanation">Partial Explanation</option>
@@ -1999,10 +1997,12 @@ function EditInstructionForm({
                   setStatus(parsed.status || "only title");
                   setMissionId(parsed.missionId || "");
                   // Handle explanation with unique keys
-                  const explanationWithKeys: InstructionContentWithKey[] = (parsed.explanation || []).map((item: InstructionContent, idx: number) => ({
-                    ...item,
-                    _key: `content-${Date.now()}-${idx}-${Math.random()}`,
-                  }));
+                  const explanationWithKeys: InstructionContentWithKey[] = (parsed.explanation || []).map(
+                    (item: InstructionContent, idx: number) => ({
+                      ...item,
+                      _key: `content-${Date.now()}-${idx}-${Math.random()}`,
+                    }),
+                  );
                   setExplanation(explanationWithKeys);
                 } catch (err) {
                   // Invalid JSON - don't update
@@ -2233,17 +2233,17 @@ function EditMissionForm({
 
     // Insert comment after the selected instruction (or at the end if none selected)
     let updatedInstructions: Array<[string, string?]>;
-    
+
     if (selectedMissionInstruction) {
       // Find the index of the selected instruction
       const selectedIndex = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
-      
+
       if (selectedIndex !== -1) {
         // Insert comment after the selected instruction
         updatedInstructions = [
           ...selectedInstructions.slice(0, selectedIndex + 1),
           [commentId, commentText.trim()],
-          ...selectedInstructions.slice(selectedIndex + 1)
+          ...selectedInstructions.slice(selectedIndex + 1),
         ];
       } else {
         // If selected instruction not found, add at the end
@@ -2253,9 +2253,9 @@ function EditMissionForm({
       // No instruction selected, add at the end
       updatedInstructions = [...selectedInstructions, [commentId, commentText.trim()]];
     }
-    
+
     setSelectedInstructions(updatedInstructions);
-    
+
     // Close dialog and reset
     setShowCommentDialog(false);
     setCommentText("");
@@ -2518,7 +2518,7 @@ function EditMissionForm({
   const hasUnsavedChanges = selectedMissionId && originalCode !== "" && generateCode() !== originalCode;
 
   return (
-    <div>
+    <div className={styles.div4}>
       <div className={styles.formSection}>
         <div
           style={{
@@ -2572,7 +2572,8 @@ function EditMissionForm({
             const isHidden = mission?.status === "Hide";
             return (
               <option key={id} value={id}>
-                {isHidden && "🔴 "}{id}
+                {isHidden && "🔴 "}
+                {id}
                 {mission ? ` - ${mission.title}` : " (No data for this language)"}
               </option>
             );
@@ -2908,13 +2909,13 @@ function EditMissionForm({
                     const isComment = instructionId.startsWith("comment-") || instructionId === "0";
                     const instruction = !isComment ? instructions.find((i) => i.id === instructionId) : null;
                     const hasFullExplanation = instruction?.status === "full explanation";
-                    
+
                     // Skip rendering if it's not a comment and instruction doesn't exist
                     if (!isComment && !instruction) return null;
-                    
+
                     // For comments, display the custom title (which contains the comment text)
                     // For regular instructions, display custom title if present, otherwise instruction title
-                    const displayTitle = isComment ? customTitle : (customTitle || instruction?.title || "");
+                    const displayTitle = isComment ? customTitle : customTitle || instruction?.title || "";
                     return (
                       <label
                         key={instructionId}
@@ -2936,9 +2937,12 @@ function EditMissionForm({
                           {isComment ? (
                             <span style={{ color: "var(--color-accent-11)", fontStyle: "italic" }}>💬 Comment:</span>
                           ) : (
-                            <span style={{ color: instruction?.status === "full explanation" ? "green" : "inherit" }}>{instructionId}</span>
+                            <span style={{ color: instruction?.status === "full explanation" ? "green" : "inherit" }}>
+                              {instructionId}
+                            </span>
                           )}
-                          {!isComment && " - "}{displayTitle}
+                          {!isComment && " - "}
+                          {displayTitle}
                           {!isComment && customTitle && (
                             <span
                               style={{
@@ -3054,12 +3058,15 @@ function EditMissionForm({
                   autoFocus
                 />
               </div>
-              <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end", marginTop: "var(--space-4)" }}>
-                <button
-                  type="button"
-                  onClick={() => setShowCommentDialog(false)}
-                  className={styles.removeButton}
-                >
+              <div
+                style={{
+                  display: "flex",
+                  gap: "var(--space-2)",
+                  justifyContent: "flex-end",
+                  marginTop: "var(--space-4)",
+                }}
+              >
+                <button type="button" onClick={() => setShowCommentDialog(false)} className={styles.removeButton}>
                   Cancel
                 </button>
                 <button
@@ -3146,7 +3153,8 @@ function EditMissionForm({
             </div>
             <div style={{ padding: "var(--space-4)" }}>
               <p style={{ marginBottom: "var(--space-3)", color: "var(--color-neutral-11)" }}>
-                Add a comment that will appear in the mission's instruction list. Comments are mission-specific and are not saved to the instructions table.
+                Add a comment that will appear in the mission's instruction list. Comments are mission-specific and are
+                not saved to the instructions table.
               </p>
               <div className={styles.formGroup}>
                 <label className={styles.label}>Comment Text</label>
@@ -3159,12 +3167,15 @@ function EditMissionForm({
                   autoFocus
                 />
               </div>
-              <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)", justifyContent: "flex-end" }}>
-                <button
-                  type="button"
-                  onClick={() => setShowCommentDialog(false)}
-                  className={styles.removeButton}
-                >
+              <div
+                style={{
+                  display: "flex",
+                  gap: "var(--space-2)",
+                  marginTop: "var(--space-4)",
+                  justifyContent: "flex-end",
+                }}
+              >
+                <button type="button" onClick={() => setShowCommentDialog(false)} className={styles.removeButton}>
                   Cancel
                 </button>
                 <button

@@ -24,6 +24,7 @@
 
 .tabs {
   margin-bottom: var(--space-6);
+  background-color: var(--color-neutral-1);
 }
 
 .formSection {
@@ -578,4 +579,7 @@
   display: flex;
   gap: var(--space-2);
   justify-content: flex-end;
+}
+.div4 {
+  background-color: var(--color-accent-1);
 }
