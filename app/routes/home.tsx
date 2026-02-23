@@ -51,7 +51,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
             <p className={styles.menuDescription}>
               Welcome to the Mission Control center. Each mission contains a curated set of instructions designed to
-              help you master specific aspects of the platform. Filter to find the relevant mission. 
+              help you master specific aspects of the platform. &lt;br /&gt;Filter to find the relevant mission.
             </p>
           </div>
         </div>
