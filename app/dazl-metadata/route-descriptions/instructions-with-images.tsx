@@ -1,0 +1,1 @@
+export default "A visual instruction page featuring a picture and list layout. This page displays step-by-step instructions with accompanying images for better clarity. The structure includes a header section and a list of instruction items, each with an image and descriptive text. This can be extended to include additional instructions with pictures as needed.";

@@ -4,6 +4,7 @@ export default [
   index("routes/home.tsx"),
   route("missions/:missionId", "routes/missions.$missionId.tsx"),
   route("admin", "routes/admin.tsx"),
+  route("instructions-with-images", "routes/instructions-with-images.tsx"),
   
   // API routes
   route("api/missions/:missionId", "routes/api.missions.$missionId.tsx"),

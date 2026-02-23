@@ -1,0 +1,109 @@
+.container {
+  min-height: 100vh;
+  background: var(--color-neutral-1);
+  padding: var(--space-4);
+}
+
+.content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--color-neutral-12);
+  margin-bottom: var(--space-2);
+}
+
+.subtitle {
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  color: var(--color-neutral-11);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.instructionsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.instructionItem {
+  background: var(--color-neutral-2);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-3);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.instructionItem:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-3);
+}
+
+.imageContainer {
+  width: 100%;
+  height: 400px;
+  overflow: hidden;
+  background: var(--color-neutral-3);
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.textContent {
+  padding: var(--space-5);
+}
+
+.instructionTitle {
+  font-family: var(--font-subheading);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-accent-11);
+  margin-bottom: var(--space-3);
+}
+
+.instructionDescription {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--color-neutral-11);
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: var(--space-3);
+  }
+
+  .title {
+    font-size: 2rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+  }
+
+  .imageContainer {
+    height: 250px;
+  }
+
+  .instructionTitle {
+    font-size: 1.25rem;
+  }
+
+  .textContent {
+    padding: var(--space-4);
+  }
+}
