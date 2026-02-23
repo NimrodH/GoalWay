@@ -4,6 +4,7 @@ import { BookOpen } from "lucide-react";
 import styles from "./instructions.module.css";
 import { getAllMissions } from "~/services/missions.server";
 import { useState } from "react";
+import styles0 from "./home.module.css";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -44,7 +45,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: "var(--space-4)",
+            marginBottom: "var(--space-1)",
           }}
         >
           <div>
@@ -52,15 +53,15 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             <p className={styles.menuDescription}>
               Welcome to the Mission Control center. Each mission contains a curated set of instructions designed to
               help you master specific aspects of the platform.
-            <p style={{ textAlign: "left" }}>
-              Use the filter to find the relevant mission.
-              <br />
-              Click on the mission you want to complete.
-              <br />
-              Follow the instructions step by step.
-              <br />
-              Click on any instruction to view detailed explanations and screenshots when needed.
             </p>
+            <ul style={{ textAlign: "left" }}>
+              <li>Use the filter box to find the relevant mission.</li>
+              <li>Click on the mission you want to complete.</li>
+              <li>Follow the instructions step by step.</li>
+              <li className={styles0.li1}>
+                Click on any instruction to view detailed explanations and screenshots when needed.
+              </li>
+            </ul>
           </div>
         </div>
 
