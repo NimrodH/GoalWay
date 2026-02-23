@@ -1,0 +1,13 @@
+Looking for this section in admin.tsx around line 2590-2640:
+
+Current layout:
+- Mission Details header
+- formGrid with:
+  - Mission ID
+  - Title  
+  - Description
+  - Mission Status
+
+Need to change to:
+- First row: Title (3/4 width) | Mission ID + Mission Status stacked (1/4 width)
+- Second row: Description (full width)
