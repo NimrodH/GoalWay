@@ -495,12 +495,12 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                 type="button"
                 onClick={handleReplaceImage}
                 className={styles.replaceButton}
-                disabled={!session || selectedInstructions.size === 0 || (!newImageUrl && !imagePreview) || fetcher.state !== "idle"}
+                disabled={loading || !session || selectedInstructions.size === 0 || (!newImageUrl && !imagePreview) || fetcher.state !== "idle"}
               >
                 {fetcher.state !== "idle" ? "Replacing..." : `Replace Image in ${selectedInstructions.size} Selected Instruction(s)`}
               </button>
 
-              {!session && (
+              {!loading && !session && (
                 <p className={styles.authWarning}>
                   Please sign in to replace images
                 </p>
