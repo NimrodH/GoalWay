@@ -698,63 +698,146 @@ function ExplanationContentItem({
 
   const handlePasteFromClipboard = async () => {
     try {
-      // Check clipboard permissions first
-      const permissionStatus = await navigator.permissions.query({ name: "clipboard-read" as PermissionName });
-      console.log("Clipboard permission:", permissionStatus.state);
+      // Method 1: Try Clipboard API first (modern browsers)
+      if (navigator.clipboard && navigator.clipboard.read) {
+        try {
+          // Check if permission API is available
+          if (navigator.permissions) {
+            const permissionStatus = await navigator.permissions.query({ name: "clipboard-read" as PermissionName });
+            console.log("Clipboard permission:", permissionStatus.state);
 
-      const clipboardItems = await navigator.clipboard.read();
-      console.log("Clipboard items count:", clipboardItems.length);
+            // If explicitly denied, inform user immediately
+            if (permissionStatus.state === "denied") {
+              throw new Error(
+                "Clipboard access denied. Please enable it in your browser settings or use the manual paste method.",
+              );
+            }
+          }
 
-      for (const item of clipboardItems) {
-        console.log("Available clipboard types:", item.types);
+          // Try to read from clipboard
+          const clipboardItems = await navigator.clipboard.read();
+          console.log("Clipboard items count:", clipboardItems.length);
 
-        // Look for image types
-        const imageType = item.types.find((type) => type.startsWith("image/"));
+          for (const item of clipboardItems) {
+            console.log("Available clipboard types:", item.types);
 
-        if (imageType) {
-          console.log("Found image type:", imageType);
-          const blob = await item.getType(imageType);
-          console.log("Blob size:", blob.size, "bytes");
+            // Look for image types
+            const imageType = item.types.find((type) => type.startsWith("image/"));
 
-          // Convert blob to File object
-          const timestamp = Date.now();
-          const extension = imageType.split("/")[1] || "png";
-          const file = new File([blob], `pasted-image-${timestamp}.${extension}`, { type: blob.type });
+            if (imageType) {
+              console.log("Found image type:", imageType);
+              const blob = await item.getType(imageType);
+              console.log("Blob size:", blob.size, "bytes");
 
-          setImageFile(file);
+              // Convert blob to File object
+              const timestamp = Date.now();
+              const extension = imageType.split("/")[1] || "png";
+              const file = new File([blob], `pasted-image-${timestamp}.${extension}`, { type: blob.type });
 
-          // Create preview
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            setImagePreview(reader.result as string);
-          };
-          reader.readAsDataURL(blob);
+              setImageFile(file);
 
-          alert(`Image pasted successfully! (${Math.round(blob.size / 1024)}KB)`);
-          return; // Exit after finding first image
+              // Create preview
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                setImagePreview(reader.result as string);
+              };
+              reader.readAsDataURL(blob);
+
+              alert(`Image pasted successfully! (${Math.round(blob.size / 1024)}KB)`);
+              return; // Exit after finding first image
+            }
+          }
+
+          // No image found in clipboard
+          const allTypes = clipboardItems.flatMap((item) => item.types).join(", ");
+          alert(
+            `No image found in clipboard.\n\nAvailable formats: ${allTypes || "none"}\n\nTip: Right-click on an image and select "Copy Image", or use a screenshot tool.`,
+          );
+          return;
+        } catch (clipboardError) {
+          // Log error but don't throw - we'll try the fallback method
+          console.warn("Clipboard API failed, trying fallback:", clipboardError);
         }
       }
 
-      // No image found in clipboard
-      const allTypes = clipboardItems.flatMap((item) => item.types).join(", ");
+      // Method 2: Fallback - instruct user to use manual paste event
       alert(
-        `No image found in clipboard.\n\nAvailable formats: ${allTypes || "none"}\n\nPlease copy an image (right-click on image → Copy Image, or use a screenshot tool).`,
+        'Clipboard API not available or access denied.\n\nTry this instead:\n1. Click in the "Paste Zone" box below\n2. Press Ctrl+V (or Cmd+V on Mac)\n\nOR\n\nUse the file upload button to select an image manually.',
       );
+
+      // Create a paste zone element if it doesn't exist
+      const existingPasteZone = document.getElementById("manual-paste-zone");
+      if (!existingPasteZone) {
+        const pasteZone = document.createElement("div");
+        pasteZone.id = "manual-paste-zone";
+        pasteZone.contentEditable = "true";
+        pasteZone.style.cssText = `
+          border: 2px dashed var(--color-accent-8);
+          border-radius: var(--radius-2);
+          padding: var(--space-4);
+          margin-top: var(--space-2);
+          text-align: center;
+          color: var(--color-neutral-11);
+          background: var(--color-accent-2);
+          cursor: text;
+          min-height: 80px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        `;
+        pasteZone.textContent = "📋 Click here and press Ctrl+V (or Cmd+V) to paste an image";
+
+        // Handle paste event on this element
+        pasteZone.addEventListener("paste", async (e: ClipboardEvent) => {
+          e.preventDefault();
+          const items = e.clipboardData?.items;
+          if (!items) return;
+
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.type.startsWith("image/")) {
+              const blob = item.getAsFile();
+              if (blob) {
+                const timestamp = Date.now();
+                const extension = blob.type.split("/")[1] || "png";
+                const file = new File([blob], `pasted-image-${timestamp}.${extension}`, { type: blob.type });
+
+                setImageFile(file);
+
+                // Create preview
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  setImagePreview(reader.result as string);
+                };
+                reader.readAsDataURL(blob);
+
+                // Remove paste zone after success
+                pasteZone.remove();
+                alert(`Image pasted successfully! (${Math.round(blob.size / 1024)}KB)`);
+                return;
+              }
+            }
+          }
+
+          alert("No image found in the pasted content. Please copy an image and try again.");
+        });
+
+        // Insert the paste zone after the button
+        const pasteButton = document.querySelector('[data-paste-button]');
+        if (pasteButton && pasteButton.parentElement) {
+          pasteButton.parentElement.insertBefore(pasteZone, pasteButton.nextSibling);
+          pasteZone.focus();
+        }
+      } else {
+        existingPasteZone.focus();
+      }
     } catch (error) {
-      console.error("Clipboard error details:", error);
+      console.error("Paste operation error:", error);
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      if (errorMessage.includes("denied") || errorMessage.includes("permission")) {
-        alert(
-          'Clipboard access denied.\n\nPlease allow clipboard access in your browser settings, or try:\n1. Copy an image using Ctrl+C (or Cmd+C on Mac)\n2. Right-click on an image and select "Copy Image"\n3. Use a screenshot tool and copy to clipboard',
-        );
-      } else if (errorMessage.includes("not supported")) {
-        alert("Clipboard API not supported.\n\nPlease use the file input instead.");
-      } else {
-        alert(
-          `Failed to read clipboard: ${errorMessage}\n\nTry:\n1. Copy an image to clipboard\n2. Make sure you\'re using a modern browser (Chrome, Edge, Firefox)\n3. If using a screenshot tool, ensure it copies to clipboard`,
-        );
-      }
+      alert(
+        `Paste failed: ${errorMessage}\n\nAlternative:\nUse the file upload button below to select an image from your computer.`,
+      );
     }
   };
 
@@ -822,7 +905,7 @@ function ExplanationContentItem({
               <button type="button" onClick={() => setShowImageLibrary(true)} className={styles.addButton}>
                 📚 Select from Library
               </button>
-              <button type="button" onClick={handlePasteFromClipboard} className={styles.addButton}>
+              <button type="button" onClick={handlePasteFromClipboard} className={styles.addButton} data-paste-button>
                 📋 Paste from Clipboard
               </button>
             </div>
