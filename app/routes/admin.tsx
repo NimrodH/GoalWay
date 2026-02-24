@@ -637,11 +637,27 @@ function ImageLibraryDialog({
   // Check if an image URL is used in any instruction (check both languages)
   const isImageUsed = (imageUrl: string) => {
     const allInstructions = [...instructionsEn, ...instructionsHe];
-    return allInstructions.some((instruction) => 
-      instruction.explanation?.some((item) => 
+    const found = allInstructions.some((instruction) => {
+      // Skip if instruction has no explanation or it's not an array
+      if (!instruction.explanation || !Array.isArray(instruction.explanation)) {
+        return false;
+      }
+      return instruction.explanation.some((item) => 
         item.type === 'image' && item.content === imageUrl
-      )
-    );
+      );
+    });
+    // Console log for debugging (will show in browser console)
+    if (!found) {
+      console.log('Image not found in any instruction:', imageUrl);
+      console.log('Total instructions checked:', allInstructions.length);
+      const instructionsWithExplanation = allInstructions.filter(i => i.explanation && Array.isArray(i.explanation) && i.explanation.length > 0);
+      console.log('Instructions with explanations:', instructionsWithExplanation.length);
+      const allImageUrls = instructionsWithExplanation.flatMap(i => 
+        i.explanation!.filter(e => e.type === 'image').map(e => e.content)
+      );
+      console.log('All image URLs in instructions:', allImageUrls);
+    }
+    return found;
   };
 
   // Toggle image selection
