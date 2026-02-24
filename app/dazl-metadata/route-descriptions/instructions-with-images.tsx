@@ -1,16 +1,32 @@
-/**
- * Route Description: /instructions-with-images
- * 
- * A simple page that displays:
- * 1. A single featured image at the top
- * 2. A scrollable list of all available instruction titles from the database
- * 
- * The page uses the same visual style as the admin panel's instruction list
- * (instructionCheckboxList) for consistency.
- * 
- * Purpose:
- * - Provides a clean overview of all available instructions
- * - Can be used to later add images to individual instructions
- * - Maintains consistency with the admin interface design patterns
- */
-export {};
+export default (
+  <>
+    <p>
+      <strong>Instructions with Images</strong> - A specialized view that displays instructions
+      filtered by a specific image.
+    </p>
+    <p>
+      When an admin clicks the "View Instructions with This Image" button in the admin panel for a
+      specific image, they are navigated to this page with that image displayed at the top and a
+      list of all instructions that use that image in their explanation.
+    </p>
+    <p>
+      <strong>Query Parameters:</strong>
+    </p>
+    <ul>
+      <li>
+        <code>imageUrl</code> - The URL of the image to filter instructions by. When provided, only
+        instructions containing this exact image in their explanation array are shown.
+      </li>
+    </ul>
+    <p>
+      <strong>Features:</strong>
+    </p>
+    <ul>
+      <li>Displays a featured image at the top (from query parameter or default)</li>
+      <li>Shows filtered list of instructions that use the specified image</li>
+      <li>Displays instruction count in subtitle when filtering is active</li>
+      <li>Shows empty state message when no instructions match the filter</li>
+      <li>Uses the same checkbox list styling as the admin panel for consistency</li>
+    </ul>
+  </>
+);

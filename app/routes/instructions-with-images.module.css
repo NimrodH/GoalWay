@@ -103,6 +103,13 @@
   flex: 1;
 }
 
+.emptyState {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-neutral-11);
+  font-size: 0.875rem;
+}
+
 @media (max-width: 768px) {
   .container {
     padding: var(--space-3);

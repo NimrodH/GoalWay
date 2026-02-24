@@ -846,6 +846,17 @@ function ExplanationContentItem({
               <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>Uploading...</p>
             )}
           </div>
+          {item.content && (
+            <div style={{ marginTop: "var(--space-3)" }}>
+              <Link
+                to={`/instructions-with-images?imageUrl=${encodeURIComponent(item.content)}`}
+                className={styles.addButton}
+                style={{ display: "inline-block", textDecoration: "none" }}
+              >
+                🔍 View Instructions with This Image
+              </Link>
+            </div>
+          )}
           <ImageLibraryDialog
             isOpen={showImageLibrary}
             onClose={() => setShowImageLibrary(false)}
