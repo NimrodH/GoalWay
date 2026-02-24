@@ -142,18 +142,23 @@ function ImageLibraryDialog({
   isOpen,
   onClose,
   onSelectImage,
+  instructions,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSelectImage: (url: string) => void;
+  instructions: any[];
 }) {
   const [images, setImages] = useState<Array<{ name: string; url: string; path: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       loadImages();
+      setSelectedImages(new Set());
     }
   }, [isOpen]);
 
@@ -168,6 +173,74 @@ function ImageLibraryDialog({
     } else {
       setImages(result.images);
     }
+  };
+
+  // Check if an image URL is used in any instruction
+  const isImageUsed = (imageUrl: string) => {
+    return instructions.some((instruction) => 
+      instruction.explanation?.some((item: any) => 
+        item.type === 'image' && item.content === imageUrl
+      )
+    );
+  };
+
+  // Toggle image selection
+  const toggleImageSelection = (imagePath: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedImages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(imagePath)) {
+        newSet.delete(imagePath);
+      } else {
+        newSet.add(imagePath);
+      }
+      return newSet;
+    });
+  };
+
+  // Delete selected images
+  const handleDeleteSelected = async () => {
+    if (selectedImages.size === 0) {
+      alert('Please select at least one image to delete');
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete ${selectedImages.size} image(s)?\n\nThis action cannot be undone.`
+    );
+
+    if (!confirmDelete) {
+      return;
+    }
+
+    setIsDeleting(true);
+    const { deleteImage } = await import('~/lib/image-upload');
+    
+    let successCount = 0;
+    let errorCount = 0;
+    const errors: string[] = [];
+
+    for (const imagePath of selectedImages) {
+      const result = await deleteImage(imagePath);
+      if (result.success) {
+        successCount++;
+      } else {
+        errorCount++;
+        errors.push(`${imagePath}: ${result.error}`);
+      }
+    }
+
+    setIsDeleting(false);
+
+    if (errorCount > 0) {
+      alert(`Deleted ${successCount} image(s).\nFailed to delete ${errorCount} image(s):\n${errors.join('\n')}`);
+    } else {
+      alert(`Successfully deleted ${successCount} image(s)!`);
+    }
+
+    // Reload images and clear selection
+    setSelectedImages(new Set());
+    await loadImages();
   };
 
   if (!isOpen) return null;
@@ -191,21 +264,81 @@ function ImageLibraryDialog({
         )}
 
         {!isLoading && !error && images.length > 0 && (
-          <div className={styles.imageGrid}>
-            {images.map((image) => (
-              <div
-                key={image.path}
-                className={styles.imageGridItem}
-                onClick={() => {
-                  onSelectImage(image.url);
-                  onClose();
-                }}
-              >
-                <img src={image.url} alt={image.name} className={styles.imageGridThumb} />
-                <div className={styles.imageGridName}>{image.name}</div>
+          <>
+            <div style={{ padding: 'var(--space-4)', borderBottom: '1px solid var(--color-neutral-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--color-neutral-11)' }}>
+                {selectedImages.size > 0 ? `${selectedImages.size} image(s) selected` : 'Select images to delete'}
               </div>
-            ))}
-          </div>
+              <button
+                type="button"
+                onClick={handleDeleteSelected}
+                className={styles.deleteButton}
+                disabled={selectedImages.size === 0 || isDeleting}
+                style={{ minWidth: '100px' }}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Selected'}
+              </button>
+            </div>
+            <div className={styles.imageGrid}>
+              {images.map((image) => {
+                const isUsed = isImageUsed(image.url);
+                const isSelected = selectedImages.has(image.path);
+                return (
+                  <div
+                    key={image.path}
+                    className={styles.imageGridItem}
+                    onClick={() => {
+                      onSelectImage(image.url);
+                      onClose();
+                    }}
+                    style={{
+                      position: 'relative',
+                      border: isSelected ? '3px solid var(--color-accent-9)' : undefined,
+                      opacity: isUsed ? 1 : 0.6,
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'var(--space-2)',
+                        left: 'var(--space-2)',
+                        zIndex: 10,
+                      }}
+                      onClick={(e) => toggleImageSelection(image.path, e)}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                      />
+                    </div>
+                    {!isUsed && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 'var(--space-2)',
+                          right: 'var(--space-2)',
+                          background: 'var(--color-error-9)',
+                          color: 'white',
+                          padding: 'var(--space-1) var(--space-2)',
+                          borderRadius: 'var(--radius-2)',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          zIndex: 5,
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        Not Used
+                      </div>
+                    )}
+                    <img src={image.url} alt={image.name} className={styles.imageGridThumb} />
+                    <div className={styles.imageGridName}>{image.name}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -511,6 +644,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               isOpen={showImageLibrary}
               onClose={() => setShowImageLibrary(false)}
               onSelectImage={handleSelectFromLibrary}
+              instructions={instructions}
             />
           </div>
         )}
