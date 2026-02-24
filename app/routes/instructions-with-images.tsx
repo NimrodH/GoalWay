@@ -1,7 +1,12 @@
 import type { Route } from "./+types/instructions-with-images";
 import { useSearchParams } from "react-router";
-import { instructions } from "~/data/instructions";
 import styles from "./instructions-with-images.module.css";
+import { getAllInstructions } from "~/services/instructions.server";
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const instructions = await getAllInstructions();
+  return { instructions };
+}
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -13,11 +18,13 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-export default function InstructionsWithImages() {
+export default function InstructionsWithImages({ loaderData }: Route.ComponentProps) {
+  const { instructions } = loaderData;
   const [searchParams] = useSearchParams();
   const imageUrl = searchParams.get("imageUrl");
 
   // Filter instructions to only show those containing this specific image
+  // Note: searchParams.get() automatically decodes the URL, so imageUrl is already decoded
   const filteredInstructions = imageUrl
     ? instructions.filter((instruction) =>
         instruction.explanation?.some(

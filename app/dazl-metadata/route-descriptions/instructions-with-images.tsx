@@ -10,6 +10,13 @@ export default (
       list of all instructions that use that image in their explanation.
     </p>
     <p>
+      <strong>Data Source:</strong>
+    </p>
+    <ul>
+      <li>Fetches live instruction data from Supabase database via getAllInstructions() service</li>
+      <li>Uses real-time data from the "instructions" table (data_en column)</li>
+    </ul>
+    <p>
       <strong>Query Parameters:</strong>
     </p>
     <ul>
