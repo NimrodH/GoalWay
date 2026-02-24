@@ -35,5 +35,16 @@ export default (
       <li>Shows empty state message when no instructions match the filter</li>
       <li>Uses the same checkbox list styling as the admin panel for consistency</li>
     </ul>
+    <p>
+      <strong>Selection Functionality:</strong>
+    </p>
+    <ul>
+      <li>Each instruction has a checkbox for individual selection</li>
+      <li>Click anywhere on an instruction row to toggle its selection</li>
+      <li>Selected instructions are highlighted with accent color background</li>
+      <li>Header displays a "Select All" / "Deselect All" checkbox with indeterminate state support</li>
+      <li>Selection counter shows how many instructions are currently selected ("X selected")</li>
+      <li>Visual feedback: selected items have accent background, hover states work on all items</li>
+    </ul>
   </>
 );

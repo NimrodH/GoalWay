@@ -51,12 +51,42 @@
   margin-top: var(--space-6);
 }
 
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
 .sectionTitle {
   font-family: var(--font-heading);
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--color-neutral-12);
-  margin-bottom: var(--space-4);
+  margin: 0;
+}
+
+.selectionInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.selectAllCheckbox {
+  cursor: pointer;
+}
+
+.selectAllCheckbox[data-indeterminate="true"] {
+  opacity: 0.7;
+}
+
+.selectionText {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--color-neutral-11);
+  font-weight: 500;
 }
 
 .instructionCheckboxList {
@@ -77,7 +107,9 @@
   gap: var(--space-3);
   padding: var(--space-3);
   border-bottom: 1px solid var(--color-neutral-4);
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border-radius: var(--radius-1);
 }
 
 .instructionItem:last-child {
@@ -86,6 +118,20 @@
 
 .instructionItem:hover {
   background-color: var(--color-neutral-3);
+}
+
+.instructionItem.selected {
+  background-color: var(--color-accent-3);
+  border-color: var(--color-accent-6);
+}
+
+.instructionItem.selected:hover {
+  background-color: var(--color-accent-4);
+}
+
+.checkbox {
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .instructionId {
@@ -125,6 +171,11 @@
 
   .imageContainer {
     max-height: 300px;
+  }
+
+  .sectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .sectionTitle {
