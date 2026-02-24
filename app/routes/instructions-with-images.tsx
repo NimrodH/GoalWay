@@ -2,16 +2,20 @@ import type { Route } from "./+types/instructions-with-images";
 import { useSearchParams, useFetcher } from "react-router";
 import { useState } from "react";
 import styles from "./instructions-with-images.module.css";
-import { getAllInstructions } from "~/services/instructions.server";
+import { getAllInstructions, getAllInstructionsHe } from "~/services/instructions.server";
 import { Checkbox } from "~/components/ui/checkbox/checkbox";
 import { uploadImage, listAllImages } from "~/lib/image-upload";
 import { useAuth } from "~/hooks/use-auth";
 import { useEffect } from "react";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const instructions = await getAllInstructions();
+  const [instructions, instructionsHe] = await Promise.all([
+    getAllInstructions(),
+    getAllInstructionsHe(),
+  ]);
   return {
     instructions,
+    instructionsHe,
     supabaseUrl: process.env.SUPABASE_PROJECT_URL!,
     supabaseKey: process.env.SUPABASE_API_KEY!,
   };
@@ -143,11 +147,13 @@ function ImageLibraryDialog({
   onClose,
   onSelectImage,
   instructions,
+  instructionsHe,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSelectImage: (url: string) => void;
   instructions: any[];
+  instructionsHe: any[];
 }) {
   const [images, setImages] = useState<Array<{ name: string; url: string; path: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -175,9 +181,10 @@ function ImageLibraryDialog({
     }
   };
 
-  // Check if an image URL is used in any instruction
+  // Check if an image URL is used in any instruction (check both languages)
   const isImageUsed = (imageUrl: string) => {
-    return instructions.some((instruction) => 
+    const allInstructions = [...instructions, ...instructionsHe];
+    return allInstructions.some((instruction) => 
       instruction.explanation?.some((item: any) => 
         item.type === 'image' && item.content === imageUrl
       )
@@ -346,7 +353,7 @@ function ImageLibraryDialog({
 }
 
 export default function InstructionsWithImages({ loaderData }: Route.ComponentProps) {
-  const { instructions, supabaseUrl, supabaseKey } = loaderData;
+  const { instructions, instructionsHe, supabaseUrl, supabaseKey } = loaderData;
   const [searchParams] = useSearchParams();
   const imageUrl = searchParams.get("imageUrl");
   const [selectedInstructions, setSelectedInstructions] = useState<Set<string>>(new Set());
@@ -645,6 +652,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               onClose={() => setShowImageLibrary(false)}
               onSelectImage={handleSelectFromLibrary}
               instructions={instructions}
+              instructionsHe={instructionsHe}
             />
           </div>
         )}

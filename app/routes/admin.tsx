@@ -23,11 +23,13 @@ export async function loader({ request }: Route.LoaderArgs) {
   const language = url.searchParams.get("lang") || "en";
   const tab = url.searchParams.get("tab") || "edit-instruction";
 
-  const [instructions, missions, allInstructionIds, allMissionIds] = await Promise.all([
+  const [instructions, missions, allInstructionIds, allMissionIds, instructionsEn, instructionsHe] = await Promise.all([
     language === "he" ? getAllInstructionsHe() : getAllInstructions(),
     language === "he" ? getAllMissionsHe() : getAllMissions(),
     getAllInstructionIds(),
     getAllMissionIds(),
+    getAllInstructions(),
+    getAllInstructionsHe(),
   ]);
 
   return {
@@ -37,6 +39,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     missions,
     allInstructionIds,
     allMissionIds,
+    instructionsEn,
+    instructionsHe,
     language,
     tab,
   };
@@ -594,11 +598,15 @@ function ImageLibraryDialog({
   onClose,
   onSelectImage,
   instructions,
+  instructionsEn,
+  instructionsHe,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSelectImage: (url: string) => void;
   instructions: Instruction[];
+  instructionsEn: Instruction[];
+  instructionsHe: Instruction[];
 }) {
   const [images, setImages] = useState<Array<{ name: string; url: string; path: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -626,9 +634,10 @@ function ImageLibraryDialog({
     }
   };
 
-  // Check if an image URL is used in any instruction
+  // Check if an image URL is used in any instruction (check both languages)
   const isImageUsed = (imageUrl: string) => {
-    return instructions.some((instruction) => 
+    const allInstructions = [...instructionsEn, ...instructionsHe];
+    return allInstructions.some((instruction) => 
       instruction.explanation?.some((item) => 
         item.type === 'image' && item.content === imageUrl
       )
@@ -805,6 +814,8 @@ function ExplanationContentItem({
   isSelected,
   onSelect,
   instructions,
+  instructionsEn,
+  instructionsHe,
 }: {
   item: InstructionContentWithKey;
   index: number;
@@ -813,6 +824,8 @@ function ExplanationContentItem({
   isSelected: boolean;
   onSelect: (index: number) => void;
   instructions: Instruction[];
+  instructionsEn: Instruction[];
+  instructionsHe: Instruction[];
 }) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>(item.type === "image" ? item.content : "");
@@ -1080,6 +1093,8 @@ function ExplanationContentItem({
             onClose={() => setShowImageLibrary(false)}
             onSelectImage={handleSelectFromLibrary}
             instructions={instructions}
+            instructionsEn={instructionsEn}
+            instructionsHe={instructionsHe}
           />
         </div>
       ) : (
@@ -1126,7 +1141,7 @@ function AuthenticatedForm({
 }
 
 export default function AdminPage({ loaderData }: Route.ComponentProps) {
-  const { supabaseUrl, supabaseKey, instructions, missions, allInstructionIds, allMissionIds, language, tab } =
+  const { supabaseUrl, supabaseKey, instructions, missions, allInstructionIds, allMissionIds, instructionsEn, instructionsHe, language, tab } =
     loaderData;
   const actionData = useActionData<typeof action>();
   const navigate = useNavigate();
@@ -1383,6 +1398,8 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
             missions={missions}
             allInstructionIds={allInstructionIds}
             allMissionIds={allMissionIds}
+            instructionsEn={instructionsEn}
+            instructionsHe={instructionsHe}
             language={language}
             onChangesDetected={setHasUnsavedChanges}
             onNavigationRequest={handleNavigationWithCheck}
@@ -1396,6 +1413,8 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
             instructions={instructions}
             missions={missions}
             allMissionIds={allMissionIds}
+            instructionsEn={instructionsEn}
+            instructionsHe={instructionsHe}
             language={language}
             onChangesDetected={setHasUnsavedChanges}
             onNavigationRequest={handleNavigationWithCheck}
@@ -1438,6 +1457,8 @@ function EditInstructionForm({
   missions,
   allInstructionIds,
   allMissionIds,
+  instructionsEn,
+  instructionsHe,
   language,
   onChangesDetected,
   onNavigationRequest,
@@ -1455,6 +1476,8 @@ function EditInstructionForm({
   missions: Mission[];
   allInstructionIds: string[];
   allMissionIds: string[];
+  instructionsEn: Instruction[];
+  instructionsHe: Instruction[];
   language: string;
   onChangesDetected: (hasChanges: boolean) => void;
   onNavigationRequest: (navigationFn: () => void) => void;
@@ -2190,6 +2213,8 @@ function EditInstructionForm({
                   isSelected={selectedContentIndex === index}
                   onSelect={setSelectedContentIndex}
                   instructions={instructions}
+                  instructionsEn={instructionsEn}
+                  instructionsHe={instructionsHe}
                 />
               ))}
 
@@ -2297,6 +2322,8 @@ function EditMissionForm({
   instructions,
   missions,
   allMissionIds,
+  instructionsEn,
+  instructionsHe,
   language,
   onChangesDetected,
   onNavigationRequest,
@@ -2313,6 +2340,8 @@ function EditMissionForm({
   instructions: Instruction[];
   missions: Mission[];
   allMissionIds: string[];
+  instructionsEn: Instruction[];
+  instructionsHe: Instruction[];
   language: string;
   onChangesDetected: (hasChanges: boolean) => void;
   onNavigationRequest: (navigationFn: () => void) => void;
