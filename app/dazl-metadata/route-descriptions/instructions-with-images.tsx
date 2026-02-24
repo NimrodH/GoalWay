@@ -1,1 +1,16 @@
-export default "A visual instruction page featuring a picture and list layout. This page displays step-by-step instructions with accompanying images for better clarity. The structure includes a header section and a list of instruction items, each with an image and descriptive text. This can be extended to include additional instructions with pictures as needed.";
+/**
+ * Route Description: /instructions-with-images
+ * 
+ * A simple page that displays:
+ * 1. A single featured image at the top
+ * 2. A scrollable list of all available instruction titles from the database
+ * 
+ * The page uses the same visual style as the admin panel's instruction list
+ * (instructionCheckboxList) for consistency.
+ * 
+ * Purpose:
+ * - Provides a clean overview of all available instructions
+ * - Can be used to later add images to individual instructions
+ * - Maintains consistency with the admin interface design patterns
+ */
+export {};

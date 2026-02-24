@@ -1,5 +1,5 @@
-import { useState } from "react";
 import type { Route } from "./+types/instructions-with-images";
+import { instructions } from "~/data/instructions";
 import styles from "./instructions-with-images.module.css";
 
 export function meta({}: Route.MetaArgs) {
@@ -12,41 +12,7 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-interface Instruction {
-  id: string;
-  title: string;
-  description: string;
-  imageUrl?: string;
-}
-
 export default function InstructionsWithImages() {
-  const [instructions] = useState<Instruction[]>([
-    {
-      id: "1",
-      title: "Step 1: Getting Started",
-      description: "Begin your journey by understanding the basics",
-      imageUrl: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&h=600&fit=crop",
-    },
-    {
-      id: "2",
-      title: "Step 2: Configuration",
-      description: "Set up your environment and configure the settings",
-      imageUrl: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=800&h=600&fit=crop",
-    },
-    {
-      id: "3",
-      title: "Step 3: Implementation",
-      description: "Follow the implementation guidelines carefully",
-      imageUrl: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&h=600&fit=crop",
-    },
-    {
-      id: "4",
-      title: "Step 4: Testing",
-      description: "Verify everything works as expected",
-      imageUrl: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=600&fit=crop",
-    },
-  ]);
-
   return (
     <div className={styles.container}>
       <div className={styles.content}>
@@ -57,26 +23,26 @@ export default function InstructionsWithImages() {
           </p>
         </header>
 
+        {/* Single picture at the top */}
+        <div className={styles.imageContainer}>
+          <img
+            src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1200&h=600&fit=crop"
+            alt="Instructions overview"
+            className={styles.image}
+          />
+        </div>
+
+        {/* List of instruction titles */}
         <div className={styles.instructionsList}>
-          {instructions.map((instruction) => (
-            <div key={instruction.id} className={styles.instructionItem}>
-              {instruction.imageUrl && (
-                <div className={styles.imageContainer}>
-                  <img
-                    src={instruction.imageUrl}
-                    alt={instruction.title}
-                    className={styles.image}
-                  />
-                </div>
-              )}
-              <div className={styles.textContent}>
-                <h2 className={styles.instructionTitle}>{instruction.title}</h2>
-                <p className={styles.instructionDescription}>
-                  {instruction.description}
-                </p>
+          <h2 className={styles.sectionTitle}>Available Instructions</h2>
+          <div className={styles.instructionCheckboxList}>
+            {instructions.map((instruction) => (
+              <div key={instruction.id} className={styles.instructionItem}>
+                <span className={styles.instructionId}>{instruction.id}</span>
+                <span className={styles.instructionTitle}>{instruction.title}</span>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>

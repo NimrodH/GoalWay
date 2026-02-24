@@ -1,7 +1,7 @@
 .container {
   min-height: 100vh;
   background: var(--color-neutral-1);
-  padding: var(--space-4);
+  padding: var(--space-6);
 }
 
 .content {
@@ -11,7 +11,7 @@
 
 .header {
   text-align: center;
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-6);
 }
 
 .title {
@@ -30,30 +30,14 @@
   margin: 0 auto;
 }
 
-.instructionsList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-
-.instructionItem {
-  background: var(--color-neutral-2);
-  border: 1px solid var(--color-neutral-6);
-  border-radius: var(--radius-3);
-  overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.instructionItem:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-3);
-}
-
 .imageContainer {
   width: 100%;
-  height: 400px;
+  max-height: 500px;
   overflow: hidden;
   background: var(--color-neutral-3);
+  border-radius: var(--radius-3);
+  margin-bottom: var(--space-6);
+  border: 1px solid var(--color-neutral-6);
 }
 
 .image {
@@ -63,23 +47,60 @@
   display: block;
 }
 
-.textContent {
-  padding: var(--space-5);
+.instructionsList {
+  margin-top: var(--space-6);
+}
+
+.sectionTitle {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-neutral-12);
+  margin-bottom: var(--space-4);
+}
+
+.instructionCheckboxList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--color-neutral-2);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  padding: var(--space-4);
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.instructionItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-neutral-4);
+  transition: background-color 0.2s ease;
+}
+
+.instructionItem:last-child {
+  border-bottom: none;
+}
+
+.instructionItem:hover {
+  background-color: var(--color-neutral-3);
+}
+
+.instructionId {
+  font-family: var(--font-code);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-accent-11);
+  min-width: 40px;
 }
 
 .instructionTitle {
-  font-family: var(--font-subheading);
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--color-accent-11);
-  margin-bottom: var(--space-3);
-}
-
-.instructionDescription {
   font-family: var(--font-body);
   font-size: 1rem;
-  line-height: 1.6;
-  color: var(--color-neutral-11);
+  color: var(--color-neutral-12);
+  flex: 1;
 }
 
 @media (max-width: 768px) {
@@ -96,14 +117,14 @@
   }
 
   .imageContainer {
-    height: 250px;
+    max-height: 300px;
   }
 
-  .instructionTitle {
+  .sectionTitle {
     font-size: 1.25rem;
   }
 
-  .textContent {
-    padding: var(--space-4);
+  .instructionCheckboxList {
+    max-height: 400px;
   }
 }
