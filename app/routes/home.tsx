@@ -40,49 +40,20 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   return (
     <div className={styles.menuContainer}>
       <div className={styles.menuContent}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "var(--space-1)",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
-            <p className={styles.menuDescription}>
-              Welcome to the Mission Control center. Each mission contains a curated set of instructions designed to
-              help you master specific aspects of the platform.
-            </p>
-            <ul style={{ textAlign: "left" }}>
-              <li>Use the filter box to find the relevant mission.</li>
-              <li>Click on the mission you want to complete.</li>
-              <li>Follow the instructions step by step.</li>
-              <li className={styles0.li1}>
-                Click on any instruction to view detailed explanations and screenshots when needed.
-              </li>
-            </ul>
-          </div>
-          <div style={{ display: "flex", alignItems: "flex-start" }}>
-            <Link
-              to="/instructions-with-images"
-              style={{
-                padding: "var(--space-3) var(--space-4)",
-                backgroundColor: "var(--color-accent-9)",
-                color: "var(--color-accent-contrast)",
-                textDecoration: "none",
-                borderRadius: "var(--radius-2)",
-                fontWeight: 600,
-                fontSize: "0.875rem",
-                whiteSpace: "nowrap",
-                transition: "background-color 0.2s ease",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color-accent-10)")}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "var(--color-accent-9)")}
-            >
-              View Visual Instructions
-            </Link>
-          </div>
+        <div style={{ marginBottom: "var(--space-1)" }}>
+          <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
+          <p className={styles.menuDescription}>
+            Welcome to the Mission Control center. Each mission contains a curated set of instructions designed to
+            help you master specific aspects of the platform.
+          </p>
+          <ul style={{ textAlign: "left" }}>
+            <li>Use the filter box to find the relevant mission.</li>
+            <li>Click on the mission you want to complete.</li>
+            <li>Follow the instructions step by step.</li>
+            <li className={styles0.li1}>
+              Click on any instruction to view detailed explanations and screenshots when needed.
+            </li>
+          </ul>
         </div>
 
         <div style={{ marginBottom: "var(--space-4)", display: "flex", gap: "var(--space-2)" }}>
