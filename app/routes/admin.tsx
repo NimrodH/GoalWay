@@ -1546,6 +1546,16 @@ function EditInstructionForm({
     }
   }, [actionData, selectedInstructionId]);
 
+  // Auto-reload after successful save to refresh instruction list with updated data
+  useEffect(() => {
+    if (actionData?.success && actionData.message && id) {
+      const timer = setTimeout(() => {
+        window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${id}`;
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [actionData, id, language]);
+
   // Handle URL parameter for instruction selection
   useEffect(() => {
     const instructionIdFromUrl = searchParams.get("instructionId");
