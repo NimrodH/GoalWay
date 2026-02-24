@@ -832,6 +832,7 @@ function ExplanationContentItem({
   instructions,
   instructionsEn,
   instructionsHe,
+  onNavigationRequest,
 }: {
   item: InstructionContentWithKey;
   index: number;
@@ -842,6 +843,7 @@ function ExplanationContentItem({
   instructions: Instruction[];
   instructionsEn: Instruction[];
   instructionsHe: Instruction[];
+  onNavigationRequest: (navigationFn: () => void) => void;
 }) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>(item.type === "image" ? item.content : "");
@@ -1095,13 +1097,18 @@ function ExplanationContentItem({
           </div>
           {item.content && (
             <div style={{ marginTop: "var(--space-3)" }}>
-              <Link
-                to={`/instructions-with-images?imageUrl=${encodeURIComponent(item.content)}`}
+              <button
+                type="button"
+                onClick={() => {
+                  onNavigationRequest(() => {
+                    window.location.href = `/instructions-with-images?imageUrl=${encodeURIComponent(item.content)}`;
+                  });
+                }}
                 className={styles.addButton}
-                style={{ display: "inline-block", textDecoration: "none" }}
+                style={{ display: "inline-block" }}
               >
                 🔍 View Instructions with This Image
-              </Link>
+              </button>
             </div>
           )}
           <ImageLibraryDialog
@@ -2231,6 +2238,7 @@ function EditInstructionForm({
                   instructions={instructions}
                   instructionsEn={instructionsEn}
                   instructionsHe={instructionsHe}
+                  onNavigationRequest={onNavigationRequest}
                 />
               ))}
 
