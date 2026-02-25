@@ -6,6 +6,7 @@ import { initSupabase, getSupabase } from "~/lib/supabase";
 import { uploadImage, listAllImages } from "~/lib/image-upload";
 import type { Route } from "./+types/admin";
 import styles from "./admin.module.css";
+import { AppNavigation } from "~/components/app-navigation/app-navigation";
 import {
   getAllInstructions,
   getAllInstructionsHe,
@@ -1428,6 +1429,7 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className={styles.container}>
+      <AppNavigation />
       <header className={styles.header}>
         <div className={styles.headerContent}>
           <div>

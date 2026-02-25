@@ -7,6 +7,7 @@ import { Checkbox } from "~/components/ui/checkbox/checkbox";
 import { uploadImage, listAllImages } from "~/lib/image-upload";
 import { useAuth } from "~/hooks/use-auth";
 import { useEffect } from "react";
+import { AppNavigation } from "~/components/app-navigation/app-navigation";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [instructions, instructionsHe] = await Promise.all([getAllInstructions(), getAllInstructionsHe()]);
@@ -628,6 +629,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
 
   return (
     <div className={styles.container}>
+      <AppNavigation />
       <div className={styles.content}>
         <header className={styles.header}>
           <p className={styles.subtitle}>
