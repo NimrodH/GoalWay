@@ -7,11 +7,8 @@ export function AppNavigation() {
       <Link to="/" className={styles.navLink}>
         Home
       </Link>
-      <Link to="/admin?tab=edit-instruction" className={styles.navLink}>
-        Admin - Instructions
-      </Link>
-      <Link to="/admin?tab=edit-mission" className={styles.navLink}>
-        Admin - Missions
+      <Link to="/admin" className={styles.navLink}>
+        Admin
       </Link>
     </nav>
   );
