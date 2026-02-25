@@ -4,6 +4,7 @@
   grid-template-columns: 500px 1fr;
   gap: var(--space-6);
   padding: var(--space-6);
+  padding-top: calc(var(--space-6) + 60px);
   background: linear-gradient(135deg, var(--color-neutral-1) 0%, var(--color-neutral-2) 100%);
 }
 
@@ -98,6 +99,7 @@
     grid-template-columns: 1fr;
     gap: var(--space-5);
     padding: var(--space-4);
+    padding-top: calc(var(--space-4) + 60px);
   }
 
   .instructionListSection {

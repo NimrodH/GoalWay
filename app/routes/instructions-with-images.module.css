@@ -2,6 +2,7 @@
   min-height: 100vh;
   background: var(--color-neutral-1);
   padding: var(--space-6);
+  padding-top: calc(var(--space-6) + 60px);
 }
 
 .content {
@@ -427,6 +428,7 @@
 @media (max-width: 768px) {
   .container {
     padding: var(--space-3);
+    padding-top: calc(var(--space-3) + 60px);
   }
 
   .title {
