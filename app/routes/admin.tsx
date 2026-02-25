@@ -1427,9 +1427,20 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
     );
   }
 
+  const handleMenuNavigation = (path: string): boolean => {
+    if (hasUnsavedChanges) {
+      // Store the navigation path for later
+      setPendingNavigation(() => () => {
+        window.location.href = path;
+      });
+      return false; // Prevent navigation
+    }
+    return true; // Allow navigation
+  };
+
   return (
     <div className={styles.container}>
-      <AppNavigation />
+      <AppNavigation onNavigate={handleMenuNavigation} />
       <header className={styles.header}>
         <div className={styles.headerContent}>
           <div>
