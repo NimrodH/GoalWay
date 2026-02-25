@@ -745,15 +745,32 @@ function ImageLibraryDialog({
               <div style={{ fontSize: '0.875rem', color: 'var(--color-neutral-11)' }}>
                 {selectedImages.size > 0 ? `${selectedImages.size} image(s) selected` : 'Select images to delete'}
               </div>
-              <button
-                type="button"
-                onClick={handleDeleteSelected}
-                className={styles.removeButton}
-                disabled={selectedImages.size === 0 || isDeleting}
-                style={{ minWidth: '100px' }}
-              >
-                {isDeleting ? 'Deleting...' : 'Delete Selected'}
-              </button>
+              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const selectedImagePath = Array.from(selectedImages)[0];
+                    const selectedImage = images.find(img => img.path === selectedImagePath);
+                    if (selectedImage) {
+                      window.location.href = `/instructions-with-images?imageUrl=${encodeURIComponent(selectedImage.url)}`;
+                    }
+                  }}
+                  className={styles.addButton}
+                  disabled={selectedImages.size !== 1}
+                  style={{ minWidth: '180px' }}
+                >
+                  🔍 View Instructions with Image
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteSelected}
+                  className={styles.removeButton}
+                  disabled={selectedImages.size === 0 || isDeleting}
+                  style={{ minWidth: '100px' }}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete Selected'}
+                </button>
+              </div>
             </div>
             <div className={styles.imageGrid}>
               {images.map((image) => {
