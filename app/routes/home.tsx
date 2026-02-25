@@ -5,7 +5,6 @@ import styles from "./instructions.module.css";
 import { getAllMissions } from "~/services/missions.server";
 import { useState } from "react";
 import styles0 from "./home.module.css";
-import { AppNavigation } from "~/components/app-navigation/app-navigation";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -40,7 +39,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className={styles.menuContainer}>
-      <AppNavigation />
       <div className={styles.menuContent}>
         <div style={{ marginBottom: "var(--space-1)" }}>
           <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
