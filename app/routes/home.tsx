@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import type { Route } from "./+types/home";
 import { BookOpen } from "lucide-react";
 import styles from "./instructions.module.css";
@@ -23,6 +23,7 @@ export async function loader({}: Route.LoaderArgs) {
 
 export default function Home({ loaderData }: Route.ComponentProps) {
   const { missions } = loaderData;
+  const navigate = useNavigate();
   const [missionFilter, setMissionFilter] = useState("");
 
   const filteredMissions = missions.filter((mission) => {
@@ -40,7 +41,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   return (
     <div className={styles.menuContainer}>
       <div className={styles.menuContent}>
-        <div style={{ marginBottom: "var(--space-1)" }}>
+        <div 
+          style={{ marginBottom: "var(--space-1)", cursor: "pointer" }}
+          onClick={() => navigate("/admin")}
+        >
           <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
           <p className={styles.menuDescription}>
             Welcome to the Mission Control center. Each mission contains step by step instructions designed for
