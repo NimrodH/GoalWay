@@ -42,8 +42,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     <div className={styles.menuContainer}>
       <div className={styles.menuContent}>
         <div 
-          style={{ marginBottom: "var(--space-1)", cursor: "pointer" }}
-          onClick={() => navigate("/admin")}
+          style={{ marginBottom: "var(--space-1)" }}
+          onClick={(e) => {
+            if (e.shiftKey) {
+              navigate("/admin");
+            }
+          }}
         >
           <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
           <p className={styles.menuDescription}>
