@@ -4,7 +4,7 @@ import type { Route } from "./+types/missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
 import { BookOpen, ArrowLeft, ChevronUp, ChevronDown } from "lucide-react";
-import styles from "./home.module.css";
+import styles from "./missions.$missionId.module.css";
 import { getMissionById, getAllMissions } from "~/services/missions.server";
 import { getInstructionsByIds } from "~/services/instructions.server";
 import type { Instruction } from "~/data/instructions";
