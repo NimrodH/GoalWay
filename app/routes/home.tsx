@@ -43,8 +43,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <div style={{ marginBottom: "var(--space-1)" }}>
           <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
           <p className={styles.menuDescription}>
-            Welcome to the Mission Control center. Each mission contains a curated set of instructions designed to
-            help you master specific aspects of the platform.
+            Welcome to the Mission Control center. Each mission contains step by step instructions designed כor
+            effective use in real time.
           </p>
           <ul style={{ textAlign: "left" }}>
             <li>Use the filter box to find the relevant mission.</li>
