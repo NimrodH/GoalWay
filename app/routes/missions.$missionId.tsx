@@ -200,6 +200,8 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                     description={instruction.description}
                     selected={selectedInstructionId === instruction.id}
                     onClick={(event) => handleInstructionClick(instruction.id, event)}
+                    instructionType={instruction.type}
+                    explanation={'explanation' in instruction ? instruction.explanation : []}
                   />
                   {instruction.type === "link" && 'missionId' in instruction && (
                     <div style={{ marginLeft: '1rem', fontSize: '0.875rem', color: 'var(--color-neutral-11)' }}>
@@ -222,6 +224,8 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                           title={linkedInstruction.title}
                           description={linkedInstruction.description}
                           selected={selectedInstructionId === linkedInstruction.id}
+                          instructionType={linkedInstruction.type}
+                          explanation={linkedInstruction.explanation}
                           onClick={(event) => {
                             // If Shift key is pressed, navigate to admin page
                             if (event?.shiftKey) {

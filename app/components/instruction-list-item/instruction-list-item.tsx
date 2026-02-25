@@ -1,5 +1,11 @@
 import classNames from "classnames";
+import { FileText, Link2, Image, Video } from "lucide-react";
 import styles from "./instruction-list-item.module.css";
+
+interface InstructionContent {
+  type: "text" | "image" | "video";
+  content: string;
+}
 
 interface InstructionListItemProps {
   /**
@@ -20,12 +26,59 @@ interface InstructionListItemProps {
    */
   onClick: (event: React.MouseEvent) => void;
   className?: string;
+  /**
+   * Type of instruction (for link-type instructions)
+   */
+  instructionType?: "default" | "link";
+  /**
+   * Explanation content array to determine the type indicator
+   */
+  explanation?: InstructionContent[];
 }
 
-export function InstructionListItem({ title, description, selected, onClick, className }: InstructionListItemProps) {
+export function InstructionListItem({ 
+  title, 
+  description, 
+  selected, 
+  onClick, 
+  className,
+  instructionType,
+  explanation = []
+}: InstructionListItemProps) {
+  
+  // Determine which indicator to show
+  const getIndicator = () => {
+    // 1. Link type
+    if (instructionType === "link") {
+      return <Link2 className={styles.indicator} size={14} />;
+    }
+    
+    // 2. No explanation
+    if (explanation.length === 0) {
+      return null; // No indicator
+    }
+    
+    // 3. Check for media (image or video)
+    const hasImage = explanation.some(item => item.type === "image");
+    const hasVideo = explanation.some(item => item.type === "video");
+    
+    if (hasImage || hasVideo) {
+      const Icon = hasVideo ? Video : Image;
+      return <Icon className={styles.indicator} size={14} />;
+    }
+    
+    // 4. Text-only explanation
+    return <FileText className={styles.indicator} size={14} />;
+  };
+  
+  const indicator = getIndicator();
+  
   return (
     <div className={classNames(styles.item, { [styles.selected]: selected }, className)} onClick={(e) => onClick(e)}>
-      <h3 className={styles.title}>{title}</h3>
+      <div className={styles.titleRow}>
+        <h3 className={styles.title}>{title}</h3>
+        {indicator}
+      </div>
       {description && <p className={styles.description}>{description}</p>}
     </div>
   );
