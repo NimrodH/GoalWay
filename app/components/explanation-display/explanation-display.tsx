@@ -1,5 +1,6 @@
 import type { Instruction, InstructionContent } from "~/data/instructions";
 import styles from "./explanation-display.module.css";
+import Markdown from "react-markdown";
 
 interface ExplanationDisplayProps {
   /**
@@ -35,9 +36,9 @@ export function ExplanationDisplay({ instruction, title, explanation, className 
         {displayExplanation.map((item: InstructionContent, index: number) => {
           if (item.type === "text") {
             return (
-              <p key={index} className={styles.paragraph}>
-                {item.content}
-              </p>
+              <div key={index} className={styles.markdown}>
+                <Markdown>{item.content}</Markdown>
+              </div>
             );
           }
 
