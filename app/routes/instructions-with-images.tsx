@@ -9,10 +9,7 @@ import { useAuth } from "~/hooks/use-auth";
 import { useEffect } from "react";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const [instructions, instructionsHe] = await Promise.all([
-    getAllInstructions(),
-    getAllInstructionsHe(),
-  ]);
+  const [instructions, instructionsHe] = await Promise.all([getAllInstructions(), getAllInstructionsHe()]);
   return {
     instructions,
     instructionsHe,
@@ -191,20 +188,20 @@ function ImageLibraryDialog({
       if (!instruction.explanation || !Array.isArray(instruction.explanation)) {
         return false;
       }
-      return instruction.explanation.some((item: any) => 
-        item.type === 'image' && item.content === imageUrl
-      );
+      return instruction.explanation.some((item: any) => item.type === "image" && item.content === imageUrl);
     });
     // Console log for debugging (will show in browser console)
     if (!found) {
-      console.log('Image not found in any instruction:', imageUrl);
-      console.log('Total instructions checked:', allInstructions.length);
-      const instructionsWithExplanation = allInstructions.filter(i => i.explanation && Array.isArray(i.explanation) && i.explanation.length > 0);
-      console.log('Instructions with explanations:', instructionsWithExplanation.length);
-      const allImageUrls = instructionsWithExplanation.flatMap(i => 
-        i.explanation!.filter((e: any) => e.type === 'image').map((e: any) => e.content)
+      console.log("Image not found in any instruction:", imageUrl);
+      console.log("Total instructions checked:", allInstructions.length);
+      const instructionsWithExplanation = allInstructions.filter(
+        (i) => i.explanation && Array.isArray(i.explanation) && i.explanation.length > 0,
       );
-      console.log('All image URLs in instructions:', allImageUrls);
+      console.log("Instructions with explanations:", instructionsWithExplanation.length);
+      const allImageUrls = instructionsWithExplanation.flatMap((i) =>
+        i.explanation!.filter((e: any) => e.type === "image").map((e: any) => e.content),
+      );
+      console.log("All image URLs in instructions:", allImageUrls);
     }
     return found;
   };
@@ -212,7 +209,7 @@ function ImageLibraryDialog({
   // Toggle image selection
   const toggleImageSelection = (imagePath: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelectedImages(prev => {
+    setSelectedImages((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(imagePath)) {
         newSet.delete(imagePath);
@@ -226,12 +223,12 @@ function ImageLibraryDialog({
   // Delete selected images
   const handleDeleteSelected = async () => {
     if (selectedImages.size === 0) {
-      alert('Please select at least one image to delete');
+      alert("Please select at least one image to delete");
       return;
     }
 
     const confirmDelete = window.confirm(
-      `Are you sure you want to delete ${selectedImages.size} image(s)?\n\nThis action cannot be undone.`
+      `Are you sure you want to delete ${selectedImages.size} image(s)?\n\nThis action cannot be undone.`,
     );
 
     if (!confirmDelete) {
@@ -239,8 +236,8 @@ function ImageLibraryDialog({
     }
 
     setIsDeleting(true);
-    const { deleteImage } = await import('~/lib/image-upload');
-    
+    const { deleteImage } = await import("~/lib/image-upload");
+
     let successCount = 0;
     let errorCount = 0;
     const errors: string[] = [];
@@ -258,7 +255,7 @@ function ImageLibraryDialog({
     setIsDeleting(false);
 
     if (errorCount > 0) {
-      alert(`Deleted ${successCount} image(s).\nFailed to delete ${errorCount} image(s):\n${errors.join('\n')}`);
+      alert(`Deleted ${successCount} image(s).\nFailed to delete ${errorCount} image(s):\n${errors.join("\n")}`);
     } else {
       alert(`Successfully deleted ${successCount} image(s)!`);
     }
@@ -277,7 +274,7 @@ function ImageLibraryDialog({
         <div
           className={styles.dialogContent}
           onClick={(e) => e.stopPropagation()}
-          style={{ maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 0 }}
+          style={{ maxWidth: "90vw", maxHeight: "90vh", display: "flex", flexDirection: "column", padding: 0 }}
         >
           <div className={styles.dialogHeader}>
             <h2 className={styles.dialogTitle}>{previewImage.name}</h2>
@@ -285,11 +282,21 @@ function ImageLibraryDialog({
               ✕
             </button>
           </div>
-          <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-4)', background: 'var(--color-neutral-2)' }}>
+          <div
+            style={{
+              flex: 1,
+              overflow: "auto",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "var(--space-4)",
+              background: "var(--color-neutral-2)",
+            }}
+          >
             <img
               src={previewImage.url}
               alt={previewImage.name}
-              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 'var(--radius-2)' }}
+              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: "var(--radius-2)" }}
             />
           </div>
         </div>
@@ -317,16 +324,24 @@ function ImageLibraryDialog({
 
         {!isLoading && !error && images.length > 0 && (
           <>
-            <div style={{ padding: 'var(--space-4)', borderBottom: '1px solid var(--color-neutral-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: '0.875rem', color: 'var(--color-neutral-11)' }}>
-                {selectedImages.size > 0 ? `${selectedImages.size} image(s) selected` : 'Select images to delete'}
+            <div
+              style={{
+                padding: "var(--space-4)",
+                borderBottom: "1px solid var(--color-neutral-6)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div style={{ fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
+                {selectedImages.size > 0 ? `${selectedImages.size} image(s) selected` : "Select images to delete"}
               </div>
-              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+              <div style={{ display: "flex", gap: "var(--space-2)" }}>
                 <button
                   type="button"
                   onClick={() => {
                     const selectedImagePath = Array.from(selectedImages)[0];
-                    const selectedImage = images.find(img => img.path === selectedImagePath);
+                    const selectedImage = images.find((img) => img.path === selectedImagePath);
                     if (selectedImage) {
                       onSelectImage(selectedImage.url);
                       onClose();
@@ -334,7 +349,7 @@ function ImageLibraryDialog({
                   }}
                   className={styles.submitButton}
                   disabled={selectedImages.size !== 1}
-                  style={{ minWidth: '100px' }}
+                  style={{ minWidth: "100px" }}
                 >
                   ✓ Select
                 </button>
@@ -343,9 +358,9 @@ function ImageLibraryDialog({
                   onClick={handleDeleteSelected}
                   className={styles.deleteButton}
                   disabled={selectedImages.size === 0 || isDeleting}
-                  style={{ minWidth: '100px' }}
+                  style={{ minWidth: "100px" }}
                 >
-                  {isDeleting ? 'Deleting...' : 'Delete Selected'}
+                  {isDeleting ? "Deleting..." : "Delete Selected"}
                 </button>
               </div>
             </div>
@@ -361,16 +376,16 @@ function ImageLibraryDialog({
                       setPreviewImage({ url: image.url, name: image.name });
                     }}
                     style={{
-                      position: 'relative',
-                      border: isSelected ? '3px solid var(--color-accent-9)' : undefined,
+                      position: "relative",
+                      border: isSelected ? "3px solid var(--color-accent-9)" : undefined,
                       opacity: isUsed ? 1 : 0.6,
                     }}
                   >
                     <div
                       style={{
-                        position: 'absolute',
-                        top: 'var(--space-2)',
-                        left: 'var(--space-2)',
+                        position: "absolute",
+                        top: "var(--space-2)",
+                        left: "var(--space-2)",
                         zIndex: 10,
                       }}
                       onClick={(e) => toggleImageSelection(image.path, e)}
@@ -379,23 +394,23 @@ function ImageLibraryDialog({
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => {}}
-                        style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                        style={{ cursor: "pointer", width: "18px", height: "18px" }}
                       />
                     </div>
                     {!isUsed && (
                       <div
                         style={{
-                          position: 'absolute',
-                          top: 'var(--space-2)',
-                          right: 'var(--space-2)',
-                          background: 'var(--color-error-9)',
-                          color: 'white',
-                          padding: 'var(--space-1) var(--space-2)',
-                          borderRadius: 'var(--radius-2)',
-                          fontSize: '0.75rem',
+                          position: "absolute",
+                          top: "var(--space-2)",
+                          right: "var(--space-2)",
+                          background: "var(--color-error-9)",
+                          color: "white",
+                          padding: "var(--space-1) var(--space-2)",
+                          borderRadius: "var(--radius-2)",
+                          fontSize: "0.75rem",
                           fontWeight: 600,
                           zIndex: 5,
-                          pointerEvents: 'none',
+                          pointerEvents: "none",
                         }}
                       >
                         Not Used
@@ -440,9 +455,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   // Note: searchParams.get() automatically decodes the URL, so imageUrl is already decoded
   const filteredInstructions = imageUrl
     ? instructions.filter((instruction) =>
-        instruction.explanation?.some(
-          (item) => item.type === "image" && item.content === imageUrl
-        )
+        instruction.explanation?.some((item) => item.type === "image" && item.content === imageUrl),
       )
     : instructions;
 
@@ -517,7 +530,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
 
       const allTypes = clipboardItems.flatMap((item) => item.types).join(", ");
       alert(
-        `No image found in clipboard.\n\nAvailable formats: ${allTypes || "none"}\n\nPlease copy an image (right-click on image → Copy Image, or use a screenshot tool).`
+        `No image found in clipboard.\n\nAvailable formats: ${allTypes || "none"}\n\nPlease copy an image (right-click on image → Copy Image, or use a screenshot tool).`,
       );
     } catch (error) {
       console.error("Clipboard error details:", error);
@@ -525,13 +538,13 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
 
       if (errorMessage.includes("denied") || errorMessage.includes("permission")) {
         alert(
-          'Clipboard access denied.\n\nPlease allow clipboard access in your browser settings, or try:\n1. Copy an image using Ctrl+C (or Cmd+C on Mac)\n2. Right-click on an image and select "Copy Image"\n3. Use a screenshot tool and copy to clipboard'
+          'Clipboard access denied.\n\nPlease allow clipboard access in your browser settings, or try:\n1. Copy an image using Ctrl+C (or Cmd+C on Mac)\n2. Right-click on an image and select "Copy Image"\n3. Use a screenshot tool and copy to clipboard',
         );
       } else if (errorMessage.includes("not supported")) {
         alert("Clipboard API not supported.\n\nPlease use the file input instead.");
       } else {
         alert(
-          `Failed to read clipboard: ${errorMessage}\n\nTry:\n1. Copy an image to clipboard\n2. Make sure you're using a modern browser (Chrome, Edge, Firefox)\n3. If using a screenshot tool, ensure it copies to clipboard`
+          `Failed to read clipboard: ${errorMessage}\n\nTry:\n1. Copy an image to clipboard\n2. Make sure you're using a modern browser (Chrome, Edge, Firefox)\n3. If using a screenshot tool, ensure it copies to clipboard`,
         );
       }
     }
@@ -582,7 +595,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
     const finalNewImageUrl = newImageUrl || imagePreview;
 
     const confirmReplace = window.confirm(
-      `Are you sure you want to replace the image in ${selectedInstructions.size} instruction(s)?\n\nThis action will update the selected instructions with the new image URL.`
+      `Are you sure you want to replace the image in ${selectedInstructions.size} instruction(s)?\n\nThis action will update the selected instructions with the new image URL.`,
     );
 
     if (!confirmReplace) {
@@ -617,7 +630,6 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
     <div className={styles.container}>
       <div className={styles.content}>
         <header className={styles.header}>
-          <h1 className={styles.title}>Visual Instructions</h1>
           <p className={styles.subtitle}>
             {imageUrl
               ? `Instructions using this image (${filteredInstructions.length} found)`
@@ -627,11 +639,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
 
         {/* Single picture at the top */}
         <div className={styles.imageContainer}>
-          <img
-            src={displayImageUrl}
-            alt="Instructions overview"
-            className={styles.image}
-          />
+          <img src={displayImageUrl} alt="Instructions overview" className={styles.image} />
         </div>
 
         {/* Image Replacement Section */}
@@ -657,11 +665,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               <div className={styles.formGroup}>
                 <label className={styles.label}>Upload New Image or Select from Library</label>
                 <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowImageLibrary(true)}
-                    className={styles.libraryButton}
-                  >
+                  <button type="button" onClick={() => setShowImageLibrary(true)} className={styles.libraryButton}>
                     📚 Select from Library
                   </button>
                   <button type="button" onClick={handlePasteFromClipboard} className={styles.pasteButton}>
@@ -697,16 +701,20 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                 type="button"
                 onClick={handleReplaceImage}
                 className={styles.replaceButton}
-                disabled={loading || !session || selectedInstructions.size === 0 || (!newImageUrl && !imagePreview) || fetcher.state !== "idle"}
+                disabled={
+                  loading ||
+                  !session ||
+                  selectedInstructions.size === 0 ||
+                  (!newImageUrl && !imagePreview) ||
+                  fetcher.state !== "idle"
+                }
               >
-                {fetcher.state !== "idle" ? "Replacing..." : `Replace Image in ${selectedInstructions.size} Selected Instruction(s)`}
+                {fetcher.state !== "idle"
+                  ? "Replacing..."
+                  : `Replace Image in ${selectedInstructions.size} Selected Instruction(s)`}
               </button>
 
-              {!loading && !session && (
-                <p className={styles.authWarning}>
-                  Please sign in to replace images
-                </p>
-              )}
+              {!loading && !session && <p className={styles.authWarning}>Please sign in to replace images</p>}
             </div>
 
             <ImageLibraryDialog
@@ -734,9 +742,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                   data-indeterminate={someSelected}
                 />
                 <span className={styles.selectionText}>
-                  {selectedInstructions.size > 0
-                    ? `${selectedInstructions.size} selected`
-                    : "Select all"}
+                  {selectedInstructions.size > 0 ? `${selectedInstructions.size} selected` : "Select all"}
                 </span>
               </div>
             )}
