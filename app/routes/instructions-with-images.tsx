@@ -160,11 +160,13 @@ function ImageLibraryDialog({
   const [error, setError] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       loadImages();
       setSelectedImages(new Set());
+      setPreviewImage(null);
     }
   }, [isOpen]);
 
@@ -268,6 +270,33 @@ function ImageLibraryDialog({
 
   if (!isOpen) return null;
 
+  // If preview mode is active, show the large preview
+  if (previewImage) {
+    return (
+      <div className={styles.dialogOverlay} onClick={() => setPreviewImage(null)}>
+        <div
+          className={styles.dialogContent}
+          onClick={(e) => e.stopPropagation()}
+          style={{ maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 0 }}
+        >
+          <div className={styles.dialogHeader}>
+            <h2 className={styles.dialogTitle}>{previewImage.name}</h2>
+            <button className={styles.dialogClose} onClick={() => setPreviewImage(null)}>
+              ✕
+            </button>
+          </div>
+          <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-4)', background: 'var(--color-neutral-2)' }}>
+            <img
+              src={previewImage.url}
+              alt={previewImage.name}
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 'var(--radius-2)' }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.dialogOverlay} onClick={onClose}>
       <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
@@ -329,8 +358,7 @@ function ImageLibraryDialog({
                     key={image.path}
                     className={styles.imageGridItem}
                     onClick={() => {
-                      onSelectImage(image.url);
-                      onClose();
+                      setPreviewImage({ url: image.url, name: image.name });
                     }}
                     style={{
                       position: 'relative',
