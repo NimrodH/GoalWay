@@ -45,7 +45,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <div style={{ marginBottom: "var(--space-1)" }}>
           <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
           <p className={styles.menuDescription}>
-            Welcome to the Mission Control center. Each mission contains step by step instructions designed כor
+            Welcome to the Mission Control center. Each mission contains step by step instructions designed for
             effective use in real time.
           </p>
           <ul style={{ textAlign: "left" }}>
