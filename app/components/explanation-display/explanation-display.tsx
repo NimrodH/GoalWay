@@ -31,7 +31,6 @@ export function ExplanationDisplay({ instruction, title, explanation, className 
 
   return (
     <div className={className}>
-      <h2 className={styles.title}>{displayTitle}</h2>
       <div className={styles.content}>
         {displayExplanation.map((item: InstructionContent, index: number) => {
           if (item.type === "text") {
