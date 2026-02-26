@@ -39,23 +39,28 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
 
   // Map instructions to maintain order from mission.instructions and apply custom titles
   // Comments (ID "0") are handled separately as they don't exist in the database
-  const missionInstructions = mission.instructions.map(([id, customTitle]) => {
-    // Handle comments (ID starts with "comment-" or is "0" for legacy comments) - they don't have a database entry
-    if (id.startsWith("comment-") || id === "0") {
-      return {
-        id: "0",
-        title: customTitle || "",
-        description: "",
-        status: "comment" as const,
-        type: "comment" as const,
-        explanation: [], // Comments don't have explanations
-      };
-    }
-    
-    const instruction = instructions.find(inst => inst.id === id);
-    if (!instruction) return null;
-    return customTitle ? { ...instruction, title: customTitle } : instruction;
-  }).filter(Boolean) as (typeof instructions[number] | { id: string; title: string; description: string; status: "comment"; type: "comment"; explanation: [] })[];
+  const missionInstructions = mission.instructions
+    .map(([id, customTitle]) => {
+      // Handle comments (ID starts with "comment-" or is "0" for legacy comments) - they don't have a database entry
+      if (id.startsWith("comment-") || id === "0") {
+        return {
+          id: "0",
+          title: customTitle || "",
+          description: "",
+          status: "comment" as const,
+          type: "comment" as const,
+          explanation: [], // Comments don't have explanations
+        };
+      }
+
+      const instruction = instructions.find((inst) => inst.id === id);
+      if (!instruction) return null;
+      return customTitle ? { ...instruction, title: customTitle } : instruction;
+    })
+    .filter(Boolean) as (
+    | (typeof instructions)[number]
+    | { id: string; title: string; description: string; status: "comment"; type: "comment"; explanation: [] }
+  )[];
 
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
   const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
@@ -77,32 +82,34 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
     } else {
       // Expand - fetch linked mission instructions
       setLoadingLinkInstructions(new Set([...loadingLinkInstructions, instructionId]));
-      
+
       try {
         // Fetch linked mission data
         const response = await fetch(`/api/missions/${linkedMissionId}`);
         if (!response.ok) {
-          console.error('Failed to fetch linked mission');
+          console.error("Failed to fetch linked mission");
           return;
         }
-        
+
         const linkedMissionData = await response.json();
         const linkedMission = linkedMissionData.mission;
         const linkedInstructions = linkedMissionData.instructions;
-        
+
         // Map linked mission instructions with custom titles
-        const linkedMissionInstructions = linkedMission.instructions.map(([id, customTitle]: [string, string?]) => {
-          const instruction = linkedInstructions.find((inst: Instruction) => inst.id === id);
-          if (!instruction) return null;
-          return customTitle ? { ...instruction, title: customTitle } : instruction;
-        }).filter(Boolean) as Instruction[];
-        
+        const linkedMissionInstructions = linkedMission.instructions
+          .map(([id, customTitle]: [string, string?]) => {
+            const instruction = linkedInstructions.find((inst: Instruction) => inst.id === id);
+            if (!instruction) return null;
+            return customTitle ? { ...instruction, title: customTitle } : instruction;
+          })
+          .filter(Boolean) as Instruction[];
+
         // Add to expanded map
         const newMap = new Map(expandedLinkInstructions);
         newMap.set(instructionId, linkedMissionInstructions);
         setExpandedLinkInstructions(newMap);
       } catch (error) {
-        console.error('Error fetching linked mission:', error);
+        console.error("Error fetching linked mission:", error);
       } finally {
         const newLoading = new Set(loadingLinkInstructions);
         newLoading.delete(instructionId);
@@ -143,7 +150,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   };
 
   const selectedInstruction = missionInstructions.find((inst) => inst?.id === selectedInstructionId) || null;
-  
+
   // Don't pass comments to ExplanationDisplay - they don't have explanations
   const instructionToDisplay = selectedInstruction?.type === "comment" ? null : selectedInstruction;
 
@@ -170,28 +177,30 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
             const isExpanded = expandedLinkInstructions.has(instruction.id);
             const isLoading = loadingLinkInstructions.has(instruction.id);
             const expandedInstructions = expandedLinkInstructions.get(instruction.id);
-            
+
             // Render comments differently (non-clickable, styled)
             if (isComment) {
               return (
                 <div key={instruction.id} className={styles.instructionItem}>
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    padding: 'var(--space-3) var(--space-4)',
-                    color: 'var(--color-accent-11)',
-                    fontStyle: 'italic',
-                    fontSize: '0.9rem',
-                    cursor: 'default',
-                    opacity: 0.8
-                  }}>
-                    <span style={{ marginRight: 'var(--space-2)' }}>💬</span>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "var(--space-3) var(--space-4)",
+                      color: "var(--color-accent-11)",
+                      fontStyle: "italic",
+                      fontSize: "0.9rem",
+                      cursor: "default",
+                      opacity: 0.8,
+                    }}
+                  >
+                    <span style={{ marginRight: "var(--space-2)" }}>💬</span>
                     <span>{instruction.title}</span>
                   </div>
                 </div>
               );
             }
-            
+
             return (
               <div key={instruction.id}>
                 <div className={styles.instructionItem}>
@@ -201,23 +210,28 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                     selected={selectedInstructionId === instruction.id}
                     onClick={(event) => handleInstructionClick(instruction.id, event)}
                     instructionType={instruction.type}
-                    explanation={'explanation' in instruction ? instruction.explanation : []}
+                    explanation={"explanation" in instruction ? instruction.explanation : []}
+                    className={styles.instructionListItem}
                   />
-                  {instruction.type === "link" && 'missionId' in instruction && (
-                    <div style={{ marginLeft: '1rem', fontSize: '0.875rem', color: 'var(--color-neutral-11)' }}>
-                      {isLoading ? "Loading..." : (isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
+                  {instruction.type === "link" && "missionId" in instruction && (
+                    <div style={{ marginLeft: "1rem", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
+                      {isLoading ? "Loading..." : isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                     </div>
                   )}
-                  {selectedInstructionId === instruction.id && instruction.type !== "link" && !isComment && 'explanation' in instruction && instruction.explanation.length > 0 && (
-                    <div className={styles.mobileExplanation}>
-                      <ExplanationDisplay instruction={instruction as Instruction} />
-                    </div>
-                  )}
+                  {selectedInstructionId === instruction.id &&
+                    instruction.type !== "link" &&
+                    !isComment &&
+                    "explanation" in instruction &&
+                    instruction.explanation.length > 0 && (
+                      <div className={styles.mobileExplanation}>
+                        <ExplanationDisplay instruction={instruction as Instruction} />
+                      </div>
+                    )}
                 </div>
-                
+
                 {/* Render expanded linked mission instructions */}
                 {isExpanded && expandedInstructions && (
-                  <div style={{ marginLeft: '2rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
+                  <div style={{ marginLeft: "2rem", marginTop: "0.5rem", marginBottom: "1rem" }}>
                     {expandedInstructions.map((linkedInstruction) => (
                       <div key={linkedInstruction.id} className={styles.instructionItem}>
                         <InstructionListItem

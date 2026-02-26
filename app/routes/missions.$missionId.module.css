@@ -5,7 +5,7 @@
   gap: var(--space-5);
   padding: var(--space-4);
   background: linear-gradient(135deg, var(--color-neutral-1) 0%, var(--color-neutral-2) 100%);
-  max-width: 760px;
+  max-width: 600px;
   margin: 0 auto;
   width: 100%;
 }
@@ -103,7 +103,10 @@
   min-height: 500px;
 }
 
-
 .li1 {
   margin-bottom: var(--space-4);
+}
+.instructionListItem {
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-1);
 }
