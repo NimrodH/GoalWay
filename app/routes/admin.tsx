@@ -18,6 +18,7 @@ import {
 // Internal type for UI with unique keys for proper React rendering
 type InstructionContentWithKey = InstructionContent & { _key?: string };
 import { getAllMissions, getAllMissionsHe, getAllMissionIds, type Mission } from "~/services/missions.server";
+import classNames from "classnames";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
@@ -645,20 +646,20 @@ function ImageLibraryDialog({
       if (!instruction.explanation || !Array.isArray(instruction.explanation)) {
         return false;
       }
-      return instruction.explanation.some((item) => 
-        item.type === 'image' && item.content === imageUrl
-      );
+      return instruction.explanation.some((item) => item.type === "image" && item.content === imageUrl);
     });
     // Console log for debugging (will show in browser console)
     if (!found) {
-      console.log('Image not found in any instruction:', imageUrl);
-      console.log('Total instructions checked:', allInstructions.length);
-      const instructionsWithExplanation = allInstructions.filter(i => i.explanation && Array.isArray(i.explanation) && i.explanation.length > 0);
-      console.log('Instructions with explanations:', instructionsWithExplanation.length);
-      const allImageUrls = instructionsWithExplanation.flatMap(i => 
-        i.explanation!.filter(e => e.type === 'image').map(e => e.content)
+      console.log("Image not found in any instruction:", imageUrl);
+      console.log("Total instructions checked:", allInstructions.length);
+      const instructionsWithExplanation = allInstructions.filter(
+        (i) => i.explanation && Array.isArray(i.explanation) && i.explanation.length > 0,
       );
-      console.log('All image URLs in instructions:', allImageUrls);
+      console.log("Instructions with explanations:", instructionsWithExplanation.length);
+      const allImageUrls = instructionsWithExplanation.flatMap((i) =>
+        i.explanation!.filter((e) => e.type === "image").map((e) => e.content),
+      );
+      console.log("All image URLs in instructions:", allImageUrls);
     }
     return found;
   };
@@ -666,7 +667,7 @@ function ImageLibraryDialog({
   // Toggle image selection
   const toggleImageSelection = (imagePath: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelectedImages(prev => {
+    setSelectedImages((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(imagePath)) {
         newSet.delete(imagePath);
@@ -680,12 +681,12 @@ function ImageLibraryDialog({
   // Delete selected images
   const handleDeleteSelected = async () => {
     if (selectedImages.size === 0) {
-      alert('Please select at least one image to delete');
+      alert("Please select at least one image to delete");
       return;
     }
 
     const confirmDelete = window.confirm(
-      `Are you sure you want to delete ${selectedImages.size} image(s)?\n\nThis action cannot be undone.`
+      `Are you sure you want to delete ${selectedImages.size} image(s)?\n\nThis action cannot be undone.`,
     );
 
     if (!confirmDelete) {
@@ -693,8 +694,8 @@ function ImageLibraryDialog({
     }
 
     setIsDeleting(true);
-    const { deleteImage } = await import('~/lib/image-upload');
-    
+    const { deleteImage } = await import("~/lib/image-upload");
+
     let successCount = 0;
     let errorCount = 0;
     const errors: string[] = [];
@@ -712,7 +713,7 @@ function ImageLibraryDialog({
     setIsDeleting(false);
 
     if (errorCount > 0) {
-      alert(`Deleted ${successCount} image(s).\nFailed to delete ${errorCount} image(s):\n${errors.join('\n')}`);
+      alert(`Deleted ${successCount} image(s).\nFailed to delete ${errorCount} image(s):\n${errors.join("\n")}`);
     } else {
       alert(`Successfully deleted ${successCount} image(s)!`);
     }
@@ -731,7 +732,7 @@ function ImageLibraryDialog({
         <div
           className={styles.dialogContent}
           onClick={(e) => e.stopPropagation()}
-          style={{ maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 0 }}
+          style={{ maxWidth: "90vw", maxHeight: "90vh", display: "flex", flexDirection: "column", padding: 0 }}
         >
           <div className={styles.dialogHeader}>
             <h2 className={styles.dialogTitle}>{previewImage.name}</h2>
@@ -739,11 +740,21 @@ function ImageLibraryDialog({
               ✕
             </button>
           </div>
-          <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-4)', background: 'var(--color-neutral-2)' }}>
+          <div
+            style={{
+              flex: 1,
+              overflow: "auto",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "var(--space-4)",
+              background: "var(--color-neutral-2)",
+            }}
+          >
             <img
               src={previewImage.url}
               alt={previewImage.name}
-              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 'var(--radius-2)' }}
+              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: "var(--radius-2)" }}
             />
           </div>
         </div>
@@ -771,16 +782,24 @@ function ImageLibraryDialog({
 
         {!isLoading && !error && images.length > 0 && (
           <>
-            <div style={{ padding: 'var(--space-4)', borderBottom: '1px solid var(--color-neutral-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: '0.875rem', color: 'var(--color-neutral-11)' }}>
-                {selectedImages.size > 0 ? `${selectedImages.size} image(s) selected` : 'Select images to delete'}
+            <div
+              style={{
+                padding: "var(--space-4)",
+                borderBottom: "1px solid var(--color-neutral-6)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div style={{ fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
+                {selectedImages.size > 0 ? `${selectedImages.size} image(s) selected` : "Select images to delete"}
               </div>
-              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+              <div style={{ display: "flex", gap: "var(--space-2)" }}>
                 <button
                   type="button"
                   onClick={() => {
                     const selectedImagePath = Array.from(selectedImages)[0];
-                    const selectedImage = images.find(img => img.path === selectedImagePath);
+                    const selectedImage = images.find((img) => img.path === selectedImagePath);
                     if (selectedImage) {
                       onSelectImage(selectedImage.url);
                       onClose();
@@ -788,7 +807,7 @@ function ImageLibraryDialog({
                   }}
                   className={styles.submitButton}
                   disabled={selectedImages.size !== 1}
-                  style={{ minWidth: '100px' }}
+                  style={{ minWidth: "100px" }}
                 >
                   ✓ Select
                 </button>
@@ -796,14 +815,14 @@ function ImageLibraryDialog({
                   type="button"
                   onClick={() => {
                     const selectedImagePath = Array.from(selectedImages)[0];
-                    const selectedImage = images.find(img => img.path === selectedImagePath);
+                    const selectedImage = images.find((img) => img.path === selectedImagePath);
                     if (selectedImage) {
                       window.location.href = `/instructions-with-images?imageUrl=${encodeURIComponent(selectedImage.url)}`;
                     }
                   }}
                   className={styles.addButton}
                   disabled={selectedImages.size !== 1}
-                  style={{ minWidth: '180px' }}
+                  style={{ minWidth: "180px" }}
                 >
                   🔍 View Instructions with Image
                 </button>
@@ -812,9 +831,9 @@ function ImageLibraryDialog({
                   onClick={handleDeleteSelected}
                   className={styles.removeButton}
                   disabled={selectedImages.size === 0 || isDeleting}
-                  style={{ minWidth: '100px' }}
+                  style={{ minWidth: "100px" }}
                 >
-                  {isDeleting ? 'Deleting...' : 'Delete Selected'}
+                  {isDeleting ? "Deleting..." : "Delete Selected"}
                 </button>
               </div>
             </div>
@@ -830,16 +849,16 @@ function ImageLibraryDialog({
                       setPreviewImage({ url: image.url, name: image.name });
                     }}
                     style={{
-                      position: 'relative',
-                      border: isSelected ? '3px solid var(--color-accent-9)' : undefined,
+                      position: "relative",
+                      border: isSelected ? "3px solid var(--color-accent-9)" : undefined,
                       opacity: isUsed ? 1 : 0.6,
                     }}
                   >
                     <div
                       style={{
-                        position: 'absolute',
-                        top: 'var(--space-2)',
-                        left: 'var(--space-2)',
+                        position: "absolute",
+                        top: "var(--space-2)",
+                        left: "var(--space-2)",
                         zIndex: 10,
                       }}
                       onClick={(e) => toggleImageSelection(image.path, e)}
@@ -848,23 +867,23 @@ function ImageLibraryDialog({
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => {}}
-                        style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                        style={{ cursor: "pointer", width: "18px", height: "18px" }}
                       />
                     </div>
                     {!isUsed && (
                       <div
                         style={{
-                          position: 'absolute',
-                          top: 'var(--space-2)',
-                          right: 'var(--space-2)',
-                          background: 'var(--color-error-9)',
-                          color: 'white',
-                          padding: 'var(--space-1) var(--space-2)',
-                          borderRadius: 'var(--radius-2)',
-                          fontSize: '0.75rem',
+                          position: "absolute",
+                          top: "var(--space-2)",
+                          right: "var(--space-2)",
+                          background: "var(--color-error-9)",
+                          color: "white",
+                          padding: "var(--space-1) var(--space-2)",
+                          borderRadius: "var(--radius-2)",
+                          fontSize: "0.75rem",
                           fontWeight: 600,
                           zIndex: 5,
-                          pointerEvents: 'none',
+                          pointerEvents: "none",
                         }}
                       >
                         Not Used
@@ -1051,7 +1070,7 @@ function ExplanationContentItem({
         });
 
         // Insert the paste zone after the button
-        const pasteButton = document.querySelector('[data-paste-button]');
+        const pasteButton = document.querySelector("[data-paste-button]");
         if (pasteButton && pasteButton.parentElement) {
           pasteButton.parentElement.insertBefore(pasteZone, pasteButton.nextSibling);
           pasteZone.focus();
@@ -1226,8 +1245,18 @@ function AuthenticatedForm({
 }
 
 export default function AdminPage({ loaderData }: Route.ComponentProps) {
-  const { supabaseUrl, supabaseKey, instructions, missions, allInstructionIds, allMissionIds, instructionsEn, instructionsHe, language, tab } =
-    loaderData;
+  const {
+    supabaseUrl,
+    supabaseKey,
+    instructions,
+    missions,
+    allInstructionIds,
+    allMissionIds,
+    instructionsEn,
+    instructionsHe,
+    language,
+    tab,
+  } = loaderData;
   const actionData = useActionData<typeof action>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -2182,29 +2211,20 @@ function EditInstructionForm({
               Instruction Details
             </h2>
             <div className={styles.formGrid}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Instruction ID</label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={id}
-                  onChange={(e) => setId(e.target.value)}
-                  placeholder="e.g., 9"
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.label}>
-                  Title.  (Can be used as admin comment to identify the instruction. we can set the title for end user
-                  in the mission  by rename)
-                </label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g., Getting Started with Advanced Features"
-                />
+              <div className={styles.div12}>
+                <div className={classNames(styles.formGroup, styles.div11)}>
+                  <label className={styles.label}>
+                    Title.  (Can be used as admin comment to identify the instruction. we can set the title for end user
+                    in the mission  by rename)
+                  </label>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g., Getting Started with Advanced Features"
+                  />
+                </div>
               </div>
 
               <div className={styles.formGroup}>
@@ -2220,36 +2240,57 @@ function EditInstructionForm({
                 />
               </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Instruction Type</label>
-                <select
-                  className={styles.input}
-                  value={type}
-                  onChange={(e) => setType(e.target.value as "default" | "link")}
-                >
-                  <option value="default">Default (Standard Instruction)</option>
-                  <option value="link">Link (Navigate to Another Mission)</option>
-                </select>
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Instruction Status</label>
-                <select
-                  className={styles.input}
-                  value={status}
-                  onChange={(e) =>
-                    setStatus(e.target.value as "only title" | "partial explanation" | "full explanation")
-                  }
-                >
-                  <option value="only title">Only Title</option>
-                  <option value="partial explanation">Partial Explanation</option>
-                  <option value="full explanation">Full Explanation</option>
-                </select>
+              <div className={styles.div5}>
+                <div>
+                  <div className={classNames(styles.formGroup, styles.div9)}>
+                    <label className={styles.label}>Instruction ID</label>
+                    <input
+                      type="text"
+                      className={styles.input}
+                      value={id}
+                      onChange={(e) => setId(e.target.value)}
+                      placeholder="e.g., 9"
+                    />
+                  </div>
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Instruction Status</label>
+                  <select
+                    className={styles.input}
+                    value={status}
+                    onChange={(e) =>
+                      setStatus(e.target.value as "only title" | "partial explanation" | "full explanation")
+                    }
+                  >
+                    <option value="only title">Only Title</option>
+                    <option value="partial explanation">Partial Explanation</option>
+                    <option value="full explanation">Full Explanation</option>
+                  </select>
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Instruction Type</label>
+                  <select
+                    className={styles.input}
+                    value={type}
+                    onChange={(e) => setType(e.target.value as "default" | "link")}
+                  >
+                    <option value="default">Standard</option>
+                    <option value="link">Link</option>
+                  </select>
+                </div>
               </div>
 
               {type === "link" && (
                 <div className={styles.formGroup}>
-                  <label className={styles.label}>Target Mission</label>
+                  <div className={styles.div6}>
+                    <label className={styles.label}>Target Mission</label>
+                    <small
+                      style={{ color: "var(--color-neutral-11)", fontSize: "0.875rem", marginTop: "var(--space-1)" }}
+                      className={styles.small1}
+                    >
+                      The mission to navigate to when this instruction is clicked
+                    </small>
+                  </div>
                   <select className={styles.input} value={missionId} onChange={(e) => setMissionId(e.target.value)}>
                     <option value="">Select a mission...</option>
                     {allMissionIds.map((id) => {
@@ -2262,11 +2303,6 @@ function EditInstructionForm({
                       );
                     })}
                   </select>
-                  <small
-                    style={{ color: "var(--color-neutral-11)", fontSize: "0.875rem", marginTop: "var(--space-1)" }}
-                  >
-                    The mission to navigate to when this instruction is clicked
-                  </small>
                 </div>
               )}
             </div>
@@ -2959,26 +2995,44 @@ function EditMissionForm({
               Mission Details
             </h2>
             <div className={styles.formGrid}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Mission ID</label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={id}
-                  onChange={(e) => setId(e.target.value)}
-                  placeholder="e.g., security-basics"
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Title</label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g., Security Fundamentals"
-                />
+              <div className={styles.div7}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Title</label>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g., Security Fundamentals"
+                  />
+                </div>
+                <div className={styles.div10}>
+                  <div className={classNames(styles.formGroup, styles.div8)}>
+                    <label className={styles.label}>Mission ID</label>
+                    <input
+                      type="text"
+                      className={styles.input}
+                      value={id}
+                      onChange={(e) => setId(e.target.value)}
+                      placeholder="e.g., security-basics"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Mission Status</label>
+                    <select
+                      className={styles.input}
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value as "Hide" | "For all" | "Only Adama" | "Only Bazn")}
+                    >
+                      <option value="Hide">Hide</option>
+                      <option value="For all">For all</option>
+                      <option value="Only Adama">Only Adama</option>
+                      <option value="Only Bazn">Only Bazn</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
               <div className={styles.formGroup}>
@@ -2989,20 +3043,6 @@ function EditMissionForm({
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Enter mission description..."
                 />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Mission Status</label>
-                <select
-                  className={styles.input}
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as "Hide" | "For all" | "Only Adama" | "Only Bazn")}
-                >
-                  <option value="Hide">Hide</option>
-                  <option value="For all">For all</option>
-                  <option value="Only Adama">Only Adama</option>
-                  <option value="Only Bazn">Only Bazn</option>
-                </select>
               </div>
             </div>
           </div>
