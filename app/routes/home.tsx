@@ -49,7 +49,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             }
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
+          <div
+            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}
+          >
             <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
             <Link
               to="/help"
@@ -74,12 +76,13 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = "var(--color-accent-3)";
               }}
+              className={styles0.link}
             >
               <HelpCircle size={16} />
               Help
             </Link>
           </div>
-          <p className={styles.menuDescription}> Please read the HELP page !</p>
+          <p className={styles.menuDescription}></p>
         </div>
 
         <div style={{ marginBottom: "var(--space-4)", display: "flex", gap: "var(--space-2)" }}>
