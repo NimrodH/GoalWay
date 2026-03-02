@@ -41,7 +41,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   return (
     <div className={styles.menuContainer}>
       <div className={styles.menuContent}>
-        <div 
+        <div
           style={{ marginBottom: "var(--space-1)" }}
           onClick={(e) => {
             if (e.shiftKey) {
@@ -50,18 +50,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           }}
         >
           <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
-          <p className={styles.menuDescription}>
-            Welcome to the Mission Control center. Each mission contains step by step instructions designed for
-            effective use in real time.
-          </p>
-          <ul style={{ textAlign: "left" }}>
-            <li>Use the filter box to find the relevant mission.</li>
-            <li>Click on the mission you want to complete.</li>
-            <li>Follow the instructions step by step.</li>
-            <li className={styles0.li1}>
-              Click on any instruction to view detailed explanations and screenshots when needed.
-            </li>
-          </ul>
+          <p className={styles.menuDescription}> Please read the HELP page !</p>
         </div>
 
         <div style={{ marginBottom: "var(--space-4)", display: "flex", gap: "var(--space-2)" }}>
