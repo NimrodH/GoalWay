@@ -154,3 +154,35 @@
   box-shadow: var(--shadow-1);
   max-height: 500px;
 }
+
+/* Mobile-specific font size adjustments */
+@media (max-width: 768px) {
+  .markdown {
+    font-size: 1.5rem; /* 1.5x base font */
+  }
+
+  .markdown h1 {
+    font-size: calc(var(--font-size-5) * 1.5);
+  }
+
+  .markdown h2 {
+    font-size: calc(var(--font-size-4) * 1.5);
+  }
+
+  .markdown h3 {
+    font-size: calc(var(--font-size-3) * 1.5);
+  }
+
+  .markdown code {
+    font-size: 1.35em; /* 1.5x of 0.9em */
+  }
+
+  .markdown ul,
+  .markdown ol {
+    padding-left: calc(var(--space-6) * 1.5);
+  }
+
+  .markdown li {
+    margin: calc(var(--space-2) * 1.5) 0;
+  }
+}
