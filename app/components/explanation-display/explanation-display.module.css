@@ -158,31 +158,31 @@
 /* Mobile-specific font size adjustments */
 @media (max-width: 768px) {
   .markdown {
-    font-size: 1.5rem; /* 1.5x base font */
+    font-size: 1.2rem; /* 1.2x base font */
   }
 
   .markdown h1 {
-    font-size: calc(var(--font-size-5) * 1.5);
+    font-size: calc(var(--font-size-5) * 1.2);
   }
 
   .markdown h2 {
-    font-size: calc(var(--font-size-4) * 1.5);
+    font-size: calc(var(--font-size-4) * 1.2);
   }
 
   .markdown h3 {
-    font-size: calc(var(--font-size-3) * 1.5);
+    font-size: calc(var(--font-size-3) * 1.2);
   }
 
   .markdown code {
-    font-size: 1.35em; /* 1.5x of 0.9em */
+    font-size: 1.08em; /* 1.2x of 0.9em */
   }
 
   .markdown ul,
   .markdown ol {
-    padding-left: calc(var(--space-6) * 1.5);
+    padding-left: calc(var(--space-6) * 1.2);
   }
 
   .markdown li {
-    margin: calc(var(--space-2) * 1.5) 0;
+    margin: calc(var(--space-2) * 1.2) 0;
   }
 }

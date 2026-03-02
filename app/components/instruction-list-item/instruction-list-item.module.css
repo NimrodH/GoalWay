@@ -84,16 +84,16 @@
 
 @media (max-width: 768px) {
   .title {
-    font-size: 1.3125rem; /* 1.5x of typical body font */
+    font-size: 1.05rem; /* 1.2x of typical body font */
   }
   
   .description {
-    font-size: 1.125rem; /* 1.5x of caption font */
+    font-size: 0.9rem; /* 1.2x of caption font */
   }
   
   .orderNumber {
-    font-size: 1.3125rem; /* 1.5x of 0.875rem */
-    min-width: 42px;
-    height: 42px;
+    font-size: 1.05rem; /* 1.2x of 0.875rem */
+    min-width: 33.6px; /* 1.2x of 28px */
+    height: 33.6px;
   }
 }
