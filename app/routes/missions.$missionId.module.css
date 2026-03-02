@@ -45,6 +45,12 @@
   white-space: pre-line;
 }
 
+@media (max-width: 768px) {
+  .missionDescription {
+    font-size: 1.5rem;
+  }
+}
+
 .menuLink {
   display: inline-flex;
   align-items: center;

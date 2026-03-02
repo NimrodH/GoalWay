@@ -81,3 +81,19 @@
 .item.selected .description {
   color: var(--color-accent-10);
 }
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 1.3125rem; /* 1.5x of typical body font */
+  }
+  
+  .description {
+    font-size: 1.125rem; /* 1.5x of caption font */
+  }
+  
+  .orderNumber {
+    font-size: 1.3125rem; /* 1.5x of 0.875rem */
+    min-width: 42px;
+    height: 42px;
+  }
+}
