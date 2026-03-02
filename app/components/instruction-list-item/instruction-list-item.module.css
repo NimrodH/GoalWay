@@ -5,7 +5,7 @@
   transition:
     background-color 0.2s var(--ease),
     border-color 0.2s var(--ease);
-  border: 2px solid transparent;
+  border: 2px solid var(--color-neutral-6);
   background-color: transparent;
   margin-bottom: var(--space-2);
 }

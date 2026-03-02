@@ -107,8 +107,3 @@
 .li1 {
   margin-bottom: var(--space-4);
 }
-.instructionListItem {
-  padding-top: var(--space-1);
-  padding-bottom: var(--space-1);
-  border: 1px solid rgb(28 222 203);
-}
