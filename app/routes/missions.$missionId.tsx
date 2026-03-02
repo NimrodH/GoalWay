@@ -154,6 +154,19 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   // Don't pass comments to ExplanationDisplay - they don't have explanations
   const instructionToDisplay = selectedInstruction?.type === "comment" ? null : selectedInstruction;
 
+  // Scroll selected instruction to top after render
+  useEffect(() => {
+    if (selectedInstructionId) {
+      // Use requestAnimationFrame to ensure the DOM has been updated
+      requestAnimationFrame(() => {
+        const element = document.querySelector(`[data-instruction-id="${selectedInstructionId}"]`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+    }
+  }, [selectedInstructionId]);
+
   return (
     <div className={styles.container}>
       <section className={styles.instructionListSection}>
@@ -203,7 +216,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
 
             return (
               <div key={instruction.id}>
-                <div className={styles.instructionItem}>
+                <div className={styles.instructionItem} data-instruction-id={instruction.id}>
                   <InstructionListItem
                     title={instruction.title}
                     description={instruction.description}
@@ -233,7 +246,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                 {isExpanded && expandedInstructions && (
                   <div style={{ marginLeft: "2rem", marginTop: "0.5rem", marginBottom: "1rem" }}>
                     {expandedInstructions.map((linkedInstruction) => (
-                      <div key={linkedInstruction.id} className={styles.instructionItem}>
+                      <div key={linkedInstruction.id} className={styles.instructionItem} data-instruction-id={linkedInstruction.id}>
                         <InstructionListItem
                           title={linkedInstruction.title}
                           description={linkedInstruction.description}
