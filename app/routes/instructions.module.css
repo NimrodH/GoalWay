@@ -16,7 +16,6 @@
   color: var(--color-neutral-12);
   margin-bottom: var(--space-4);
   text-align: center;
-  margin-left: var(--space-6);
 }
 
 .menuDescription {
@@ -27,7 +26,6 @@
   max-width: 800px;
   margin: 0 auto var(--space-3);
   line-height: 1.6;
-  display: flex;
 }
 
 .missionsGrid {
