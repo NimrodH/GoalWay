@@ -185,11 +185,16 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
         </div>
         <p className={styles.missionDescription}>{mission.description}</p>
         <div className={styles.instructionList}>
-          {missionInstructions.map((instruction) => {
+          {missionInstructions.map((instruction, index) => {
             const isComment = instruction.type === "comment";
             const isExpanded = expandedLinkInstructions.has(instruction.id);
             const isLoading = loadingLinkInstructions.has(instruction.id);
             const expandedInstructions = expandedLinkInstructions.get(instruction.id);
+            
+            // Calculate order number (excluding comments)
+            const orderNumber = missionInstructions
+              .slice(0, index + 1)
+              .filter(inst => inst.type !== "comment").length;
 
             // Render comments differently (non-clickable, styled)
             if (isComment) {
@@ -225,6 +230,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                     instructionType={instruction.type}
                     explanation={"explanation" in instruction ? instruction.explanation : []}
                     className={styles.instructionListItem}
+                    orderNumber={orderNumber}
                   />
                   {instruction.type === "link" && "missionId" in instruction && (
                     <div style={{ marginLeft: "1rem", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
@@ -245,7 +251,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                 {/* Render expanded linked mission instructions */}
                 {isExpanded && expandedInstructions && (
                   <div style={{ marginLeft: "2rem", marginTop: "0.5rem", marginBottom: "1rem" }}>
-                    {expandedInstructions.map((linkedInstruction) => (
+                    {expandedInstructions.map((linkedInstruction, linkedIndex) => (
                       <div key={linkedInstruction.id} className={styles.instructionItem} data-instruction-id={linkedInstruction.id}>
                         <InstructionListItem
                           title={linkedInstruction.title}
@@ -253,6 +259,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                           selected={selectedInstructionId === linkedInstruction.id}
                           instructionType={linkedInstruction.type}
                           explanation={linkedInstruction.explanation}
+                          orderNumber={linkedIndex + 1}
                           onClick={(event) => {
                             // If Shift key is pressed, navigate to admin page
                             if (event?.shiftKey) {

@@ -34,6 +34,10 @@ interface InstructionListItemProps {
    * Explanation content array to determine the type indicator
    */
   explanation?: InstructionContent[];
+  /**
+   * The order number of the instruction (1-indexed)
+   */
+  orderNumber?: number;
 }
 
 export function InstructionListItem({ 
@@ -43,7 +47,8 @@ export function InstructionListItem({
   onClick, 
   className,
   instructionType,
-  explanation = []
+  explanation = [],
+  orderNumber
 }: InstructionListItemProps) {
   
   // Determine which indicator to show
@@ -76,6 +81,11 @@ export function InstructionListItem({
   return (
     <div className={classNames(styles.item, { [styles.selected]: selected }, className)} onClick={(e) => onClick(e)}>
       <div className={styles.titleRow}>
+        {orderNumber !== undefined && (
+          <div className={classNames(styles.orderNumber, { [styles.selectedNumber]: selected })}>
+            {orderNumber}
+          </div>
+        )}
         <h3 className={styles.title}>{title}</h3>
         {indicator}
       </div>
