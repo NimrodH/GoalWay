@@ -5,8 +5,8 @@
   gap: var(--space-5);
   padding: var(--space-4);
   background: linear-gradient(135deg, var(--color-neutral-1) 0%, var(--color-neutral-2) 100%);
-  max-width: 600px;
-  margin: 0 auto;
+  max-width: 500px;
+  margin: 0 auto var(--space-3);
   width: 100%;
 }
 
@@ -89,6 +89,7 @@
   border: solid;
   border-color: var(--color-accent-9);
   box-shadow: var(--inner-shadow-1);
+  margin-bottom: var(--space-3);
 }
 
 .explanationSection {
@@ -109,4 +110,5 @@
 .instructionListItem {
   padding-top: var(--space-1);
   padding-bottom: var(--space-1);
+  border: 1px solid rgb(28 222 203);
 }
