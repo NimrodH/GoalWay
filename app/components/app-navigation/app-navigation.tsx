@@ -29,6 +29,13 @@ export function AppNavigation({ onNavigate }: AppNavigationProps = {}) {
         Home
       </Link>
       <Link 
+        to="/help" 
+        className={styles.navLink}
+        onClick={(e) => handleNavigation(e, "/help")}
+      >
+        Help
+      </Link>
+      <Link 
         to="/admin" 
         className={styles.navLink}
         onClick={(e) => handleNavigation(e, "/admin")}
