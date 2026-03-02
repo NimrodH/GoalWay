@@ -154,6 +154,10 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
       // Mark instruction as completed when closed
       setCompletedInstructions(prev => new Set([...prev, instructionId]));
     } else {
+      // Mark previously selected instruction as completed when switching to another
+      if (selectedInstructionId) {
+        setCompletedInstructions(prev => new Set([...prev, selectedInstructionId]));
+      }
       setSelectedInstructionId(instructionId);
     }
   };
@@ -291,6 +295,10 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                               // Mark instruction as completed when closed
                               setCompletedInstructions(prev => new Set([...prev, linkedInstruction.id]));
                             } else {
+                              // Mark previously selected instruction as completed when switching to another
+                              if (selectedInstructionId) {
+                                setCompletedInstructions(prev => new Set([...prev, selectedInstructionId]));
+                              }
                               setSelectedInstructionId(linkedInstruction.id);
                             }
                           }}
