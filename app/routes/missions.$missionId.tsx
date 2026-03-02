@@ -65,21 +65,18 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
   const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
   const [loadingLinkInstructions, setLoadingLinkInstructions] = useState<Set<string>>(new Set());
-  const [completedInstructions, setCompletedInstructions] = useState<Set<string>>(() => {
-    // Load completed instructions from localStorage on mount
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(`completed-${mission.id}`);
-      return stored ? new Set(JSON.parse(stored)) : new Set();
-    }
-    return new Set();
-  });
+  const [completedInstructions, setCompletedInstructions] = useState<Set<string>>(new Set());
 
-  // Save completed instructions to localStorage whenever it changes
+  // Reset completion state when navigating away from the mission
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(`completed-${mission.id}`, JSON.stringify([...completedInstructions]));
-    }
-  }, [completedInstructions, mission.id]);
+    // Cleanup function runs when component unmounts (user navigates away)
+    return () => {
+      // Clear completion state for this mission when leaving
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(`completed-${mission.id}`);
+      }
+    };
+  }, [mission.id]);
 
   const navigate = useNavigate();
   const location = useLocation();
