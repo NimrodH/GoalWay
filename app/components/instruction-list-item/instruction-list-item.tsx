@@ -38,6 +38,10 @@ interface InstructionListItemProps {
    * The order number of the instruction (1-indexed)
    */
   orderNumber?: number;
+  /**
+   * Whether this instruction has been completed
+   */
+  isCompleted?: boolean;
 }
 
 export function InstructionListItem({ 
@@ -48,7 +52,8 @@ export function InstructionListItem({
   className,
   instructionType,
   explanation = [],
-  orderNumber
+  orderNumber,
+  isCompleted = false
 }: InstructionListItemProps) {
   
   // Determine which indicator to show
@@ -82,7 +87,10 @@ export function InstructionListItem({
     <div className={classNames(styles.item, { [styles.selected]: selected }, className)} onClick={(e) => onClick(e)}>
       <div className={styles.titleRow}>
         {orderNumber !== undefined && (
-          <div className={classNames(styles.orderNumber, { [styles.selectedNumber]: selected })}>
+          <div className={classNames(styles.orderNumber, { 
+            [styles.selectedNumber]: selected,
+            [styles.completedNumber]: isCompleted && !selected
+          })}>
             {orderNumber}
           </div>
         )}

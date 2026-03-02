@@ -47,6 +47,11 @@
   color: var(--color-accent-contrast);
 }
 
+.orderNumber.completedNumber {
+  background-color: var(--color-success-9);
+  color: var(--color-success-contrast);
+}
+
 .title {
   font: var(--font-body);
   color: var(--color-neutral-12);

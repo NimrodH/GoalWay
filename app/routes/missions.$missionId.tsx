@@ -65,6 +65,21 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
   const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
   const [loadingLinkInstructions, setLoadingLinkInstructions] = useState<Set<string>>(new Set());
+  const [completedInstructions, setCompletedInstructions] = useState<Set<string>>(() => {
+    // Load completed instructions from localStorage on mount
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(`completed-${mission.id}`);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    }
+    return new Set();
+  });
+
+  // Save completed instructions to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`completed-${mission.id}`, JSON.stringify([...completedInstructions]));
+    }
+  }, [completedInstructions, mission.id]);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -136,6 +151,8 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
     // Otherwise, toggle selection as usual
     if (selectedInstructionId === instructionId) {
       setSelectedInstructionId(null);
+      // Mark instruction as completed when closed
+      setCompletedInstructions(prev => new Set([...prev, instructionId]));
     } else {
       setSelectedInstructionId(instructionId);
     }
@@ -231,6 +248,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                     explanation={"explanation" in instruction ? instruction.explanation : []}
                     className={styles.instructionListItem}
                     orderNumber={orderNumber}
+                    isCompleted={completedInstructions.has(instruction.id)}
                   />
                   {instruction.type === "link" && "missionId" in instruction && (
                     <div style={{ marginLeft: "1rem", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
@@ -260,6 +278,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                           instructionType={linkedInstruction.type}
                           explanation={linkedInstruction.explanation}
                           orderNumber={linkedIndex + 1}
+                          isCompleted={completedInstructions.has(linkedInstruction.id)}
                           onClick={(event) => {
                             // If Shift key is pressed, navigate to admin page
                             if (event?.shiftKey) {
@@ -269,6 +288,8 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                             // Toggle selection
                             if (selectedInstructionId === linkedInstruction.id) {
                               setSelectedInstructionId(null);
+                              // Mark instruction as completed when closed
+                              setCompletedInstructions(prev => new Set([...prev, linkedInstruction.id]));
                             } else {
                               setSelectedInstructionId(linkedInstruction.id);
                             }
