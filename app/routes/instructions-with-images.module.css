@@ -425,6 +425,57 @@
   white-space: nowrap;
 }
 
+/* Image navigation buttons in preview mode */
+.imageNavButton {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  color: white;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.imageNavButton:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.8);
+  border-color: white;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.imageNavButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Select image button in preview mode */
+.selectImageButton {
+  background: var(--color-accent-9);
+  color: var(--color-accent-contrast);
+  border: none;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-2);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+}
+
+.selectImageButton:hover {
+  background: var(--color-accent-10);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
 @media (max-width: 768px) {
   .container {
     padding: var(--space-3);
@@ -473,5 +524,16 @@
   .imageGrid {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: var(--space-2);
+  }
+
+  .imageNavButton {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+  }
+
+  .selectImageButton {
+    font-size: 0.75rem;
+    padding: var(--space-1) var(--space-2);
   }
 }
