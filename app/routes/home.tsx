@@ -50,10 +50,35 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           }}
         >
           <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
-          <p className={styles.menuDescription}> Please read the HELP page !</p>
         </div>
 
         <div style={{ marginBottom: "var(--space-4)", display: "flex", gap: "var(--space-2)" }}>
+          <Link
+            to="/help"
+            style={{
+              padding: "var(--space-2) var(--space-3)",
+              border: "1px solid var(--color-accent-6)",
+              borderRadius: "var(--radius-2)",
+              fontSize: "0.875rem",
+              backgroundColor: "var(--color-accent-3)",
+              color: "var(--color-accent-11)",
+              cursor: "pointer",
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-1)",
+              transition: "background-color 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--color-accent-4)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--color-accent-3)";
+            }}
+          >
+            <HelpCircle size={16} />
+            Help
+          </Link>
           <input
             type="text"
             value={missionFilter}
@@ -86,32 +111,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           >
             Clear
           </button>
-          <Link
-            to="/help"
-            style={{
-              padding: "var(--space-2) var(--space-3)",
-              border: "1px solid var(--color-accent-6)",
-              borderRadius: "var(--radius-2)",
-              fontSize: "0.875rem",
-              backgroundColor: "var(--color-accent-3)",
-              color: "var(--color-accent-11)",
-              cursor: "pointer",
-              textDecoration: "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "var(--space-1)",
-              transition: "background-color 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--color-accent-4)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--color-accent-3)";
-            }}
-          >
-            <HelpCircle size={16} />
-            Help
-          </Link>
         </div>
 
         <div className={styles.missionsGrid}>

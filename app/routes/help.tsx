@@ -45,8 +45,9 @@ export default function Help() {
             </li>
             <li>
               <strong>Use the Mission:</strong> If you are unsure how to perform a specific instruction, click it to
-              view a detailed explanation. If you are unsure how to perform a specific instruction, click it to view a
-              detailed explanation.{" "}
+              view a detailed explanation. If you are already familiar with how to complete the mission, use the
+              instruction list (without opening the instructions) as a reminder or to ensure you did not miss any
+              steps.{" "}
             </li>
           </ol>
         </div>
@@ -103,7 +104,7 @@ export default function Help() {
               <h3 className={styles.symbolTitle}>Related Instructions</h3>
               <p className={styles.symbolDescription}>
                 This icon appears when an instruction is linked to other related instructions. Click to see expanded
-                details and sub-instructions.
+                details in sub-instructions.
               </p>
             </div>
           </div>
@@ -128,10 +129,6 @@ export default function Help() {
 
         <div className={styles.callToAction}>
           <h2 className={styles.ctaTitle}>Ready to Get Started?</h2>
-          <p className={styles.ctaText}>
-            Now that you know how to use Mission Control Center, it's time to choose your first mission and start making
-            progress!
-          </p>
           <Link to="/" className={styles.ctaButton}>
             Browse Missions
           </Link>
