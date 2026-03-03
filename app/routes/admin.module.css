@@ -648,3 +648,24 @@
   opacity: 0.3;
   cursor: not-allowed;
 }
+
+.selectImageButton {
+  background: var(--color-accent-9);
+  color: var(--color-accent-contrast);
+  border: none;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-2);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+}
+
+.selectImageButton:hover {
+  background: var(--color-accent-10);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}

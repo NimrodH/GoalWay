@@ -602,6 +602,7 @@ function ImageLibraryDialog({
   instructions,
   instructionsEn,
   instructionsHe,
+  preSelectImageUrl,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -609,6 +610,7 @@ function ImageLibraryDialog({
   instructions: Instruction[];
   instructionsEn: Instruction[];
   instructionsHe: Instruction[];
+  preSelectImageUrl?: string;
 }) {
   const [images, setImages] = useState<Array<{ name: string; url: string; path: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -622,9 +624,15 @@ function ImageLibraryDialog({
     if (isOpen) {
       loadImages();
       setSelectedImages(new Set());
-      setPreviewImage(null);
+      // If preSelectImageUrl is provided, open it in preview mode
+      if (preSelectImageUrl) {
+        const imageName = preSelectImageUrl.split('/').pop() || 'Preview';
+        setPreviewImage({ url: preSelectImageUrl, name: imageName });
+      } else {
+        setPreviewImage(null);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, preSelectImageUrl]);
 
   const loadImages = async () => {
     setIsLoading(true);
@@ -813,23 +821,42 @@ function ImageLibraryDialog({
               →
             </button>
 
-            {/* Image counter */}
+            {/* Image counter and Select button */}
             <div
               style={{
                 position: "absolute",
                 bottom: "var(--space-4)",
                 left: "50%",
                 transform: "translateX(-50%)",
-                background: "rgba(0, 0, 0, 0.7)",
-                color: "white",
-                padding: "var(--space-2) var(--space-3)",
-                borderRadius: "var(--radius-2)",
-                fontSize: "0.875rem",
-                fontFamily: "var(--font-body)",
-                fontWeight: 600,
+                display: "flex",
+                gap: "var(--space-3)",
+                alignItems: "center",
               }}
             >
-              {currentImageIndex + 1} / {images.length}
+              <div
+                style={{
+                  background: "rgba(0, 0, 0, 0.7)",
+                  color: "white",
+                  padding: "var(--space-2) var(--space-3)",
+                  borderRadius: "var(--radius-2)",
+                  fontSize: "0.875rem",
+                  fontFamily: "var(--font-body)",
+                  fontWeight: 600,
+                }}
+              >
+                {currentImageIndex + 1} / {images.length}
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectImage(previewImage.url);
+                  onClose();
+                }}
+                className={styles.selectImageButton}
+                title="Select this image"
+              >
+                ✓ Select
+              </button>
             </div>
           </div>
         </div>
@@ -1275,6 +1302,7 @@ function ExplanationContentItem({
             instructions={instructions}
             instructionsEn={instructionsEn}
             instructionsHe={instructionsHe}
+            preSelectImageUrl={item.content}
           />
         </div>
       ) : (
