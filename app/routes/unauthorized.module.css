@@ -1,0 +1,63 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-neutral-2);
+  padding: var(--space-4);
+}
+
+.card {
+  background: var(--color-neutral-1);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-4);
+  padding: var(--space-8);
+  width: 100%;
+  max-width: 440px;
+  text-align: center;
+  box-shadow: var(--shadow-2);
+}
+
+.iconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  background: var(--color-error-3);
+  color: var(--color-error-9);
+  border-radius: var(--radius-round);
+  margin: 0 auto var(--space-5);
+}
+
+.title {
+  font: var(--font-heading);
+  font-size: 1.5rem;
+  color: var(--color-neutral-12);
+  margin: 0 0 var(--space-3);
+}
+
+.description {
+  font: var(--font-body);
+  font-size: 0.9375rem;
+  color: var(--color-neutral-10);
+  line-height: 1.6;
+  margin: 0 0 var(--space-6);
+}
+
+.backButton {
+  display: inline-block;
+  padding: var(--space-3) var(--space-6);
+  background: var(--color-accent-9);
+  color: var(--color-accent-contrast);
+  border-radius: var(--radius-2);
+  font: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.backButton:hover {
+  background: var(--color-accent-10);
+}

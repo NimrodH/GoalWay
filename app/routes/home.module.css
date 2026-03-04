@@ -131,3 +131,59 @@
 .li1 {
   margin-bottom: var(--space-4);
 }
+
+/* Auth banners */
+.banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-accent-3);
+  border: 1px solid var(--color-accent-6);
+  border-radius: var(--radius-2);
+  font-size: 0.875rem;
+  color: var(--color-accent-11);
+  margin-bottom: var(--space-4);
+}
+
+.bannerLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-accent-11);
+  font-weight: 600;
+  text-decoration: none;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-accent-5);
+  border-radius: var(--radius-1);
+  transition: background 0.15s ease;
+}
+
+.bannerLink:hover {
+  background: var(--color-accent-6);
+}
+
+.adminBanner {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-neutral-4);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-neutral-11);
+  margin-bottom: var(--space-4);
+}
+
+.exampleBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px var(--space-2);
+  background: var(--color-accent-3);
+  color: var(--color-accent-11);
+  border-radius: var(--radius-round);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}

@@ -1,10 +1,11 @@
 import { Link, useNavigate } from "react-router";
 import type { Route } from "./+types/home";
-import { BookOpen, HelpCircle } from "lucide-react";
+import { BookOpen, HelpCircle, LogIn, Star } from "lucide-react";
 import styles from "./instructions.module.css";
-import { getAllMissions } from "~/services/missions.server";
+import homeStyles from "./home.module.css";
+import { getAllMissions, getExampleMissions, getMissionsForOrganization } from "~/services/missions.server";
+import { getUserProfile, isAdmin } from "~/lib/auth.server";
 import { useState } from "react";
-import styles0 from "./home.module.css";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -16,21 +17,50 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-export async function loader({}: Route.LoaderArgs) {
-  const missions = await getAllMissions();
-  return { missions };
+export async function loader({ request }: Route.LoaderArgs) {
+  const profile = await getUserProfile(request);
+
+  // Admin sees ALL missions
+  if (profile && isAdmin(profile)) {
+    const allMissions = await getAllMissions();
+    const filtered = allMissions.filter((m) => m.status !== "Hide");
+    return { missions: filtered, isAdmin: true, isAnonymous: false, isPending: false, profile };
+  }
+
+  // Always fetch example missions — visible to everyone
+  const exampleMissions = await getExampleMissions();
+  const visibleExamples = exampleMissions.filter((m) => m.status !== "Hide");
+
+  if (!profile) {
+    // Not logged in — only examples
+    return { missions: visibleExamples, isAnonymous: true, isPending: false, isAdmin: false, profile: null };
+  }
+
+  if (!profile.organization_id) {
+    // Logged in but not assigned to an org yet (pending approval)
+    return { missions: visibleExamples, isAnonymous: false, isPending: true, isAdmin: false, profile };
+  }
+
+  // Authenticated + assigned → org missions merged with examples
+  const orgMissions = await getMissionsForOrganization(profile.organization_id);
+  const visibleOrgMissions = orgMissions.filter((m) => m.status !== "Hide");
+
+  // Deduplicate: org missions + example missions (examples may already appear in org list)
+  const missionIds = new Set(visibleOrgMissions.map((m) => m.id));
+  const merged = [
+    ...visibleOrgMissions,
+    ...visibleExamples.filter((m) => !missionIds.has(m.id)),
+  ];
+
+  return { missions: merged, isAnonymous: false, isPending: false, isAdmin: false, profile };
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { missions } = loaderData;
+  const { missions, isAnonymous, isPending, isAdmin: adminView, profile } = loaderData;
   const navigate = useNavigate();
   const [missionFilter, setMissionFilter] = useState("");
 
   const filteredMissions = missions.filter((mission) => {
-    // Filter out missions with status "Hide"
-    if (mission.status === "Hide") return false;
-
-    // Apply search filter
     if (!missionFilter.trim()) return true;
     const searchTerm = missionFilter.toLowerCase().trim();
     const title = mission.title?.toLowerCase() || "";
@@ -44,13 +74,43 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <div
           style={{ marginBottom: "var(--space-1)" }}
           onClick={(e) => {
-            if (e.shiftKey) {
-              navigate("/admin");
-            }
+            if (e.shiftKey) navigate("/admin");
           }}
         >
           <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
         </div>
+
+        {/* Status banner for anonymous or pending users */}
+        {(isAnonymous || isPending) && (
+          <div className={homeStyles.banner}>
+            {isAnonymous ? (
+              <>
+                <span>You&apos;re viewing example missions.</span>
+                <Link to="/login" className={homeStyles.bannerLink}>
+                  <LogIn size={14} />
+                  Sign In
+                </Link>
+                <span>or</span>
+                <Link to="/register" className={homeStyles.bannerLink}>
+                  Register
+                </Link>
+                <span>to see all missions for your organization.</span>
+              </>
+            ) : (
+              <span>
+                Your account is <strong>pending approval</strong>. An administrator will assign your organization
+                shortly. Example missions are available in the meantime.
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Admin badge */}
+        {adminView && (
+          <div className={homeStyles.adminBanner}>
+            👑 Admin view — showing all missions
+          </div>
+        )}
 
         <div style={{ marginBottom: "var(--space-4)", display: "flex", gap: "var(--space-2)" }}>
           <Link
@@ -123,8 +183,15 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <p className={styles.missionDescription}>{mission.description}</p>
               <div className={styles.missionFooter}>
                 <span className={styles.instructionCount}>
-                  {mission.instructions.length} {mission.instructions.length === 1 ? "instruction" : "instructions"}
+                  {mission.instructions.length}{" "}
+                  {mission.instructions.length === 1 ? "instruction" : "instructions"}
                 </span>
+                {mission.isExample && (
+                  <span className={homeStyles.exampleBadge}>
+                    <Star size={10} />
+                    Example
+                  </span>
+                )}
               </div>
             </Link>
           ))}

@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { data, Link, useNavigate, useLocation } from "react-router";
+import { data, redirect, Link, useNavigate, useLocation } from "react-router";
 import type { Route } from "./+types/missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
 import { BookOpen, ArrowLeft, ChevronUp, ChevronDown } from "lucide-react";
 import styles from "./missions.$missionId.module.css";
-import { getMissionById, getAllMissions } from "~/services/missions.server";
+import { getMissionById, getAllMissions, checkMissionAccess } from "~/services/missions.server";
 import { getInstructionsByIds } from "~/services/instructions.server";
+import { getUserProfile, isAdmin } from "~/lib/auth.server";
 import type { Instruction } from "~/data/instructions";
 
 export function meta({ data }: Route.MetaArgs) {
@@ -20,14 +21,24 @@ export function meta({ data }: Route.MetaArgs) {
   ];
 }
 
-export async function loader({ params }: Route.LoaderArgs) {
+export async function loader({ request, params }: Route.LoaderArgs) {
   const mission = await getMissionById(params.missionId);
-  const allMissions = await getAllMissions();
 
   if (!mission) {
     throw data("Mission not found", { status: 404 });
   }
 
+  const profile = await getUserProfile(request);
+
+  // Admins bypass all access checks
+  if (!profile || !isAdmin(profile)) {
+    const hasAccess = await checkMissionAccess(params.missionId, profile?.organization_id ?? null);
+    if (!hasAccess) {
+      throw redirect("/unauthorized");
+    }
+  }
+
+  const allMissions = await getAllMissions();
   const instructionIds = mission.instructions.map(([id]) => id);
   const instructions = await getInstructionsByIds(instructionIds);
 

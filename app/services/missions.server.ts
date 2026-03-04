@@ -6,6 +6,7 @@ export interface Mission {
   description: string;
   instructions: Array<[string, string?]>; // [instructionId, customTitle?]
   status?: "Hide" | "For all" | "Only Adama" | "Only Bazn";
+  isExample?: boolean;
 }
 
 // Legacy format from database (before migration)
@@ -102,6 +103,100 @@ export async function getMissionByIdHe(missionId: string): Promise<Mission | nul
   }
 
   return migrateLegacyMission(data.data_he);
+}
+
+/**
+ * Fetch missions that are flagged as examples (publicly visible to all users).
+ */
+export async function getExampleMissions(): Promise<Mission[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("missions")
+    .select("data_en, is_example")
+    .eq("is_example", true)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching example missions:", error);
+    return [];
+  }
+
+  return (data || [])
+    .filter((row: any) => row.data_en !== null)
+    .map((row: any) => ({
+      ...migrateLegacyMission(row.data_en),
+      isExample: true,
+    }));
+}
+
+/**
+ * Fetch missions visible to a specific organization (excludes hidden missions).
+ */
+export async function getMissionsForOrganization(organizationId: string): Promise<Mission[]> {
+  const supabase = getSupabase();
+
+  // Get mission IDs allowed for this org
+  const { data: access, error: accessError } = await supabase
+    .from("mission_organizations")
+    .select("mission_id")
+    .eq("organization_id", organizationId);
+
+  if (accessError) {
+    console.error("Error fetching org mission access:", accessError);
+    return [];
+  }
+
+  const allowedIds = (access || []).map((r: any) => r.mission_id);
+  if (allowedIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("missions")
+    .select("data_en, is_example")
+    .in("id", allowedIds)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching org missions:", error);
+    return [];
+  }
+
+  return (data || [])
+    .filter((row: any) => row.data_en !== null)
+    .map((row: any) => ({
+      ...migrateLegacyMission(row.data_en),
+      isExample: row.is_example ?? false,
+    }));
+}
+
+/**
+ * Check if a specific mission is accessible to a given organization or is an example.
+ */
+export async function checkMissionAccess(
+  missionId: string,
+  organizationId: string | null
+): Promise<boolean> {
+  const supabase = getSupabase();
+
+  // First, check if mission is an example (publicly accessible)
+  const { data: missionRow } = await supabase
+    .from("missions")
+    .select("is_example")
+    .eq("id", missionId)
+    .single();
+
+  if (missionRow?.is_example) return true;
+
+  // Otherwise check org access
+  if (!organizationId) return false;
+
+  const { data } = await supabase
+    .from("mission_organizations")
+    .select("mission_id")
+    .eq("mission_id", missionId)
+    .eq("organization_id", organizationId)
+    .single();
+
+  return !!data;
 }
 
 export async function getAllMissionIds(): Promise<string[]> {

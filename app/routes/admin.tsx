@@ -18,6 +18,8 @@ import {
 // Internal type for UI with unique keys for proper React rendering
 type InstructionContentWithKey = InstructionContent & { _key?: string };
 import { getAllMissions, getAllMissionsHe, getAllMissionIds, type Mission } from "~/services/missions.server";
+import { getOrganizations, getAllUsers, getMissionOrganizations, setMissionOrganizations, setMissionExample, assignUserOrganization, type Organization, type PendingUser } from "~/services/organizations.server";
+import { AdminUsers } from "~/components/admin-users/admin-users";
 import classNames from "classnames";
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -25,14 +27,25 @@ export async function loader({ request }: Route.LoaderArgs) {
   const language = url.searchParams.get("lang") || "en";
   const tab = url.searchParams.get("tab") || "edit-instruction";
 
-  const [instructions, missions, allInstructionIds, allMissionIds, instructionsEn, instructionsHe] = await Promise.all([
+  const [instructions, missions, allMissions, allInstructionIds, allMissionIds, instructionsEn, instructionsHe, organizations, users] = await Promise.all([
     language === "he" ? getAllInstructionsHe() : getAllInstructions(),
     language === "he" ? getAllMissionsHe() : getAllMissions(),
+    getAllMissions(), // always English for access matrix
     getAllInstructionIds(),
     getAllMissionIds(),
     getAllInstructions(),
     getAllInstructionsHe(),
+    getOrganizations(),
+    getAllUsers(),
   ]);
+
+  // Build mission access data for the Users tab
+  const missionsWithAccess = await Promise.all(
+    allMissions.map(async (m) => {
+      const allowedOrgIds = await getMissionOrganizations(m.id);
+      return { ...m, isExample: !!m.isExample, allowedOrgIds };
+    })
+  );
 
   return {
     supabaseUrl: process.env.SUPABASE_PROJECT_URL!,
@@ -45,10 +58,25 @@ export async function loader({ request }: Route.LoaderArgs) {
     instructionsHe,
     language,
     tab,
+    organizations,
+    users,
+    missionsWithAccess,
   };
 }
 
-export async function action({ request }: Route.ActionArgs) {
+type ActionResult = {
+  success: boolean;
+  error?: string;
+  message?: string;
+  translatedText?: string | null;
+  newInstructionId?: string;
+  newMissionId?: string;
+  deletedInstructionId?: string;
+  deletedMissionId?: string;
+  missionsUpdated?: number;
+};
+
+export async function action({ request }: Route.ActionArgs): Promise<ActionResult> {
   const formData = await request.formData();
   const actionType = formData.get("actionType") as string;
   const id = formData.get("id") as string;
@@ -464,6 +492,33 @@ export async function action({ request }: Route.ActionArgs) {
       message: `New instruction ${newId} created successfully!`,
       newInstructionId: newId,
     };
+  }
+
+  // Handle user organization assignment
+  if (actionType === "assignUserOrg") {
+    const userId = formData.get("userId") as string | null;
+    const organizationId = formData.get("organizationId") as string | null;
+    if (!accessToken) return { success: false, error: "Unauthorized" };
+    if (!userId) return { success: false, error: "User ID is required" };
+    const result = await assignUserOrganization(userId, organizationId || null);
+    return result;
+  }
+
+  // Handle mission access matrix save
+  if (actionType === "setMissionAccess") {
+    const missionId = formData.get("missionId") as string | null;
+    const isExample = formData.get("isExample") === "true";
+    const orgIdsRaw = formData.get("organizationIds") as string | null;
+    if (!accessToken) return { success: false, error: "Unauthorized" };
+    if (!missionId) return { success: false, error: "Mission ID is required" };
+    const orgIds: string[] = orgIdsRaw ? JSON.parse(orgIdsRaw) : [];
+    const [exampleResult, orgResult] = await Promise.all([
+      setMissionExample(missionId, isExample),
+      setMissionOrganizations(missionId, orgIds),
+    ]);
+    if (!exampleResult.success) return exampleResult;
+    if (!orgResult.success) return orgResult;
+    return { success: true, message: "Mission access updated" };
   }
 
   // Handle translation action (no auth required for translation)
@@ -1360,6 +1415,9 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
     instructionsHe,
     language,
     tab,
+    organizations,
+    users,
+    missionsWithAccess,
   } = loaderData;
   const actionData = useActionData<typeof action>();
   const navigate = useNavigate();
@@ -1481,7 +1539,7 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
     navigate(`/admin?${params.toString()}`);
   };
 
-  const { user, loading, signIn, signOut } = useAuth();
+  const { user, session, loading, signIn, signOut } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -1618,6 +1676,27 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
         <TabsList className={styles.tabsList}>
           <TabsTrigger value="edit-instruction">Edit Instruction</TabsTrigger>
           <TabsTrigger value="edit-mission">Edit Mission</TabsTrigger>
+          <TabsTrigger value="users">
+            Users
+            {users.filter((u) => !u.organization_id && u.role !== "admin").length > 0 && (
+              <span style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minWidth: 18,
+                height: 18,
+                padding: "0 4px",
+                background: "var(--color-error-9)",
+                color: "white",
+                borderRadius: "var(--radius-round)",
+                fontSize: "0.625rem",
+                fontWeight: 700,
+                marginLeft: "var(--space-2)",
+              }}>
+                {users.filter((u) => !u.organization_id && u.role !== "admin").length}
+              </span>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="edit-instruction">
@@ -1648,6 +1727,15 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
             language={language}
             onChangesDetected={setHasUnsavedChanges}
             onNavigationRequest={handleNavigationWithCheck}
+          />
+        </TabsContent>
+
+        <TabsContent value="users">
+          <AdminUsers
+            users={users}
+            organizations={organizations}
+            missions={missionsWithAccess}
+            accessToken={session?.access_token ?? null}
           />
         </TabsContent>
       </Tabs>
