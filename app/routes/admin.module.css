@@ -662,10 +662,17 @@
   transition: all 0.2s;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   white-space: nowrap;
+  position: static;
+  margin-right: var(--space-3);
 }
 
 .selectImageButton:hover {
   background: var(--color-accent-10);
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.div13 {
+  position: absolute;
+  left: var(--space-1);
+  bottom: var(--space-1);
 }

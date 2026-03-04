@@ -626,7 +626,7 @@ function ImageLibraryDialog({
       setSelectedImages(new Set());
       // If preSelectImageUrl is provided, open it in preview mode
       if (preSelectImageUrl) {
-        const imageName = preSelectImageUrl.split('/').pop() || 'Preview';
+        const imageName = preSelectImageUrl.split("/").pop() || "Preview";
         setPreviewImage({ url: preSelectImageUrl, name: imageName });
       } else {
         setPreviewImage(null);
@@ -777,6 +777,31 @@ function ImageLibraryDialog({
               position: "relative",
             }}
           >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectImage(previewImage.url);
+                onClose();
+              }}
+              className={styles.selectImageButton}
+              title="Select this image"
+            >
+              ✓ Select
+            </button>
+            <div
+              style={{
+                background: "rgba(0, 0, 0, 0.7)",
+                color: "white",
+                padding: "var(--space-2) var(--space-3)",
+                borderRadius: "var(--radius-2)",
+                fontSize: "0.875rem",
+                fontFamily: "var(--font-body)",
+                fontWeight: 600,
+              }}
+              className={styles.div13}
+            >
+              {currentImageIndex + 1} / {images.length}
+            </div>
             {/* Previous arrow button */}
             <button
               onClick={(e) => {
@@ -832,32 +857,7 @@ function ImageLibraryDialog({
                 gap: "var(--space-3)",
                 alignItems: "center",
               }}
-            >
-              <div
-                style={{
-                  background: "rgba(0, 0, 0, 0.7)",
-                  color: "white",
-                  padding: "var(--space-2) var(--space-3)",
-                  borderRadius: "var(--radius-2)",
-                  fontSize: "0.875rem",
-                  fontFamily: "var(--font-body)",
-                  fontWeight: 600,
-                }}
-              >
-                {currentImageIndex + 1} / {images.length}
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectImage(previewImage.url);
-                  onClose();
-                }}
-                className={styles.selectImageButton}
-                title="Select this image"
-              >
-                ✓ Select
-              </button>
-            </div>
+            ></div>
           </div>
         </div>
       </div>
