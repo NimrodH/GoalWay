@@ -1,10 +1,11 @@
-import { Link, useNavigate } from "react-router";
+import { Form, Link, redirect, useNavigate } from "react-router";
 import type { Route } from "./+types/home";
-import { BookOpen, HelpCircle, LogIn, Star } from "lucide-react";
+import { BookOpen, HelpCircle, LogIn, LogOut, Star } from "lucide-react";
 import styles from "./instructions.module.css";
 import homeStyles from "./home.module.css";
 import { getAllMissions, getExampleMissions, getMissionsForOrganization } from "~/services/missions.server";
 import { getUserProfile, isAdmin } from "~/lib/auth.server";
+import { createServerSupabase } from "~/lib/supabase";
 import { useState } from "react";
 
 export function meta({}: Route.MetaArgs) {
@@ -15,6 +16,12 @@ export function meta({}: Route.MetaArgs) {
       content: "Browse available missions and choose the learning path that fits your needs.",
     },
   ];
+}
+
+export async function action({ request }: Route.ActionArgs) {
+  const { supabase, headers } = createServerSupabase(request);
+  await supabase.auth.signOut();
+  return redirect("/", { headers });
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -102,6 +109,19 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 shortly. Example missions are available in the meantime.
               </span>
             )}
+          </div>
+        )}
+
+        {/* Signed-in user info bar */}
+        {!isAnonymous && profile && (
+          <div className={homeStyles.userBar}>
+            <span className={homeStyles.userEmail}>{profile.email}</span>
+            <Form method="post">
+              <button type="submit" className={homeStyles.signOutButton}>
+                <LogOut size={14} />
+                Sign Out
+              </button>
+            </Form>
           </div>
         )}
 
