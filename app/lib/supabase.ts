@@ -60,6 +60,10 @@ export function getSupabase(): SupabaseClient {
 /**
  * Creates a server-side Supabase client that reads cookies from the request
  * and can write cookies to the response via the returned headers object.
+ *
+ * Cookie options are patched with `SameSite=None; Secure; Path=/` so the
+ * session works inside iframe-based preview environments (e.g. Dazl) where
+ * the app is served from a different origin than the parent page.
  */
 export function createServerSupabase(request: Request) {
   const headers = new Headers();
@@ -77,7 +81,14 @@ export function createServerSupabase(request: Request) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            headers.append("Set-Cookie", serializeCookieHeader(name, value, options));
+            // Ensure cookies work in cross-origin iframe contexts
+            const patchedOptions = {
+              ...options,
+              path: options?.path ?? "/",
+              sameSite: "none" as const,
+              secure: true,
+            };
+            headers.append("Set-Cookie", serializeCookieHeader(name, value, patchedOptions));
           });
         },
       },
