@@ -1435,9 +1435,10 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault(); // Prevent browser save dialog
 
-        // Find and click the save button
-        const saveButton = document.querySelector('button[type="submit"]') as HTMLButtonElement;
-        if (saveButton && !saveButton.disabled) {
+        // Find the visible, enabled save button (avoid hidden/disabled ones)
+        const allSubmitButtons = Array.from(document.querySelectorAll('button[type="submit"]')) as HTMLButtonElement[];
+        const saveButton = allSubmitButtons.find((btn) => !btn.disabled && btn.offsetParent !== null);
+        if (saveButton) {
           saveButton.click();
         }
       }
@@ -1491,8 +1492,9 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
 
   // Save and navigate
   const saveAndNavigate = () => {
-    // Trigger save by finding the active form's submit button and clicking it
-    const saveButton = document.querySelector('button[type="submit"]') as HTMLButtonElement;
+    // Find the visible, enabled save button
+    const allSubmitButtons = Array.from(document.querySelectorAll('button[type="submit"]')) as HTMLButtonElement[];
+    const saveButton = allSubmitButtons.find((btn) => !btn.disabled && btn.offsetParent !== null);
     if (saveButton) {
       saveButton.click();
     }
@@ -1834,14 +1836,14 @@ function EditInstructionForm({
     }
   }, [id, title, description, type, status, missionId, explanation, selectedInstructionId]);
 
-  // Reset on save or instruction change (only reset when it's an instruction save, not a mission save)
+  // Reset on successful instruction save only (not mission saves, not on every render)
   useEffect(() => {
     const isMissionAction = actionData?.message?.startsWith("Mission") || actionData?.message?.startsWith("New mission");
-    if (!isMissionAction && (actionData?.success || selectedInstructionId)) {
+    if (actionData?.success && !isMissionAction) {
       setOriginalCode(generateCode());
       onChangesDetected(false);
     }
-  }, [actionData, selectedInstructionId]);
+  }, [actionData]);
 
   // Auto-reload after successful save to refresh instruction list with updated data
   useEffect(() => {
@@ -2724,11 +2726,11 @@ function EditMissionForm({
   // Reset on mission save or mission selection change (not on instruction saves)
   useEffect(() => {
     const isInstructionAction = actionData?.message?.startsWith("Instruction") || (actionData?.message && actionData.message.includes("replaced with"));
-    if (!isInstructionAction && (actionData?.success || selectedMissionId)) {
+    if (actionData?.success && !isInstructionAction) {
       setOriginalCode(generateCode());
       onChangesDetected(false);
     }
-  }, [actionData, selectedMissionId]);
+  }, [actionData]);
 
   // Handle newly created mission or URL parameter
   useEffect(() => {
