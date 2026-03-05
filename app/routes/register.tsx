@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import type { Route } from "./+types/register";
-import { getSupabase, initSupabase } from "~/lib/supabase";
+import { getSupabase } from "~/lib/supabase";
 import { getOrganizations } from "~/services/organizations.server";
 import styles from "./login.module.css";
 
@@ -12,17 +12,13 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-export async function loader({}: Route.LoaderArgs) {
+export async function loader() {
   const organizations = await getOrganizations();
-  return {
-    supabaseUrl: process.env.SUPABASE_PROJECT_URL!,
-    supabaseKey: process.env.SUPABASE_API_KEY!,
-    organizations,
-  };
+  return { organizations };
 }
 
 export default function RegisterPage({ loaderData }: Route.ComponentProps) {
-  const { supabaseUrl, supabaseKey, organizations } = loaderData;
+  const { organizations } = loaderData;
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -31,10 +27,6 @@ export default function RegisterPage({ loaderData }: Route.ComponentProps) {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
-
-  useEffect(() => {
-    initSupabase(supabaseUrl, supabaseKey);
-  }, [supabaseUrl, supabaseKey]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,4 +1,12 @@
-import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration, useNavigate } from "react-router";
+import {
+  isRouteErrorResponse,
+  Links,
+  Meta,
+  Outlet,
+  Scripts,
+  ScrollRestoration,
+  useLoaderData,
+} from "react-router";
 
 import type { Route } from "./+types/root";
 import { Toaster } from "./components/ui/toaster/toaster";
@@ -15,6 +23,8 @@ import "./styles/tokens/typography.css";
 import "./styles/theme.css";
 import { useColorScheme } from "@dazl/color-scheme/react";
 import favicon from "/favicon.svg";
+import { useEffect } from "react";
+import { initSupabase } from "./lib/supabase";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -33,6 +43,13 @@ export const links: Route.LinksFunction = () => [
     href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
   },
 ];
+
+export async function loader() {
+  return {
+    supabaseUrl: process.env.SUPABASE_PROJECT_URL!,
+    supabaseKey: process.env.SUPABASE_API_KEY!,
+  };
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { rootCssClass, resolvedScheme } = useColorScheme();
@@ -56,18 +73,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const navigate = useNavigate();
+  const { supabaseUrl, supabaseKey } = useLoaderData<typeof loader>();
 
-  const handleClick = (event: React.MouseEvent) => {
-    if (event.shiftKey) {
-      navigate("/admin");
-    }
-  };
+  useEffect(() => {
+    initSupabase(supabaseUrl, supabaseKey);
+  }, [supabaseUrl, supabaseKey]);
 
   return (
-    <div onClick={handleClick}>
-      <Outlet />
-    </div>
+    <Outlet />
   );
 }
 

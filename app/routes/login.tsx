@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router";
+import { useState } from "react";
+import { Link } from "react-router";
 import type { Route } from "./+types/login";
-import { initSupabase, getSupabase } from "~/lib/supabase";
+import { getSupabase } from "~/lib/supabase";
 import styles from "./login.module.css";
 
 export function meta({}: Route.MetaArgs) {
@@ -11,25 +11,15 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
-  return {
-    supabaseUrl: process.env.SUPABASE_PROJECT_URL!,
-    supabaseKey: process.env.SUPABASE_API_KEY!,
-  };
+export async function loader() {
+  return {};
 }
 
-export default function LoginPage({ loaderData }: Route.ComponentProps) {
-  const { supabaseUrl, supabaseKey } = loaderData;
-  const navigate = useNavigate();
-
+export default function LoginPage({}: Route.ComponentProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    initSupabase(supabaseUrl, supabaseKey);
-  }, [supabaseUrl, supabaseKey]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +33,8 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
       if (error) {
         setError(error.message);
       } else {
-        navigate("/");
+        // Use a full page reload so the server re-reads the session cookie
+        window.location.href = "/";
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
