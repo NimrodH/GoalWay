@@ -1452,10 +1452,9 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
     };
   }, []);
 
-  // Initialize Supabase on the client
-  useEffect(() => {
-    initSupabase(supabaseUrl, supabaseKey);
-  }, [supabaseUrl, supabaseKey]);
+  // Initialize Supabase synchronously so useAuth() in child components
+  // always sees valid credentials before any useEffect fires.
+  initSupabase(supabaseUrl, supabaseKey);
 
   // Handle tab change with unsaved changes check
   const handleTabChange = (newTab: string) => {

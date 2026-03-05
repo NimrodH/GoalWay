@@ -23,7 +23,6 @@ import "./styles/tokens/typography.css";
 import "./styles/theme.css";
 import { useColorScheme } from "@dazl/color-scheme/react";
 import favicon from "/favicon.svg";
-import { useEffect } from "react";
 import { initSupabase } from "./lib/supabase";
 
 export const links: Route.LinksFunction = () => [
@@ -75,11 +74,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   const { supabaseUrl, supabaseKey } = useLoaderData<typeof loader>();
 
-  // Store credentials on window so getSupabase() and useAuth() can use them
-  // without environment variables (which aren't exposed to the browser).
-  useEffect(() => {
-    initSupabase(supabaseUrl, supabaseKey);
-  }, [supabaseUrl, supabaseKey]);
+  // Initialize synchronously during render so getSupabase() / useAuth()
+  // always sees valid credentials on the very first call — even before any
+  // useEffect fires.  The function is idempotent, so repeated calls are safe.
+  initSupabase(supabaseUrl, supabaseKey);
 
   return <Outlet />;
 }
