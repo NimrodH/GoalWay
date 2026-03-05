@@ -75,13 +75,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   const { supabaseUrl, supabaseKey } = useLoaderData<typeof loader>();
 
+  // Store credentials on window so getSupabase() and useAuth() can use them
+  // without environment variables (which aren't exposed to the browser).
   useEffect(() => {
     initSupabase(supabaseUrl, supabaseKey);
   }, [supabaseUrl, supabaseKey]);
 
-  return (
-    <Outlet />
-  );
+  return <Outlet />;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

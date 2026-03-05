@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, redirect } from "react-router";
 import type { Route } from "./+types/login";
-import { getSupabase } from "~/lib/supabase";
+import { createServerSupabase } from "~/lib/supabase";
 import styles from "./login.module.css";
 
 export function meta({}: Route.MetaArgs) {
@@ -11,37 +11,40 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-export async function loader() {
+export async function loader({ request }: Route.LoaderArgs) {
+  // If already logged in, redirect to home
+  const { supabase } = createServerSupabase(request);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) return redirect("/");
   return {};
 }
 
-export default function LoginPage({}: Route.ComponentProps) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+/**
+ * Server-side action: receives credentials, calls Supabase auth,
+ * and returns a redirect with Set-Cookie headers so the session
+ * is available to the server on the very next request.
+ */
+export async function action({ request }: Route.ActionArgs) {
+  const formData = await request.formData();
+  const email = String(formData.get("email") ?? "");
+  const password = String(formData.get("password") ?? "");
+
+  const { supabase, headers } = createServerSupabase(request);
+
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  // Redirect to home — the Set-Cookie headers from supabase/ssr
+  // carry the session so the loader on "/" sees the authenticated user.
+  return redirect("/", { headers });
+}
+
+export default function LoginPage({ actionData }: Route.ComponentProps) {
   const [isLoading, setIsLoading] = useState(false);
-
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
-
-    try {
-      const supabase = getSupabase();
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-      if (error) {
-        setError(error.message);
-      } else {
-        // Use a full page reload so the server re-reads the session cookie
-        window.location.href = "/";
-      }
-    } catch (err) {
-      setError("An unexpected error occurred. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const serverError = (actionData as { error?: string } | undefined)?.error;
 
   return (
     <div className={styles.page}>
@@ -51,17 +54,20 @@ export default function LoginPage({}: Route.ComponentProps) {
           <p className={styles.subtitle}>Sign in to access your missions</p>
         </div>
 
-        <form onSubmit={handleSignIn} className={styles.form}>
+        <form
+          method="post"
+          className={styles.form}
+          onSubmit={() => setIsLoading(true)}
+        >
           <div className={styles.formGroup}>
             <label htmlFor="email" className={styles.label}>
               Email
             </label>
             <input
               id="email"
+              name="email"
               type="email"
               className={styles.input}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
               required
               autoComplete="email"
@@ -75,17 +81,16 @@ export default function LoginPage({}: Route.ComponentProps) {
             </label>
             <input
               id="password"
+              name="password"
               type="password"
               className={styles.input}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
               autoComplete="current-password"
             />
           </div>
 
-          {error && <div className={styles.error}>{error}</div>}
+          {serverError && <div className={styles.error}>{serverError}</div>}
 
           <button type="submit" className={styles.submitButton} disabled={isLoading}>
             {isLoading ? "Signing in…" : "Sign In"}

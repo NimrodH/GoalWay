@@ -1,4 +1,4 @@
-import { createServerClient } from "~/lib/supabase";
+import { createServerSupabase } from "~/lib/supabase";
 
 export interface UserProfile {
   id: string;
@@ -18,7 +18,7 @@ export interface UserProfile {
  * Returns null if the user is not authenticated.
  */
 export async function getUserProfile(request: Request): Promise<UserProfile | null> {
-  const supabase = createServerClient(request);
+  const { supabase } = createServerSupabase(request);
 
   const {
     data: { session },

@@ -1,101 +1,90 @@
 import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient, createServerClient, parseCookieHeader, serializeCookieHeader } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const COOKIE_NAME = "sb-session";
-
-// Client-side singleton
-let supabaseInstance: SupabaseClient | null = null;
+// ─── Client-side ───────────────────────────────────────────────────────────
 
 /**
- * Cookie-based storage adapter so the session is readable server-side.
- */
-function getCookieStorage() {
-  return {
-    getItem: (key: string): string | null => {
-      if (typeof document === "undefined") return null;
-      const match = document.cookie.match(new RegExp(`(?:^|; )${encodeURIComponent(key)}=([^;]*)`));
-      return match ? decodeURIComponent(match[1]) : null;
-    },
-    setItem: (key: string, value: string) => {
-      if (typeof document === "undefined") return;
-      // 7 day expiry, SameSite=Lax so it works on navigation
-      document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-    },
-    removeItem: (key: string) => {
-      if (typeof document === "undefined") return;
-      document.cookie = `${encodeURIComponent(key)}=; path=/; max-age=0`;
-    },
-  };
-}
-
-/**
- * Initialise the client-side Supabase singleton. Call once from the root component.
- */
-export function initSupabase(url: string, key: string) {
-  if (typeof window === "undefined") return;
-  if (supabaseInstance) return;
-
-  supabaseInstance = createClient(url, key, {
-    auth: {
-      storage: getCookieStorage(),
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
-    },
-  });
-}
-
-/**
- * Returns the client-side Supabase singleton.
- * Must be called after initSupabase().
+ * Returns a browser-side Supabase client using @supabase/ssr.
+ * createBrowserClient already uses a singleton internally.
  */
 export function getSupabase(): SupabaseClient {
   if (typeof window === "undefined") {
-    // Server-side — return an unauthenticated client (used for non-auth queries)
+    // Server-side fallback — unauthenticated (used for non-auth queries)
     return createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
   }
-
-  if (!supabaseInstance) {
-    throw new Error("Supabase client not initialized. Call initSupabase() first.");
-  }
-  return supabaseInstance;
+  return createBrowserClient(
+    window.__supabaseUrl ?? process.env.SUPABASE_PROJECT_URL!,
+    window.__supabaseKey ?? process.env.SUPABASE_API_KEY!
+  );
 }
 
 /**
- * Creates a server-side Supabase client that reads the session from cookies.
+ * Initialise the browser Supabase client with the project's credentials.
+ * Must be called once from root.tsx before any client-side auth calls.
  */
-export function createServerClient(request: Request): SupabaseClient {
-  const cookieHeader = request.headers.get("Cookie") || "";
+export function initSupabase(url: string, key: string) {
+  if (typeof window === "undefined") return;
+  window.__supabaseUrl = url;
+  window.__supabaseKey = key;
+}
 
-  // Build a simple cookie-jar map
-  const cookieMap: Record<string, string> = {};
-  cookieHeader.split(";").forEach((part) => {
-    const [rawKey, ...rest] = part.trim().split("=");
-    if (rawKey) {
-      try {
-        cookieMap[decodeURIComponent(rawKey.trim())] = decodeURIComponent(rest.join("=").trim());
-      } catch {
-        // ignore malformed cookies
-      }
-    }
-  });
+// Augment the global Window type so TypeScript is happy
+declare global {
+  interface Window {
+    __supabaseUrl?: string;
+    __supabaseKey?: string;
+  }
+}
 
-  return createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
-    auth: {
-      storage: {
-        getItem: (key: string) => cookieMap[key] ?? null,
-        setItem: () => {},
-        removeItem: () => {},
+// ─── Server-side ───────────────────────────────────────────────────────────
+
+/**
+ * Creates a server-side Supabase client that reads cookies from the request
+ * and can write cookies to the response via the returned headers object.
+ *
+ * Usage in a loader/action:
+ *   const { supabase, headers } = createServerSupabase(request);
+ *   // ... use supabase ...
+ *   return json(data, { headers });
+ */
+export function createServerSupabase(request: Request) {
+  const headers = new Headers();
+
+  const supabase = createServerClient(
+    process.env.SUPABASE_PROJECT_URL!,
+    process.env.SUPABASE_API_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return parseCookieHeader(request.headers.get("Cookie") ?? "").map((c) => ({
+            name: c.name,
+            value: c.value ?? "",
+          }));
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            headers.append("Set-Cookie", serializeCookieHeader(name, value, options));
+          });
+        },
       },
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false,
-    },
-  });
+    }
+  );
+
+  return { supabase, headers };
+}
+
+/**
+ * @deprecated Use createServerSupabase instead.
+ * Kept for backwards compatibility with auth.server.ts.
+ */
+export function createServerClient_compat(request: Request): SupabaseClient {
+  return createServerSupabase(request).supabase;
 }
 
 /**
  * Creates an authenticated server-side client using an explicit access token.
+ * Used for admin operations that require the user's JWT.
  */
 export function getAuthenticatedSupabase(accessToken: string): SupabaseClient {
   const client = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
