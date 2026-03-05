@@ -512,9 +512,10 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     if (!accessToken) return { success: false, error: "Unauthorized" };
     if (!missionId) return { success: false, error: "Mission ID is required" };
     const orgIds: string[] = orgIdsRaw ? JSON.parse(orgIdsRaw) : [];
+    const token = accessToken!;
     const [exampleResult, orgResult] = await Promise.all([
-      setMissionExample(missionId, isExample),
-      setMissionOrganizations(missionId, orgIds),
+      setMissionExample(missionId, isExample, token),
+      setMissionOrganizations(missionId, orgIds, token),
     ]);
     if (!exampleResult.success) return exampleResult;
     if (!orgResult.success) return orgResult;

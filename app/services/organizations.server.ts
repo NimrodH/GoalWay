@@ -1,4 +1,18 @@
+import { createClient } from "@supabase/supabase-js";
 import { getSupabase } from "~/lib/supabase";
+
+/** Create a Supabase client authenticated as the calling user (for RLS-gated writes) */
+function getAuthenticatedSupabase(accessToken: string) {
+  return createClient(
+    process.env.SUPABASE_PROJECT_URL!,
+    process.env.SUPABASE_API_KEY!,
+    {
+      global: {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
+    }
+  );
+}
 
 export interface Organization {
   id: string;
@@ -116,9 +130,10 @@ export async function getMissionOrganizations(missionId: string): Promise<string
 
 export async function setMissionOrganizations(
   missionId: string,
-  organizationIds: string[]
+  organizationIds: string[],
+  accessToken: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = getSupabase();
+  const supabase = getAuthenticatedSupabase(accessToken);
 
   // Delete existing records
   const { error: deleteError } = await supabase
@@ -148,9 +163,10 @@ export async function setMissionOrganizations(
 
 export async function setMissionExample(
   missionId: string,
-  isExample: boolean
+  isExample: boolean,
+  accessToken: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = getSupabase();
+  const supabase = getAuthenticatedSupabase(accessToken);
   const { error } = await supabase
     .from("missions")
     .update({ is_example: isExample })
