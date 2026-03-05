@@ -1834,9 +1834,10 @@ function EditInstructionForm({
     }
   }, [id, title, description, type, status, missionId, explanation, selectedInstructionId]);
 
-  // Reset on save or instruction change
+  // Reset on save or instruction change (only reset when it's an instruction save, not a mission save)
   useEffect(() => {
-    if (actionData?.success || selectedInstructionId) {
+    const isMissionAction = actionData?.message?.startsWith("Mission") || actionData?.message?.startsWith("New mission");
+    if (!isMissionAction && (actionData?.success || selectedInstructionId)) {
       setOriginalCode(generateCode());
       onChangesDetected(false);
     }
@@ -1844,7 +1845,8 @@ function EditInstructionForm({
 
   // Auto-reload after successful save to refresh instruction list with updated data
   useEffect(() => {
-    if (actionData?.success && actionData.message && id) {
+    const isMissionAction = actionData?.message?.startsWith("Mission") || actionData?.message?.startsWith("New mission");
+    if (actionData?.success && actionData.message && id && !isMissionAction) {
       const timer = setTimeout(() => {
         window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${id}`;
       }, 1000);
@@ -2719,9 +2721,10 @@ function EditMissionForm({
     }
   }, [id, title, description, status, selectedInstructions, selectedMissionId]);
 
-  // Reset on save or mission change
+  // Reset on mission save or mission selection change (not on instruction saves)
   useEffect(() => {
-    if (actionData?.success || selectedMissionId) {
+    const isInstructionAction = actionData?.message?.startsWith("Instruction") || (actionData?.message && actionData.message.includes("replaced with"));
+    if (!isInstructionAction && (actionData?.success || selectedMissionId)) {
       setOriginalCode(generateCode());
       onChangesDetected(false);
     }
