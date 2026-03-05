@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { createBrowserClient, createServerClient, parseCookieHeader, serializeCookieHeader } from "@supabase/ssr";
+import { createServerClient, parseCookieHeader, serializeCookieHeader } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // ─── Client-side ───────────────────────────────────────────────────────────
@@ -13,6 +13,11 @@ let _initializedKey = "";
  * Initialise the browser Supabase client with the project's credentials.
  * Must be called synchronously (not inside useEffect) before any auth calls.
  * Safe to call multiple times — only re-creates the client when credentials change.
+ *
+ * Uses `createClient` (which stores sessions in **localStorage**) instead of
+ * `createBrowserClient` from `@supabase/ssr` (which stores in cookies).
+ * localStorage works reliably in cross-origin iframe contexts (e.g. Dazl preview)
+ * where cookies are blocked or ignored due to SameSite / third-party restrictions.
  */
 export function initSupabase(url: string, key: string) {
   if (typeof window === "undefined") return;
@@ -21,7 +26,15 @@ export function initSupabase(url: string, key: string) {
   // Re-create only if credentials actually changed (e.g., hot-reload in dev).
   if (_browserClient && url === _initializedUrl && key === _initializedKey) return;
 
-  _browserClient = createBrowserClient(url, key);
+  _browserClient = createClient(url, key, {
+    auth: {
+      persistSession: true,
+      storageKey: `sb-auth-token`,
+      storage: window.localStorage,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
   _initializedUrl = url;
   _initializedKey = key;
 }
@@ -43,7 +56,15 @@ export function getSupabase(): SupabaseClient {
     const url = process.env.SUPABASE_PROJECT_URL ?? "";
     const key = process.env.SUPABASE_API_KEY ?? "";
     if (url && key) {
-      _browserClient = createBrowserClient(url, key);
+      _browserClient = createClient(url, key, {
+        auth: {
+          persistSession: true,
+          storageKey: `sb-auth-token`,
+          storage: window.localStorage,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+        },
+      });
       _initializedUrl = url;
       _initializedKey = key;
     } else {
