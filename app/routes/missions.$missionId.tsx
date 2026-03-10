@@ -149,6 +149,12 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
       return;
     }
 
+    // Close any open main-mission instruction
+    if (selectedInstructionId) {
+      setCompletedInstructions((c) => new Set([...c, selectedInstructionId]));
+      setSelectedInstructionId(null);
+    }
+
     setSelectedLinkedInstructionId((prev) => {
       const newMap = new Map(prev);
       const current = newMap.get(parentLinkId);
@@ -191,6 +197,17 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
       if (selectedInstructionId) {
         setCompletedInstructions((prev) => new Set([...prev, selectedInstructionId]));
       }
+      // Close any open sub-mission instruction
+      setSelectedLinkedInstructionId((prev) => {
+        const newMap = new Map(prev);
+        for (const [key, val] of newMap) {
+          if (val) {
+            setCompletedInstructions((c) => new Set([...c, val]));
+            newMap.set(key, null);
+          }
+        }
+        return newMap;
+      });
       setSelectedInstructionId(instructionId);
     }
   };
