@@ -315,34 +315,6 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                             }
                           }}
                         />
-                        <InstructionListItem
-                          title={linkedInstruction.title}
-                          description={linkedInstruction.description}
-                          selected={selectedInstructionId === linkedInstruction.id}
-                          instructionType={linkedInstruction.type}
-                          explanation={linkedInstruction.explanation}
-                          orderNumber={linkedIndex + 1}
-                          isCompleted={completedInstructions.has(linkedInstruction.id)}
-                          onClick={(event) => {
-                            // If Shift key is pressed, navigate to admin page
-                            if (event?.shiftKey) {
-                              navigate(`/admin?tab=instructions&instructionId=${linkedInstruction.id}`);
-                              return;
-                            }
-                            // Toggle selection
-                            if (selectedInstructionId === linkedInstruction.id) {
-                              setSelectedInstructionId(null);
-                              // Mark instruction as completed when closed
-                              setCompletedInstructions((prev) => new Set([...prev, linkedInstruction.id]));
-                            } else {
-                              // Mark previously selected instruction as completed when switching to another
-                              if (selectedInstructionId) {
-                                setCompletedInstructions((prev) => new Set([...prev, selectedInstructionId]));
-                              }
-                              setSelectedInstructionId(linkedInstruction.id);
-                            }
-                          }}
-                        />
                         {selectedInstructionId === linkedInstruction.id && linkedInstruction.type !== "link" && (
                           <div className={styles.mobileExplanation}>
                             <ExplanationDisplay instruction={linkedInstruction} />
