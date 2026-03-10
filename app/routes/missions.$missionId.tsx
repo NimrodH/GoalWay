@@ -74,6 +74,8 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   )[];
 
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
+  // Tracks selected instruction inside each expanded sub-mission, keyed by the parent link instruction id
+  const [selectedLinkedInstructionId, setSelectedLinkedInstructionId] = useState<Map<string, string | null>>(new Map());
   const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
   const [loadingLinkInstructions, setLoadingLinkInstructions] = useState<Set<string>>(new Set());
   const [completedInstructions, setCompletedInstructions] = useState<Set<string>>(new Set());
@@ -139,6 +141,29 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
         setLoadingLinkInstructions(newLoading);
       }
     }
+  };
+
+  const handleLinkedInstructionClick = (parentLinkId: string, linkedInstruction: Instruction, event?: React.MouseEvent) => {
+    if (event?.shiftKey) {
+      navigate(`/admin?tab=instructions&instructionId=${linkedInstruction.id}`);
+      return;
+    }
+
+    setSelectedLinkedInstructionId((prev) => {
+      const newMap = new Map(prev);
+      const current = newMap.get(parentLinkId);
+      if (current === linkedInstruction.id) {
+        // Deselect
+        newMap.set(parentLinkId, null);
+        setCompletedInstructions((c) => new Set([...c, linkedInstruction.id]));
+      } else {
+        if (current) {
+          setCompletedInstructions((c) => new Set([...c, current]));
+        }
+        newMap.set(parentLinkId, linkedInstruction.id);
+      }
+      return newMap;
+    });
   };
 
   const handleInstructionClick = (instructionId: string, event?: React.MouseEvent) => {
@@ -281,47 +306,33 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                 {/* Render expanded linked mission instructions */}
                 {isExpanded && expandedInstructions && (
                   <div style={{ marginLeft: "2rem", marginTop: "0.5rem", marginBottom: "1rem" }}>
-                    {expandedInstructions.map((linkedInstruction, linkedIndex) => (
-                      <div
-                        key={linkedInstruction.id}
-                        className={styles.instructionItem}
-                        data-instruction-id={linkedInstruction.id}
-                      >
-                        <InstructionListItem
-                          title={linkedInstruction.title}
-                          description={linkedInstruction.description}
-                          selected={selectedInstructionId === linkedInstruction.id}
-                          instructionType={linkedInstruction.type}
-                          explanation={linkedInstruction.explanation}
-                          orderNumber={linkedIndex + 1}
-                          isCompleted={completedInstructions.has(linkedInstruction.id)}
-                          onClick={(event) => {
-                            // If Shift key is pressed, navigate to admin page
-                            if (event?.shiftKey) {
-                              navigate(`/admin?tab=instructions&instructionId=${linkedInstruction.id}`);
-                              return;
-                            }
-                            // Toggle selection
-                            if (selectedInstructionId === linkedInstruction.id) {
-                              setSelectedInstructionId(null);
-                              // Mark instruction as completed when closed
-                              setCompletedInstructions((prev) => new Set([...prev, linkedInstruction.id]));
-                            } else {
-                              // Mark previously selected instruction as completed when switching to another
-                              if (selectedInstructionId) {
-                                setCompletedInstructions((prev) => new Set([...prev, selectedInstructionId]));
-                              }
-                              setSelectedInstructionId(linkedInstruction.id);
-                            }
-                          }}
-                        />
-                        {selectedInstructionId === linkedInstruction.id && linkedInstruction.type !== "link" && (
-                          <div className={styles.mobileExplanation}>
-                            <ExplanationDisplay instruction={linkedInstruction} />
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                    {expandedInstructions.map((linkedInstruction, linkedIndex) => {
+                      const linkedSelected =
+                        selectedLinkedInstructionId.get(instruction.id) === linkedInstruction.id;
+                      return (
+                        <div
+                          key={`${instruction.id}-${linkedInstruction.id}`}
+                          className={styles.instructionItem}
+                          data-instruction-id={`linked-${instruction.id}-${linkedInstruction.id}`}
+                        >
+                          <InstructionListItem
+                            title={linkedInstruction.title}
+                            description={linkedInstruction.description}
+                            selected={linkedSelected}
+                            instructionType={linkedInstruction.type}
+                            explanation={linkedInstruction.explanation}
+                            orderNumber={linkedIndex + 1}
+                            isCompleted={completedInstructions.has(`${instruction.id}-${linkedInstruction.id}`)}
+                            onClick={(event) => handleLinkedInstructionClick(instruction.id, linkedInstruction, event)}
+                          />
+                          {linkedSelected && linkedInstruction.type !== "link" && (
+                            <div className={styles.mobileExplanation}>
+                              <ExplanationDisplay instruction={linkedInstruction} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
