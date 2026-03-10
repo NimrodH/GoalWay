@@ -83,7 +83,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
     // Cleanup function runs when component unmounts (user navigates away)
     return () => {
       // Clear completion state for this mission when leaving
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         localStorage.removeItem(`completed-${mission.id}`);
       }
     };
@@ -160,11 +160,11 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
     if (selectedInstructionId === instructionId) {
       setSelectedInstructionId(null);
       // Mark instruction as completed when closed
-      setCompletedInstructions(prev => new Set([...prev, instructionId]));
+      setCompletedInstructions((prev) => new Set([...prev, instructionId]));
     } else {
       // Mark previously selected instruction as completed when switching to another
       if (selectedInstructionId) {
-        setCompletedInstructions(prev => new Set([...prev, selectedInstructionId]));
+        setCompletedInstructions((prev) => new Set([...prev, selectedInstructionId]));
       }
       setSelectedInstructionId(instructionId);
     }
@@ -219,11 +219,11 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
             const isExpanded = expandedLinkInstructions.has(instruction.id);
             const isLoading = loadingLinkInstructions.has(instruction.id);
             const expandedInstructions = expandedLinkInstructions.get(instruction.id);
-            
+
             // Calculate order number (excluding comments)
             const orderNumber = missionInstructions
               .slice(0, index + 1)
-              .filter(inst => inst.type !== "comment").length;
+              .filter((inst) => inst.type !== "comment").length;
 
             // Render comments differently (non-clickable, styled)
             if (isComment) {
@@ -282,7 +282,11 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                 {isExpanded && expandedInstructions && (
                   <div style={{ marginLeft: "2rem", marginTop: "0.5rem", marginBottom: "1rem" }}>
                     {expandedInstructions.map((linkedInstruction, linkedIndex) => (
-                      <div key={linkedInstruction.id} className={styles.instructionItem} data-instruction-id={linkedInstruction.id}>
+                      <div
+                        key={linkedInstruction.id}
+                        className={styles.instructionItem}
+                        data-instruction-id={linkedInstruction.id}
+                      >
                         <InstructionListItem
                           title={linkedInstruction.title}
                           description={linkedInstruction.description}
@@ -301,11 +305,39 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                             if (selectedInstructionId === linkedInstruction.id) {
                               setSelectedInstructionId(null);
                               // Mark instruction as completed when closed
-                              setCompletedInstructions(prev => new Set([...prev, linkedInstruction.id]));
+                              setCompletedInstructions((prev) => new Set([...prev, linkedInstruction.id]));
                             } else {
                               // Mark previously selected instruction as completed when switching to another
                               if (selectedInstructionId) {
-                                setCompletedInstructions(prev => new Set([...prev, selectedInstructionId]));
+                                setCompletedInstructions((prev) => new Set([...prev, selectedInstructionId]));
+                              }
+                              setSelectedInstructionId(linkedInstruction.id);
+                            }
+                          }}
+                        />
+                        <InstructionListItem
+                          title={linkedInstruction.title}
+                          description={linkedInstruction.description}
+                          selected={selectedInstructionId === linkedInstruction.id}
+                          instructionType={linkedInstruction.type}
+                          explanation={linkedInstruction.explanation}
+                          orderNumber={linkedIndex + 1}
+                          isCompleted={completedInstructions.has(linkedInstruction.id)}
+                          onClick={(event) => {
+                            // If Shift key is pressed, navigate to admin page
+                            if (event?.shiftKey) {
+                              navigate(`/admin?tab=instructions&instructionId=${linkedInstruction.id}`);
+                              return;
+                            }
+                            // Toggle selection
+                            if (selectedInstructionId === linkedInstruction.id) {
+                              setSelectedInstructionId(null);
+                              // Mark instruction as completed when closed
+                              setCompletedInstructions((prev) => new Set([...prev, linkedInstruction.id]));
+                            } else {
+                              // Mark previously selected instruction as completed when switching to another
+                              if (selectedInstructionId) {
+                                setCompletedInstructions((prev) => new Set([...prev, selectedInstructionId]));
                               }
                               setSelectedInstructionId(linkedInstruction.id);
                             }

@@ -54,10 +54,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // Deduplicate: org missions + example missions (examples may already appear in org list)
   const missionIds = new Set(visibleOrgMissions.map((m) => m.id));
-  const merged = [
-    ...visibleOrgMissions,
-    ...visibleExamples.filter((m) => !missionIds.has(m.id)),
-  ];
+  const merged = [...visibleOrgMissions, ...visibleExamples.filter((m) => !missionIds.has(m.id))];
 
   return { missions: merged, isAnonymous: false, isPending: false, isAdmin: false, profile };
 }
@@ -92,7 +89,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           <div className={homeStyles.banner}>
             {isAnonymous ? (
               <>
-                <span>You&apos;re viewing example missions.</span>
+                <span>You&apos;re viewing part of the missions.</span>
                 <Link to="/login" className={homeStyles.bannerLink}>
                   <LogIn size={14} />
                   Sign In
@@ -126,11 +123,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         )}
 
         {/* Admin badge */}
-        {adminView && (
-          <div className={homeStyles.adminBanner}>
-            👑 Admin view — showing all missions
-          </div>
-        )}
+        {adminView && <div className={homeStyles.adminBanner}>👑 Admin view — showing all missions</div>}
 
         <div style={{ marginBottom: "var(--space-4)", display: "flex", gap: "var(--space-2)" }}>
           <Link
@@ -203,8 +196,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <p className={styles.missionDescription}>{mission.description}</p>
               <div className={styles.missionFooter}>
                 <span className={styles.instructionCount}>
-                  {mission.instructions.length}{" "}
-                  {mission.instructions.length === 1 ? "instruction" : "instructions"}
+                  {mission.instructions.length} {mission.instructions.length === 1 ? "instruction" : "instructions"}
                 </span>
                 {mission.isExample && (
                   <span className={homeStyles.exampleBadge}>
