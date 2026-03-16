@@ -1891,7 +1891,6 @@ function EditInstructionForm({
 
   const handleAddNewInstruction = () => {
     onNavigationRequest(() => {
-      setShowDetails(true);
       // Find the highest ID from existing instructions
       const numericIds = allInstructionIds.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
       const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
@@ -1997,6 +1996,7 @@ function EditInstructionForm({
   const handleSelectInstruction = (instructionId: string) => {
     clearActionData();
     updateFormFields(instructionId);
+    setShowDetails(true);
   };
 
   const addContent = (type: "text" | "image" | "video") => {
@@ -2388,6 +2388,7 @@ function EditInstructionForm({
       </div>
 
       {selectedInstructionId && showDetails && (
+        <>
           <div className={styles.formSection}>
             <h2
               className={styles.sectionTitle}
