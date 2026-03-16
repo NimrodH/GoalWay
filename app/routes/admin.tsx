@@ -1804,7 +1804,6 @@ function EditInstructionForm({
   const [instructionFilterEdit, setInstructionFilterEdit] = useState("");
   const [showReplaceDialog, setShowReplaceDialog] = useState(false);
   const [replacementInstructionId, setReplacementInstructionId] = useState("");
-  const [showDetails, setShowDetails] = useState(false);
 
   // Track changes
   useEffect(() => {
@@ -1996,7 +1995,6 @@ function EditInstructionForm({
   const handleSelectInstruction = (instructionId: string) => {
     clearActionData();
     updateFormFields(instructionId);
-    setShowDetails(true);
   };
 
   const addContent = (type: "text" | "image" | "video") => {
@@ -2234,14 +2232,6 @@ function EditInstructionForm({
           <div style={{ display: "flex", gap: "var(--space-2)" }}>
             <button
               type="button"
-              onClick={() => setShowDetails((v) => !v)}
-              className={styles.addButton}
-              disabled={!selectedInstructionId}
-            >
-              {showDetails ? "Hide Details" : "Show Details"}
-            </button>
-            <button
-              type="button"
               onClick={handleDeleteInstruction}
               className={styles.removeButton}
               disabled={!selectedInstructionId || deleteInstructionFetcher.state !== "idle" || !session}
@@ -2387,7 +2377,7 @@ function EditInstructionForm({
         </div>
       </div>
 
-      {selectedInstructionId && showDetails && (
+      {selectedInstructionId && (
         <>
           <div className={styles.formSection}>
             <h2
