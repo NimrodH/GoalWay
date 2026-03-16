@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Form, useActionData, useNavigate, useSearchParams, Link, useFetcher } from "react-router";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs/tabs";
+import { Tabs, TabsContent } from "~/components/ui/tabs/tabs";
 import { useAuth } from "~/hooks/use-auth";
 import { initSupabase, getSupabase } from "~/lib/supabase";
 import { uploadImage, listAllImages } from "~/lib/image-upload";
@@ -1619,19 +1619,29 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
   }
 
   const handleMenuNavigation = (path: string): boolean => {
+    // Check if this is an admin tab switch (e.g. /admin?tab=users)
+    const tabMatch = path.match(/^\/admin\?tab=([\w-]+)/);
+    if (tabMatch) {
+      const newTab = tabMatch[1];
+      handleTabChange(newTab);
+      return false; // Always intercept — handleTabChange manages URL update
+    }
     if (hasUnsavedChanges) {
-      // Store the navigation path for later
       setPendingNavigation(() => () => {
         window.location.href = path;
       });
-      return false; // Prevent navigation
+      return false;
     }
-    return true; // Allow navigation
+    return true;
   };
 
   return (
     <div className={styles.container}>
-      <AppNavigation onNavigate={handleMenuNavigation} />
+      <AppNavigation
+        onNavigate={handleMenuNavigation}
+        adminTab={currentTab}
+        pendingUsersCount={users.filter((u) => !u.organization_id && u.role !== "admin").length}
+      />
       <header className={styles.header}>
         <div className={styles.headerContent}>
           <div>
@@ -1673,32 +1683,6 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
       </header>
 
       <Tabs value={currentTab} onValueChange={handleTabChange} className={styles.tabs}>
-        <TabsList className={styles.tabsList}>
-          <TabsTrigger value="edit-instruction">Edit Instruction</TabsTrigger>
-          <TabsTrigger value="edit-mission">Edit Mission</TabsTrigger>
-          <TabsTrigger value="users">
-            Users
-            {users.filter((u) => !u.organization_id && u.role !== "admin").length > 0 && (
-              <span style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                minWidth: 18,
-                height: 18,
-                padding: "0 4px",
-                background: "var(--color-error-9)",
-                color: "white",
-                borderRadius: "var(--radius-round)",
-                fontSize: "0.625rem",
-                fontWeight: 700,
-                marginLeft: "var(--space-2)",
-              }}>
-                {users.filter((u) => !u.organization_id && u.role !== "admin").length}
-              </span>
-            )}
-          </TabsTrigger>
-        </TabsList>
-
         <TabsContent value="edit-instruction">
           <EditInstructionForm
             actionData={actionData}
