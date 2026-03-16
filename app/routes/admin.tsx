@@ -2715,6 +2715,12 @@ function EditMissionForm({
     const missionIdFromUrl = searchParams.get("missionId");
     if (missionIdFromUrl && allMissionIds.includes(missionIdFromUrl) && selectedMissionId !== missionIdFromUrl) {
       updateMissionFormFields(missionIdFromUrl);
+    } else if (!missionIdFromUrl && !selectedMissionId && allMissionIds.length > 0) {
+      // No missionId in URL and nothing selected yet — restore last used mission
+      const lastMissionId = localStorage.getItem("lastSelectedMissionId");
+      if (lastMissionId && allMissionIds.includes(lastMissionId)) {
+        updateMissionFormFields(lastMissionId);
+      }
     }
   }, [searchParams, allMissionIds, selectedMissionId]);
 
