@@ -75,6 +75,7 @@
   color: var(--color-neutral-12);
   transition: border-color 0.2s;
   width: stretch;
+  margin-bottom: var(--space-2);
 }
 
 .input:focus,
@@ -84,7 +85,7 @@
 }
 
 .textarea {
-  min-height: 100px;
+  min-height: 50px;
   resize: vertical;
   width: stretch;
 }

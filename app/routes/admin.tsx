@@ -18,7 +18,16 @@ import {
 // Internal type for UI with unique keys for proper React rendering
 type InstructionContentWithKey = InstructionContent & { _key?: string };
 import { getAllMissions, getAllMissionsHe, getAllMissionIds, type Mission } from "~/services/missions.server";
-import { getOrganizations, getAllUsers, getMissionOrganizations, setMissionOrganizations, setMissionExample, assignUserOrganization, type Organization, type PendingUser } from "~/services/organizations.server";
+import {
+  getOrganizations,
+  getAllUsers,
+  getMissionOrganizations,
+  setMissionOrganizations,
+  setMissionExample,
+  assignUserOrganization,
+  type Organization,
+  type PendingUser,
+} from "~/services/organizations.server";
 import { AdminUsers } from "~/components/admin-users/admin-users";
 import classNames from "classnames";
 
@@ -27,7 +36,17 @@ export async function loader({ request }: Route.LoaderArgs) {
   const language = url.searchParams.get("lang") || "en";
   const tab = url.searchParams.get("tab") || "edit-instruction";
 
-  const [instructions, missions, allMissions, allInstructionIds, allMissionIds, instructionsEn, instructionsHe, organizations, users] = await Promise.all([
+  const [
+    instructions,
+    missions,
+    allMissions,
+    allInstructionIds,
+    allMissionIds,
+    instructionsEn,
+    instructionsHe,
+    organizations,
+    users,
+  ] = await Promise.all([
     language === "he" ? getAllInstructionsHe() : getAllInstructions(),
     language === "he" ? getAllMissionsHe() : getAllMissions(),
     getAllMissions(), // always English for access matrix
@@ -44,7 +63,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     allMissions.map(async (m) => {
       const allowedOrgIds = await getMissionOrganizations(m.id);
       return { ...m, isExample: !!m.isExample, allowedOrgIds };
-    })
+    }),
   );
 
   return {
@@ -1646,16 +1665,8 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
         <div className={styles.headerContent}>
           <div>
             <h1 className={styles.title}>Developer Admin Panel</h1>
-            <p className={styles.subtitle}>Create and manage instructions and missions</p>
           </div>
           <div className={styles.userInfo}>
-            <button
-              onClick={() => handleNavigationWithCheck(() => navigate("/"))}
-              className={styles.homeButton}
-              style={{ cursor: "pointer" }}
-            >
-              Go to Home
-            </button>
             <div className={styles.languageToggle}>
               <button
                 type="button"
@@ -3099,77 +3110,68 @@ function EditMissionForm({
 
   return (
     <div className={styles.div4}>
-      <div className={styles.formSection}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "var(--space-3)",
-          }}
-        >
-          <h2
-            className={styles.sectionTitle}
-            style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}
-          >
-            Select Mission to Edit
-          </h2>
-          <div style={{ display: "flex", gap: "var(--space-2)" }}>
-            <button
-              type="button"
-              onClick={handleDeleteMission}
-              className={styles.removeButton}
-              disabled={!selectedMissionId || deleteMissionFetcher.state !== "idle" || !session}
-            >
-              {deleteMissionFetcher.state !== "idle" ? "Deleting..." : "Delete"}
-            </button>
-            <button
-              type="button"
-              onClick={handleSelectLastMission}
-              className={styles.addButton}
-              disabled={!localStorage.getItem("lastSelectedMissionId")}
-            >
-              Select Last Mission
-            </button>
-            <button
-              type="button"
-              onClick={handleClearForNewMission}
-              className={styles.addButton}
-              disabled={missionFetcher.state !== "idle" || !session}
-            >
-              {missionFetcher.state !== "idle" ? "Creating..." : "+ Create New Mission"}
-            </button>
-          </div>
-        </div>
-        <select
-          className={styles.input}
-          value={selectedMissionId}
-          onChange={(e) => handleSelectMission(e.target.value)}
-        >
-          <option value="">Select a mission...</option>
-          {allMissionIds.map((id) => {
-            const mission = missions.find((m) => m.id === id);
-            const isHidden = mission?.status === "Hide";
-            return (
-              <option key={id} value={id}>
-                {isHidden && "🔴 "}
-                {id}
-                {mission ? ` - ${mission.title}` : " (No data for this language)"}
-              </option>
-            );
-          })}
-        </select>
-      </div>
-
       {selectedMissionId && (
         <>
           <div className={styles.formSection}>
-            <h2
-              className={styles.sectionTitle}
-              style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "var(--space-3)",
+              }}
             >
-              Mission Details
-            </h2>
+              <h2
+                className={styles.sectionTitle}
+                style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}
+              >
+                Select Mission to Edit
+              </h2>
+              <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                <button
+                  type="button"
+                  onClick={handleDeleteMission}
+                  className={styles.removeButton}
+                  disabled={!selectedMissionId || deleteMissionFetcher.state !== "idle" || !session}
+                >
+                  {deleteMissionFetcher.state !== "idle" ? "Deleting..." : "Delete"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSelectLastMission}
+                  className={styles.addButton}
+                  disabled={!localStorage.getItem("lastSelectedMissionId")}
+                >
+                  Select Last Mission
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearForNewMission}
+                  className={styles.addButton}
+                  disabled={missionFetcher.state !== "idle" || !session}
+                >
+                  {missionFetcher.state !== "idle" ? "Creating..." : "+ Create New Mission"}
+                </button>
+              </div>
+            </div>
+            <select
+              className={styles.input}
+              value={selectedMissionId}
+              onChange={(e) => handleSelectMission(e.target.value)}
+            >
+              <option value="">Select a mission...</option>
+              {allMissionIds.map((id) => {
+                const mission = missions.find((m) => m.id === id);
+                const isHidden = mission?.status === "Hide";
+                return (
+                  <option key={id} value={id}>
+                    {isHidden && "🔴 "}
+                    {id}
+                    {mission ? ` - ${mission.title}` : " (No data for this language)"}
+                  </option>
+                );
+              })}
+            </select>
             <div className={styles.formGrid}>
               <div className={styles.div7}>
                 <div className={styles.formGroup}>
