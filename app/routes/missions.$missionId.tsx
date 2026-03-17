@@ -225,10 +225,9 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   // Don't pass comments to ExplanationDisplay - they don't have explanations
   const instructionToDisplay = selectedInstruction?.type === "comment" ? null : selectedInstruction;
 
-  // Scroll selected instruction to top after render
+  // Scroll selected master-mission instruction to top after render
   useEffect(() => {
     if (selectedInstructionId) {
-      // Use requestAnimationFrame to ensure the DOM has been updated
       requestAnimationFrame(() => {
         const element = document.querySelector(`[data-instruction-id="${selectedInstructionId}"]`);
         if (element) {
@@ -237,6 +236,22 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
       });
     }
   }, [selectedInstructionId]);
+
+  // Scroll selected sub-mission instruction to top after render
+  useEffect(() => {
+    // Find the most recently selected linked instruction across all sub-missions
+    for (const [parentId, linkedId] of selectedLinkedInstructionId) {
+      if (linkedId) {
+        requestAnimationFrame(() => {
+          const element = document.querySelector(`[data-instruction-id="linked-${parentId}-${linkedId}"]`);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        });
+        break; // Only one sub-mission instruction can be selected at a time
+      }
+    }
+  }, [selectedLinkedInstructionId]);
 
   return (
     <div className={styles.container}>
