@@ -607,10 +607,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
       return { success: false, error: "Invalid notes format" };
     }
 
-    const { error } = await supabase
-      .from("instructions")
-      .update({ admin_notes: notes })
-      .eq("id", instructionId);
+    const { error } = await supabase.from("instructions").update({ admin_notes: notes }).eq("id", instructionId);
 
     if (error) {
       return { success: false, error: error.message };
@@ -2651,6 +2648,151 @@ function EditInstructionForm({
             </div>
           </div>
           <div className={styles.previewSection}>
+            <div
+              className={styles.formSection}
+              style={{ background: "var(--color-neutral-3)", border: "2px dashed var(--color-neutral-7)" }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: adminNotes.length > 0 || showNoteInput ? "var(--space-4)" : 0,
+                }}
+              >
+                <h3
+                  style={{
+                    fontFamily: "var(--font-subheading)",
+                    fontSize: "1rem",
+                    fontWeight: 600,
+                    color: "var(--color-neutral-11)",
+                    margin: 0,
+                  }}
+                >
+                  🔒 Admin Notes {adminNotes.length > 0 && `(${adminNotes.length})`}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowNoteInput((v) => !v)}
+                  className={styles.addButton}
+                  disabled={!session}
+                  style={{ fontSize: "0.8125rem" }}
+                >
+                  {showNoteInput ? "Cancel" : "+ Admin Note"}
+                </button>
+              </div>
+
+              {showNoteInput && (
+                <div style={{ marginBottom: "var(--space-3)" }}>
+                  <textarea
+                    className={styles.textarea}
+                    value={newNoteText}
+                    onChange={(e) => setNewNoteText(e.target.value)}
+                    placeholder="Write an admin note..."
+                    style={{ minHeight: "72px", marginBottom: "var(--space-2)" }}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault();
+                        handleAddNote();
+                      }
+                    }}
+                  />
+                  <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNoteInput(false);
+                        setNewNoteText("");
+                      }}
+                      className={styles.addButton}
+                      style={{ fontSize: "0.8125rem" }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddNote}
+                      className={styles.submitButton}
+                      disabled={!newNoteText.trim() || adminNotesFetcher.state !== "idle"}
+                      style={{ fontSize: "0.8125rem", padding: "var(--space-2) var(--space-4)" }}
+                    >
+                      {adminNotesFetcher.state !== "idle" ? "Saving..." : "Add Note"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {adminNotes.length > 0 && (
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    margin: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "var(--space-2)",
+                  }}
+                >
+                  {adminNotes.map((note, idx) => (
+                    <li
+                      key={idx}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "var(--space-2)",
+                        padding: "var(--space-2) var(--space-3)",
+                        background: "var(--color-neutral-2)",
+                        border: "1px solid var(--color-neutral-6)",
+                        borderRadius: "var(--radius-2)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          marginTop: "2px",
+                          fontSize: "0.875rem",
+                          color: "var(--color-neutral-10)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        ☐
+                      </span>
+                      <span
+                        style={{
+                          flex: 1,
+                          fontFamily: "var(--font-body)",
+                          fontSize: "0.875rem",
+                          color: "var(--color-neutral-12)",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {note}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveNote(idx)}
+                        className={styles.removeButton}
+                        style={{
+                          marginRight: 0,
+                          flexShrink: 0,
+                          fontSize: "0.75rem",
+                          padding: "var(--space-1) var(--space-2)",
+                        }}
+                        title="Remove note"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {adminNotes.length === 0 && !showNoteInput && (
+                <p style={{ fontSize: "0.8125rem", color: "var(--color-neutral-9)", margin: 0, fontStyle: "italic" }}>
+                  No admin notes yet. Click &quot;+ Admin Note&quot; to add one.
+                </p>
+              )}
+            </div>
             <h2
               className={styles.previewTitle}
               style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}
@@ -2726,96 +2868,6 @@ function EditInstructionForm({
               <div className={styles.errorMessage} style={{ marginTop: "var(--space-3)" }}>
                 {actionData.error}
               </div>
-            )}
-          </div>
-
-          {/* Admin Notes Section */}
-          <div className={styles.formSection} style={{ background: "var(--color-neutral-3)", border: "2px dashed var(--color-neutral-7)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: adminNotes.length > 0 || showNoteInput ? "var(--space-4)" : 0 }}>
-              <h3 style={{ fontFamily: "var(--font-subheading)", fontSize: "1rem", fontWeight: 600, color: "var(--color-neutral-11)", margin: 0 }}>
-                🔒 Admin Notes {adminNotes.length > 0 && `(${adminNotes.length})`}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowNoteInput((v) => !v)}
-                className={styles.addButton}
-                disabled={!session}
-                style={{ fontSize: "0.8125rem" }}
-              >
-                {showNoteInput ? "Cancel" : "+ Admin Note"}
-              </button>
-            </div>
-
-            {showNoteInput && (
-              <div style={{ marginBottom: "var(--space-3)" }}>
-                <textarea
-                  className={styles.textarea}
-                  value={newNoteText}
-                  onChange={(e) => setNewNoteText(e.target.value)}
-                  placeholder="Write an admin note..."
-                  style={{ minHeight: "72px", marginBottom: "var(--space-2)" }}
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                      e.preventDefault();
-                      handleAddNote();
-                    }
-                  }}
-                />
-                <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end" }}>
-                  <button type="button" onClick={() => { setShowNoteInput(false); setNewNoteText(""); }} className={styles.addButton} style={{ fontSize: "0.8125rem" }}>
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAddNote}
-                    className={styles.submitButton}
-                    disabled={!newNoteText.trim() || adminNotesFetcher.state !== "idle"}
-                    style={{ fontSize: "0.8125rem", padding: "var(--space-2) var(--space-4)" }}
-                  >
-                    {adminNotesFetcher.state !== "idle" ? "Saving..." : "Add Note"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {adminNotes.length > 0 && (
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-                {adminNotes.map((note, idx) => (
-                  <li
-                    key={idx}
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: "var(--space-2)",
-                      padding: "var(--space-2) var(--space-3)",
-                      background: "var(--color-neutral-2)",
-                      border: "1px solid var(--color-neutral-6)",
-                      borderRadius: "var(--radius-2)",
-                    }}
-                  >
-                    <span style={{ marginTop: "2px", fontSize: "0.875rem", color: "var(--color-neutral-10)", flexShrink: 0 }}>☐</span>
-                    <span style={{ flex: 1, fontFamily: "var(--font-body)", fontSize: "0.875rem", color: "var(--color-neutral-12)", wordBreak: "break-word" }}>
-                      {note}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveNote(idx)}
-                      className={styles.removeButton}
-                      style={{ marginRight: 0, flexShrink: 0, fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                      title="Remove note"
-                    >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {adminNotes.length === 0 && !showNoteInput && (
-              <p style={{ fontSize: "0.8125rem", color: "var(--color-neutral-9)", margin: 0, fontStyle: "italic" }}>
-                No admin notes yet. Click &quot;+ Admin Note&quot; to add one.
-              </p>
             )}
           </div>
         </>
