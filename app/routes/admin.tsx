@@ -36,6 +36,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   const language = url.searchParams.get("lang") || "en";
   const tab = url.searchParams.get("tab") || "edit-instruction";
 
+  const { createClient } = await import("@supabase/supabase-js");
+  const adminClient = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
+
   const [
     instructions,
     missions,
@@ -46,6 +49,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     instructionsHe,
     organizations,
     users,
+    adminNotesRows,
   ] = await Promise.all([
     language === "he" ? getAllInstructionsHe() : getAllInstructions(),
     language === "he" ? getAllMissionsHe() : getAllMissions(),
@@ -56,7 +60,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     getAllInstructionsHe(),
     getOrganizations(),
     getAllUsers(),
+    adminClient.from("instructions").select("id, admin_notes"),
   ]);
+
+  // Build a map of instructionId -> admin_notes array
+  const adminNotesMap: Record<string, string[]> = {};
+  if (adminNotesRows.data) {
+    for (const row of adminNotesRows.data) {
+      adminNotesMap[row.id] = Array.isArray(row.admin_notes) ? row.admin_notes : [];
+    }
+  }
 
   // Build mission access data for the Users tab
   const missionsWithAccess = await Promise.all(
@@ -80,6 +93,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     organizations,
     users,
     missionsWithAccess,
+    adminNotesMap,
   };
 }
 
@@ -577,6 +591,33 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
       },
     },
   });
+
+  if (actionType === "saveAdminNote") {
+    const instructionId = formData.get("instructionId") as string;
+    const notesJson = formData.get("notes") as string;
+
+    if (!instructionId) {
+      return { success: false, error: "Instruction ID is required" };
+    }
+
+    let notes: string[];
+    try {
+      notes = JSON.parse(notesJson);
+    } catch {
+      return { success: false, error: "Invalid notes format" };
+    }
+
+    const { error } = await supabase
+      .from("instructions")
+      .update({ admin_notes: notes })
+      .eq("id", instructionId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, message: "Admin notes saved!" };
+  }
 
   if (actionType === "saveInstruction") {
     const instructionData = JSON.parse(dataEn);
@@ -1438,6 +1479,7 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
     organizations,
     users,
     missionsWithAccess,
+    adminNotesMap,
   } = loaderData;
   const actionData = useActionData<typeof action>();
   const navigate = useNavigate();
@@ -1715,6 +1757,7 @@ export default function AdminPage({ loaderData }: Route.ComponentProps) {
             language={language}
             onChangesDetected={setHasUnsavedChanges}
             onNavigationRequest={handleNavigationWithCheck}
+            adminNotesMap={adminNotesMap}
           />
         </TabsContent>
 
@@ -1783,6 +1826,7 @@ function EditInstructionForm({
   language,
   onChangesDetected,
   onNavigationRequest,
+  adminNotesMap,
 }: {
   actionData?: {
     success: boolean;
@@ -1802,6 +1846,7 @@ function EditInstructionForm({
   language: string;
   onChangesDetected: (hasChanges: boolean) => void;
   onNavigationRequest: (navigationFn: () => void) => void;
+  adminNotesMap: Record<string, string[]>;
 }) {
   const [searchParams] = useSearchParams();
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
@@ -1823,6 +1868,11 @@ function EditInstructionForm({
   const [instructionFilterEdit, setInstructionFilterEdit] = useState("");
   const [showReplaceDialog, setShowReplaceDialog] = useState(false);
   const [replacementInstructionId, setReplacementInstructionId] = useState("");
+  // Admin notes state
+  const [adminNotes, setAdminNotes] = useState<string[]>([]);
+  const [showNoteInput, setShowNoteInput] = useState(false);
+  const [newNoteText, setNewNoteText] = useState("");
+  const adminNotesFetcher = useFetcher<typeof action>();
 
   // Track changes
   useEffect(() => {
@@ -2009,11 +2059,41 @@ function EditInstructionForm({
       setMissionId("");
       setExplanation([]);
     }
+    // Load admin notes for this instruction
+    setAdminNotes(adminNotesMap[instructionId] || []);
+    setShowNoteInput(false);
+    setNewNoteText("");
   };
 
   const handleSelectInstruction = (instructionId: string) => {
     clearActionData();
     updateFormFields(instructionId);
+  };
+
+  const handleAddNote = async () => {
+    const trimmed = newNoteText.trim();
+    if (!trimmed || !selectedInstructionId) return;
+    const updatedNotes = [...adminNotes, trimmed];
+    setAdminNotes(updatedNotes);
+    setNewNoteText("");
+    setShowNoteInput(false);
+    await saveAdminNotes(updatedNotes);
+  };
+
+  const handleRemoveNote = async (index: number) => {
+    const updatedNotes = adminNotes.filter((_, i) => i !== index);
+    setAdminNotes(updatedNotes);
+    await saveAdminNotes(updatedNotes);
+  };
+
+  const saveAdminNotes = (notes: string[]) => {
+    if (!selectedInstructionId || !session) return;
+    const formData = new FormData();
+    formData.append("actionType", "saveAdminNote");
+    formData.append("instructionId", selectedInstructionId);
+    formData.append("notes", JSON.stringify(notes));
+    formData.append("accessToken", session.access_token || "");
+    adminNotesFetcher.submit(formData, { method: "post" });
   };
 
   const addContent = (type: "text" | "image" | "video") => {
@@ -2646,6 +2726,96 @@ function EditInstructionForm({
               <div className={styles.errorMessage} style={{ marginTop: "var(--space-3)" }}>
                 {actionData.error}
               </div>
+            )}
+          </div>
+
+          {/* Admin Notes Section */}
+          <div className={styles.formSection} style={{ background: "var(--color-neutral-3)", border: "2px dashed var(--color-neutral-7)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: adminNotes.length > 0 || showNoteInput ? "var(--space-4)" : 0 }}>
+              <h3 style={{ fontFamily: "var(--font-subheading)", fontSize: "1rem", fontWeight: 600, color: "var(--color-neutral-11)", margin: 0 }}>
+                🔒 Admin Notes {adminNotes.length > 0 && `(${adminNotes.length})`}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowNoteInput((v) => !v)}
+                className={styles.addButton}
+                disabled={!session}
+                style={{ fontSize: "0.8125rem" }}
+              >
+                {showNoteInput ? "Cancel" : "+ Admin Note"}
+              </button>
+            </div>
+
+            {showNoteInput && (
+              <div style={{ marginBottom: "var(--space-3)" }}>
+                <textarea
+                  className={styles.textarea}
+                  value={newNoteText}
+                  onChange={(e) => setNewNoteText(e.target.value)}
+                  placeholder="Write an admin note..."
+                  style={{ minHeight: "72px", marginBottom: "var(--space-2)" }}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                      e.preventDefault();
+                      handleAddNote();
+                    }
+                  }}
+                />
+                <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end" }}>
+                  <button type="button" onClick={() => { setShowNoteInput(false); setNewNoteText(""); }} className={styles.addButton} style={{ fontSize: "0.8125rem" }}>
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddNote}
+                    className={styles.submitButton}
+                    disabled={!newNoteText.trim() || adminNotesFetcher.state !== "idle"}
+                    style={{ fontSize: "0.8125rem", padding: "var(--space-2) var(--space-4)" }}
+                  >
+                    {adminNotesFetcher.state !== "idle" ? "Saving..." : "Add Note"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {adminNotes.length > 0 && (
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                {adminNotes.map((note, idx) => (
+                  <li
+                    key={idx}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "var(--space-2)",
+                      padding: "var(--space-2) var(--space-3)",
+                      background: "var(--color-neutral-2)",
+                      border: "1px solid var(--color-neutral-6)",
+                      borderRadius: "var(--radius-2)",
+                    }}
+                  >
+                    <span style={{ marginTop: "2px", fontSize: "0.875rem", color: "var(--color-neutral-10)", flexShrink: 0 }}>☐</span>
+                    <span style={{ flex: 1, fontFamily: "var(--font-body)", fontSize: "0.875rem", color: "var(--color-neutral-12)", wordBreak: "break-word" }}>
+                      {note}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveNote(idx)}
+                      className={styles.removeButton}
+                      style={{ marginRight: 0, flexShrink: 0, fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                      title="Remove note"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {adminNotes.length === 0 && !showNoteInput && (
+              <p style={{ fontSize: "0.8125rem", color: "var(--color-neutral-9)", margin: 0, fontStyle: "italic" }}>
+                No admin notes yet. Click &quot;+ Admin Note&quot; to add one.
+              </p>
             )}
           </div>
         </>
