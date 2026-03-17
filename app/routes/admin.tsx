@@ -1138,6 +1138,8 @@ function ExplanationContentItem({
   instructionsEn,
   instructionsHe,
   onNavigationRequest,
+  imageFile,
+  onImageFileChange,
 }: {
   item: InstructionContentWithKey;
   index: number;
@@ -1149,8 +1151,9 @@ function ExplanationContentItem({
   instructionsEn: Instruction[];
   instructionsHe: Instruction[];
   onNavigationRequest: (navigationFn: () => void) => void;
+  imageFile: File | null;
+  onImageFileChange: (index: number, file: File | null, preview: string) => void;
 }) {
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>(item.type === "image" ? item.content : "");
   const [isUploading, setIsUploading] = useState(false);
   const [showImageLibrary, setShowImageLibrary] = useState(false);
@@ -1158,10 +1161,11 @@ function ExplanationContentItem({
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImagePreview(reader.result as string);
+        const preview = reader.result as string;
+        setImagePreview(preview);
+        onImageFileChange(index, file, preview);
       };
       reader.readAsDataURL(file);
     }
@@ -1205,12 +1209,12 @@ function ExplanationContentItem({
               const extension = imageType.split("/")[1] || "png";
               const file = new File([blob], `pasted-image-${timestamp}.${extension}`, { type: blob.type });
 
-              setImageFile(file);
-
               // Create preview
               const reader = new FileReader();
               reader.onloadend = () => {
-                setImagePreview(reader.result as string);
+                const preview = reader.result as string;
+                setImagePreview(preview);
+                onImageFileChange(index, file, preview);
               };
               reader.readAsDataURL(blob);
 
@@ -1273,12 +1277,12 @@ function ExplanationContentItem({
                 const extension = blob.type.split("/")[1] || "png";
                 const file = new File([blob], `pasted-image-${timestamp}.${extension}`, { type: blob.type });
 
-                setImageFile(file);
-
                 // Create preview
                 const reader = new FileReader();
                 reader.onloadend = () => {
-                  setImagePreview(reader.result as string);
+                  const preview = reader.result as string;
+                  setImagePreview(preview);
+                  onImageFileChange(index, file, preview);
                 };
                 reader.readAsDataURL(blob);
 
@@ -1324,6 +1328,7 @@ function ExplanationContentItem({
     } else {
       setImagePreview(result.url);
       onUpdate(index, result.url);
+      onImageFileChange(index, null, result.url);
       alert("Image uploaded successfully!");
     }
   };
@@ -1331,6 +1336,7 @@ function ExplanationContentItem({
   const handleSelectFromLibrary = (url: string) => {
     setImagePreview(url);
     onUpdate(index, url);
+    onImageFileChange(index, null, url);
   };
 
   return (
@@ -1867,11 +1873,15 @@ function EditInstructionForm({
   const [status, setStatus] = useState<"only title" | "partial explanation" | "full explanation">("only title");
   const [missionId, setMissionId] = useState("");
   const [explanation, setExplanation] = useState<InstructionContentWithKey[]>([]);
+  // Parallel array tracking pending image files for each explanation item (index-aligned)
+  const [explanationFiles, setExplanationFiles] = useState<(File | null)[]>([]);
+  const [isSavingWithUploads, setIsSavingWithUploads] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const { session } = useAuth();
   const navigate = useNavigate();
   const [originalCode, setOriginalCode] = useState("");
   const fetcher = useFetcher<typeof action>();
+  const saveFetcher = useFetcher<typeof action>();
   const deleteInstructionFetcher = useFetcher<typeof action>();
   const replaceInstructionFetcher = useFetcher<typeof action>();
   const [selectedContentIndex, setSelectedContentIndex] = useState<number | null>(null);
@@ -1913,6 +1923,21 @@ function EditInstructionForm({
       return () => clearTimeout(timer);
     }
   }, [actionData, id, language]);
+
+  // Watch saveFetcher (used for save-with-uploads flow)
+  useEffect(() => {
+    if (saveFetcher.data && saveFetcher.state === "idle") {
+      if (saveFetcher.data.success) {
+        onChangesDetected(false);
+        const timer = setTimeout(() => {
+          window.location.href = `/admin?tab=edit-instruction&lang=${language}&instructionId=${id}`;
+        }, 1000);
+        return () => clearTimeout(timer);
+      } else if (saveFetcher.data.error) {
+        alert(`Save failed: ${saveFetcher.data.error}`);
+      }
+    }
+  }, [saveFetcher.data, saveFetcher.state, id, language]);
 
   // Handle URL parameter for instruction selection
   useEffect(() => {
@@ -2059,6 +2084,7 @@ function EditInstructionForm({
         _key: `content-${Date.now()}-${idx}-${Math.random()}`,
       }));
       setExplanation(explanationWithKeys);
+      setExplanationFiles(new Array(explanationWithKeys.length).fill(null));
     } else {
       // No data for this language, start with empty fields
       setId(instructionId);
@@ -2068,6 +2094,7 @@ function EditInstructionForm({
       setStatus("only title");
       setMissionId("");
       setExplanation([]);
+      setExplanationFiles([]);
     }
     // Load admin notes for this instruction
     setAdminNotes(adminNotesMap[instructionId] || []);
@@ -2113,6 +2140,7 @@ function EditInstructionForm({
       _key: `content-${Date.now()}-${Math.random()}`,
     };
     setExplanation([...explanation, newItem]);
+    setExplanationFiles([...explanationFiles, null]);
   };
 
   const updateContent = (index: number, content: string) => {
@@ -2121,8 +2149,17 @@ function EditInstructionForm({
     setExplanation(updated);
   };
 
+  const handleImageFileChange = (index: number, file: File | null, _preview: string) => {
+    const updated = [...explanationFiles];
+    // Grow array if needed
+    while (updated.length <= index) updated.push(null);
+    updated[index] = file;
+    setExplanationFiles(updated);
+  };
+
   const removeContent = (index: number) => {
     setExplanation(explanation.filter((_, i) => i !== index));
+    setExplanationFiles(explanationFiles.filter((_, i) => i !== index));
     if (selectedContentIndex === index) {
       setSelectedContentIndex(null);
     } else if (selectedContentIndex !== null && selectedContentIndex > index) {
@@ -2138,6 +2175,12 @@ function EditInstructionForm({
       updated[selectedContentIndex - 1],
     ];
     setExplanation(updated);
+    const updatedFiles = [...explanationFiles];
+    [updatedFiles[selectedContentIndex - 1], updatedFiles[selectedContentIndex]] = [
+      updatedFiles[selectedContentIndex],
+      updatedFiles[selectedContentIndex - 1],
+    ];
+    setExplanationFiles(updatedFiles);
     setSelectedContentIndex(selectedContentIndex - 1);
   };
 
@@ -2149,7 +2192,78 @@ function EditInstructionForm({
       updated[selectedContentIndex],
     ];
     setExplanation(updated);
+    const updatedFiles = [...explanationFiles];
+    [updatedFiles[selectedContentIndex], updatedFiles[selectedContentIndex + 1]] = [
+      updatedFiles[selectedContentIndex + 1],
+      updatedFiles[selectedContentIndex],
+    ];
+    setExplanationFiles(updatedFiles);
     setSelectedContentIndex(selectedContentIndex + 1);
+  };
+
+  /** Auto-upload pending images then submit via fetcher */
+  const handleSaveWithUploads = async () => {
+    if (!session) return;
+    setIsSavingWithUploads(true);
+
+    try {
+      // Find image items with empty URL but a pending file
+      const pendingItems = explanation
+        .map((item, idx) => ({ item, idx, file: explanationFiles[idx] ?? null }))
+        .filter(({ item, file }) => item.type === "image" && !item.content && file !== null);
+
+      if (pendingItems.length > 0) {
+        const updatedExplanation = [...explanation];
+        const updatedFiles = [...explanationFiles];
+
+        for (const { idx, file } of pendingItems) {
+          const result = await uploadImage(file!, "instructions");
+          if ("error" in result) {
+            alert(`Upload failed for image ${idx + 1}: ${result.error}`);
+            setIsSavingWithUploads(false);
+            return;
+          }
+          updatedExplanation[idx] = { ...updatedExplanation[idx], content: result.url };
+          updatedFiles[idx] = null;
+        }
+
+        setExplanation(updatedExplanation);
+        setExplanationFiles(updatedFiles);
+
+        // Generate code from the updated explanation
+        const cleanExplanation: InstructionContent[] = updatedExplanation.map(({ _key, ...item }) => item);
+        const instructionData: Instruction = {
+          id,
+          title,
+          ...(description && { description }),
+          status,
+          explanation: cleanExplanation,
+          ...(type === "link" && { type, missionId }),
+        };
+        const data = JSON.stringify(instructionData, null, 2);
+
+        const formData = new FormData();
+        formData.append("actionType", "saveInstruction");
+        formData.append("id", id);
+        formData.append("dataEn", data);
+        formData.append("language", language);
+        formData.append("accessToken", session.access_token || "");
+        saveFetcher.submit(formData, { method: "post" });
+      } else {
+        // No pending uploads — submit normally
+        const formData = new FormData();
+        formData.append("actionType", "saveInstruction");
+        formData.append("id", id);
+        formData.append("dataEn", generateCode());
+        formData.append("language", language);
+        formData.append("accessToken", session.access_token || "");
+        saveFetcher.submit(formData, { method: "post" });
+      }
+    } catch (err) {
+      alert(`Save failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsSavingWithUploads(false);
+    }
   };
 
   const generateCode = () => {
@@ -2539,6 +2653,8 @@ function EditInstructionForm({
                   instructionsEn={instructionsEn}
                   instructionsHe={instructionsHe}
                   onNavigationRequest={onNavigationRequest}
+                  imageFile={explanationFiles[index] ?? null}
+                  onImageFileChange={handleImageFileChange}
                 />
               ))}
 
@@ -2864,17 +2980,24 @@ function EditInstructionForm({
               </button>
             </div>
 
-            <AuthenticatedForm
-              actionType="saveInstruction"
-              id={id}
-              data={generateCode()}
-              disabled={!id || !title}
-              language={language}
-            />
+            {/* Custom save button that auto-uploads pending images first */}
+            <div style={{ marginTop: "var(--space-4)" }}>
+              <button
+                type="button"
+                className={styles.submitButton}
+                disabled={!selectedInstructionId || !session || isSavingWithUploads || saveFetcher.state !== "idle"}
+                onClick={handleSaveWithUploads}
+              >
+                {isSavingWithUploads || saveFetcher.state !== "idle"
+                  ? "Saving..."
+                  : `Save to Database (${language === "he" ? "Hebrew" : "English"})`}
+              </button>
+            </div>
+            {/* Note: replaced by handleSaveWithUploads button above */}
 
-            {actionData?.success && actionData.message && (
+            {((actionData?.success && actionData.message) || (saveFetcher.data?.success && saveFetcher.data.message)) && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
-                {actionData.message}
+                {saveFetcher.data?.message || actionData?.message}
               </div>
             )}
             {actionData?.error && (
