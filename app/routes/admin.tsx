@@ -18,7 +18,16 @@ import {
 // Internal type for UI with unique keys for proper React rendering
 type InstructionContentWithKey = InstructionContent & { _key?: string };
 import { getAllMissions, getAllMissionsHe, getAllMissionIds, type Mission } from "~/services/missions.server";
-import { getOrganizations, getAllUsers, getMissionOrganizations, setMissionOrganizations, setMissionExample, assignUserOrganization, type Organization, type PendingUser } from "~/services/organizations.server";
+import {
+  getOrganizations,
+  getAllUsers,
+  getMissionOrganizations,
+  setMissionOrganizations,
+  setMissionExample,
+  assignUserOrganization,
+  type Organization,
+  type PendingUser,
+} from "~/services/organizations.server";
 import { AdminUsers } from "~/components/admin-users/admin-users";
 import classNames from "classnames";
 
@@ -27,7 +36,17 @@ export async function loader({ request }: Route.LoaderArgs) {
   const language = url.searchParams.get("lang") || "en";
   const tab = url.searchParams.get("tab") || "edit-instruction";
 
-  const [instructions, missions, allMissions, allInstructionIds, allMissionIds, instructionsEn, instructionsHe, organizations, users] = await Promise.all([
+  const [
+    instructions,
+    missions,
+    allMissions,
+    allInstructionIds,
+    allMissionIds,
+    instructionsEn,
+    instructionsHe,
+    organizations,
+    users,
+  ] = await Promise.all([
     language === "he" ? getAllInstructionsHe() : getAllInstructions(),
     language === "he" ? getAllMissionsHe() : getAllMissions(),
     getAllMissions(), // always English for access matrix
@@ -44,7 +63,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     allMissions.map(async (m) => {
       const allowedOrgIds = await getMissionOrganizations(m.id);
       return { ...m, isExample: !!m.isExample, allowedOrgIds };
-    })
+    }),
   );
 
   return {
@@ -2379,6 +2398,74 @@ function EditInstructionForm({
 
       {selectedInstructionId && (
         <>
+          {type === "default" && (
+            <div className={styles.formSection}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "var(--space-3)",
+                }}
+              >
+                <h2
+                  className={styles.sectionTitle}
+                  style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)", marginBottom: 0 }}
+                >
+                  Explanation Content
+                </h2>
+                <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                  <button
+                    type="button"
+                    onClick={moveContentUp}
+                    className={styles.addButton}
+                    disabled={selectedContentIndex === null || selectedContentIndex === 0}
+                    title="Move selected content up"
+                  >
+                    ↑ Up
+                  </button>
+                  <button
+                    type="button"
+                    onClick={moveContentDown}
+                    className={styles.addButton}
+                    disabled={selectedContentIndex === null || selectedContentIndex >= explanation.length - 1}
+                    title="Move selected content down"
+                  >
+                    ↓ Down
+                  </button>
+                </div>
+              </div>
+
+              {explanation.map((item, index) => (
+                <ExplanationContentItem
+                  key={item._key || `fallback-${index}`}
+                  item={item}
+                  index={index}
+                  onUpdate={updateContent}
+                  onRemove={removeContent}
+                  isSelected={selectedContentIndex === index}
+                  onSelect={setSelectedContentIndex}
+                  instructions={instructions}
+                  instructionsEn={instructionsEn}
+                  instructionsHe={instructionsHe}
+                  onNavigationRequest={onNavigationRequest}
+                />
+              ))}
+
+              <div className={styles.addContentButtons}>
+                <button className={styles.addButton} onClick={() => addContent("text")}>
+                  + Add Text
+                </button>
+                <button className={styles.addButton} onClick={() => addContent("image")}>
+                  + Add Image
+                </button>
+                <button className={styles.addButton} onClick={() => addContent("video")}>
+                  + Add Video
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className={styles.formSection}>
             <h2
               className={styles.sectionTitle}
@@ -2483,75 +2570,6 @@ function EditInstructionForm({
               )}
             </div>
           </div>
-
-          {type === "default" && (
-            <div className={styles.formSection}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "var(--space-3)",
-                }}
-              >
-                <h2
-                  className={styles.sectionTitle}
-                  style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)", marginBottom: 0 }}
-                >
-                  Explanation Content
-                </h2>
-                <div style={{ display: "flex", gap: "var(--space-2)" }}>
-                  <button
-                    type="button"
-                    onClick={moveContentUp}
-                    className={styles.addButton}
-                    disabled={selectedContentIndex === null || selectedContentIndex === 0}
-                    title="Move selected content up"
-                  >
-                    ↑ Up
-                  </button>
-                  <button
-                    type="button"
-                    onClick={moveContentDown}
-                    className={styles.addButton}
-                    disabled={selectedContentIndex === null || selectedContentIndex >= explanation.length - 1}
-                    title="Move selected content down"
-                  >
-                    ↓ Down
-                  </button>
-                </div>
-              </div>
-
-              {explanation.map((item, index) => (
-                <ExplanationContentItem
-                  key={item._key || `fallback-${index}`}
-                  item={item}
-                  index={index}
-                  onUpdate={updateContent}
-                  onRemove={removeContent}
-                  isSelected={selectedContentIndex === index}
-                  onSelect={setSelectedContentIndex}
-                  instructions={instructions}
-                  instructionsEn={instructionsEn}
-                  instructionsHe={instructionsHe}
-                  onNavigationRequest={onNavigationRequest}
-                />
-              ))}
-
-              <div className={styles.addContentButtons}>
-                <button className={styles.addButton} onClick={() => addContent("text")}>
-                  + Add Text
-                </button>
-                <button className={styles.addButton} onClick={() => addContent("image")}>
-                  + Add Image
-                </button>
-                <button className={styles.addButton} onClick={() => addContent("video")}>
-                  + Add Video
-                </button>
-              </div>
-            </div>
-          )}
-
           <div className={styles.previewSection}>
             <h2
               className={styles.previewTitle}
@@ -3170,67 +3188,6 @@ function EditMissionForm({
       {selectedMissionId && (
         <>
           <div className={styles.formSection}>
-            <h2
-              className={styles.sectionTitle}
-              style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}
-            >
-              Mission Details
-            </h2>
-            <div className={styles.formGrid}>
-              <div className={styles.div7}>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Title</label>
-                  <input
-                    type="text"
-                    className={styles.input}
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g., Security Fundamentals"
-                  />
-                </div>
-                <div className={styles.div10}>
-                  <div className={classNames(styles.formGroup, styles.div8)}>
-                    <label className={styles.label}>Mission ID</label>
-                    <input
-                      type="text"
-                      className={styles.input}
-                      value={id}
-                      onChange={(e) => setId(e.target.value)}
-                      placeholder="e.g., security-basics"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>Mission Status</label>
-                    <select
-                      className={styles.input}
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value as "Hide" | "For all" | "Only Adama" | "Only Bazn")}
-                    >
-                      <option value="Hide">Hide</option>
-                      <option value="For all">For all</option>
-                      <option value="Only Adama">Only Adama</option>
-                      <option value="Only Bazn">Only Bazn</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Description</label>
-                <textarea
-                  className={styles.textarea}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Enter mission description..."
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Select Instructions by Arrow */}
-          <div className={styles.formSection}>
             <div style={{ marginBottom: "var(--space-3)" }}>
               <h2
                 className={styles.sectionTitle}
@@ -3550,6 +3507,65 @@ function EditMissionForm({
                     );
                   })}
                 </div>
+              </div>
+            </div>
+          </div>
+          <div className={styles.formSection}>
+            <h2
+              className={styles.sectionTitle}
+              style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}
+            >
+              Mission Details
+            </h2>
+            <div className={styles.formGrid}>
+              <div className={styles.div7}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Title</label>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g., Security Fundamentals"
+                  />
+                </div>
+                <div className={styles.div10}>
+                  <div className={classNames(styles.formGroup, styles.div8)}>
+                    <label className={styles.label}>Mission ID</label>
+                    <input
+                      type="text"
+                      className={styles.input}
+                      value={id}
+                      onChange={(e) => setId(e.target.value)}
+                      placeholder="e.g., security-basics"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Mission Status</label>
+                    <select
+                      className={styles.input}
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value as "Hide" | "For all" | "Only Adama" | "Only Bazn")}
+                    >
+                      <option value="Hide">Hide</option>
+                      <option value="For all">For all</option>
+                      <option value="Only Adama">Only Adama</option>
+                      <option value="Only Bazn">Only Bazn</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Description</label>
+                <textarea
+                  className={styles.textarea}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Enter mission description..."
+                />
               </div>
             </div>
           </div>
