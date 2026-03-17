@@ -43,7 +43,7 @@ export async function getAllMissions(): Promise<Mission[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("missions")
-    .select("data_en")
+    .select("data_en, is_example")
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -53,14 +53,17 @@ export async function getAllMissions(): Promise<Mission[]> {
 
   return (data || [])
     .filter((row: any) => row.data_en !== null)
-    .map((row: any) => migrateLegacyMission(row.data_en));
+    .map((row: any) => ({
+      ...migrateLegacyMission(row.data_en),
+      isExample: row.is_example ?? false,
+    }));
 }
 
 export async function getAllMissionsHe(): Promise<Mission[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("missions")
-    .select("data_he")
+    .select("data_he, is_example")
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -70,7 +73,10 @@ export async function getAllMissionsHe(): Promise<Mission[]> {
 
   return (data || [])
     .filter((row: any) => row.data_he !== null)
-    .map((row: any) => migrateLegacyMission(row.data_he));
+    .map((row: any) => ({
+      ...migrateLegacyMission(row.data_he),
+      isExample: row.is_example ?? false,
+    }));
 }
 
 export async function getMissionById(missionId: string): Promise<Mission | null> {

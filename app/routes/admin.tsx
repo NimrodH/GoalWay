@@ -661,6 +661,8 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     };
   } else if (actionType === "saveMission") {
     const missionData = JSON.parse(dataEn);
+    const isExampleRaw = formData.get("isExample");
+    const isExample = isExampleRaw !== null ? isExampleRaw === "true" : undefined;
 
     // Check if the row exists
     const { data: existingData } = await supabase.from("missions").select("id").eq("id", id).single();
@@ -673,6 +675,9 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
         data_he: language === "he" ? missionData : null,
         updated_at: new Date().toISOString(),
       };
+      if (isExample !== undefined) {
+        insertData.is_example = isExample;
+      }
 
       const { error } = await supabase.from("missions").insert(insertData);
 
@@ -689,6 +694,9 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
         updateData.data_he = missionData;
       } else {
         updateData.data_en = missionData;
+      }
+      if (isExample !== undefined) {
+        updateData.is_example = isExample;
       }
 
       const { error } = await supabase.from("missions").update(updateData).eq("id", id);
@@ -1438,12 +1446,14 @@ function AuthenticatedForm({
   data,
   disabled,
   language,
+  isExample,
 }: {
   actionType: string;
   id: string;
   data: string;
   disabled: boolean;
   language: string;
+  isExample?: boolean;
 }) {
   const { session } = useAuth();
 
@@ -1454,6 +1464,9 @@ function AuthenticatedForm({
       <input type="hidden" name="dataEn" value={data} />
       <input type="hidden" name="language" value={language} />
       <input type="hidden" name="accessToken" value={session?.access_token || ""} />
+      {isExample !== undefined && (
+        <input type="hidden" name="isExample" value={String(isExample)} />
+      )}
       <button type="submit" className={styles.submitButton} disabled={disabled || !session}>
         Save to Database ({language === "he" ? "Hebrew" : "English"})
       </button>
@@ -2911,6 +2924,7 @@ function EditMissionForm({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<"Hide" | "For all" | "Only Adama" | "Only Bazn">("For all");
+  const [isExample, setIsExample] = useState(false);
   const [selectedInstructions, setSelectedInstructions] = useState<Array<[string, string?]>>([]);
   const [selectedAvailableInstructions, setSelectedAvailableInstructions] = useState<string[]>([]);
   const [isTranslating, setIsTranslating] = useState(false);
@@ -3097,6 +3111,7 @@ function EditMissionForm({
       setTitle(mission.title);
       setDescription(mission.description);
       setStatus(mission.status || "For all");
+      setIsExample(mission.isExample ?? false);
       setSelectedInstructions(mission.instructions || []);
     } else {
       // No data for this language, start with empty fields
@@ -3104,6 +3119,7 @@ function EditMissionForm({
       setTitle("");
       setDescription("");
       setStatus("For all");
+      setIsExample(false);
       setSelectedInstructions([]);
     }
   };
@@ -3766,6 +3782,7 @@ function EditMissionForm({
                 <div>
                   <div className={styles.formGroup}>
                     <label className={styles.label}>Mission Status</label>
+                    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
                     <select
                       className={styles.input}
                       value={status}
@@ -3776,6 +3793,16 @@ function EditMissionForm({
                       <option value="Only Adama">Only Adama</option>
                       <option value="Only Bazn">Only Bazn</option>
                     </select>
+                    <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500, fontSize: "0.875rem", color: "var(--color-neutral-12)" }}>
+                      <input
+                        type="checkbox"
+                        checked={isExample}
+                        onChange={(e) => setIsExample(e.target.checked)}
+                        style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                      />
+                      Example
+                    </label>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -3810,6 +3837,7 @@ function EditMissionForm({
                   setTitle(parsed.title || "");
                   setDescription(parsed.description || "");
                   setStatus(parsed.status || "For all");
+                  setIsExample(parsed.isExample ?? false);
                   setSelectedInstructions(parsed.instructions || []);
                 } catch (err) {
                   // Invalid JSON - don't update
@@ -3845,6 +3873,7 @@ function EditMissionForm({
             <AuthenticatedForm
               actionType="saveMission"
               id={id}
+              isExample={isExample}
               data={generateCode()}
               disabled={!id || !title}
               language={language}
