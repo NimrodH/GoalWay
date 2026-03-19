@@ -7,15 +7,15 @@ interface AppNavigationProps {
   pendingUsersCount?: number;
 }
 
-const ADMIN_TABS = [
-  { value: "edit-instruction", label: "Instructions" },
-  { value: "edit-mission", label: "Missions" },
-  { value: "users", label: "Users" },
+const ADMIN_PAGES = [
+  { value: "instructions", legacyValue: "edit-instruction", label: "Instructions", path: "/admin/instructions" },
+  { value: "missions", legacyValue: "edit-mission", label: "Missions", path: "/admin/missions" },
+  { value: "users", legacyValue: "users", label: "Users", path: "/admin/users" },
 ] as const;
 
 export function AppNavigation({ onNavigate, adminTab, pendingUsersCount = 0 }: AppNavigationProps = {}) {
   const location = useLocation();
-  const isOnAdmin = location.pathname === "/admin";
+  const isOnAdmin = location.pathname.startsWith("/admin");
 
   const handleNavigation = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
     if (onNavigate && isOnAdmin) {
@@ -44,18 +44,19 @@ export function AppNavigation({ onNavigate, adminTab, pendingUsersCount = 0 }: A
         Help
       </NavLink>
       <NavLink
-        to="/admin"
-        className={({ isActive }) => `${styles.navLink} ${isActive ? styles.navLinkActive : ""}`}
-        onClick={(e) => handleNavigation(e, "/admin")}
+        to="/admin/instructions"
+        className={() => `${styles.navLink} ${isOnAdmin ? styles.navLinkActive : ""}`}
+        onClick={(e) => handleNavigation(e, "/admin/instructions")}
       >
         Admin
       </NavLink>
 
       {isOnAdmin && (
         <div className={styles.adminTabLinks}>
-          {ADMIN_TABS.map((tab) => {
-            const path = `/admin?tab=${tab.value}`;
-            const isActive = adminTab === tab.value;
+          {ADMIN_PAGES.map((tab) => {
+            const path = tab.path;
+            const isActive =
+              adminTab === tab.value || adminTab === tab.legacyValue || location.pathname === tab.path;
             return (
               <a
                 key={tab.value}

@@ -8,6 +8,9 @@ export default [
   route("help", "routes/help.tsx"),
   route("missions/:missionId", "routes/missions.$missionId.tsx"),
   route("admin", "routes/admin.tsx"),
+  route("admin/instructions", "routes/admin.instructions.tsx"),
+  route("admin/missions", "routes/admin.missions.tsx"),
+  route("admin/users", "routes/admin.users.tsx"),
   route("instructions-with-images", "routes/instructions-with-images.tsx"),
   
   // API routes
