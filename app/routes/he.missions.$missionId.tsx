@@ -103,7 +103,7 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
     
     // If Shift key is pressed, navigate to admin page with instruction selected
     if (event?.shiftKey) {
-      navigate(`/admin?tab=instructions&instructionId=${instructionId}`);
+      navigate(`/admin/instructions?instructionId=${instructionId}`);
       return;
     }
     
@@ -187,7 +187,7 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
                           onClick={(event) => {
                             // If Shift key is pressed, navigate to admin page
                             if (event?.shiftKey) {
-                              navigate(`/admin?tab=instructions&instructionId=${linkedInstruction.id}`);
+                              navigate(`/admin/instructions?instructionId=${linkedInstruction.id}`);
                               return;
                             }
                             // Toggle selection

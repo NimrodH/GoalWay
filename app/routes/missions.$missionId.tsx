@@ -145,7 +145,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
 
   const handleLinkedInstructionClick = (parentLinkId: string, linkedInstruction: Instruction, event?: React.MouseEvent) => {
     if (event?.shiftKey) {
-      navigate(`/admin?tab=instructions&instructionId=${linkedInstruction.id}`);
+      navigate(`/admin/instructions?instructionId=${linkedInstruction.id}`);
       return;
     }
 
@@ -177,7 +177,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
 
     // If Shift key is pressed, navigate to admin page with instruction selected
     if (event?.shiftKey) {
-      navigate(`/admin?tab=instructions&instructionId=${instructionId}`);
+      navigate(`/admin/instructions?instructionId=${instructionId}`);
       return;
     }
 
