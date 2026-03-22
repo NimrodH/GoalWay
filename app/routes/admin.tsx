@@ -34,6 +34,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     organizations,
     users,
     adminNotesRows,
+    missionAdminNotesRows,
   ] = await Promise.all([
     language === "he" ? getAllInstructionsHe() : getAllInstructions(),
     language === "he" ? getAllMissionsHe() : getAllMissions(),
@@ -45,12 +46,20 @@ export async function loader({ request }: Route.LoaderArgs) {
     getOrganizations(),
     getAllUsers(),
     adminClient.from("instructions").select("id, admin_notes"),
+    adminClient.from("missions").select("id, admin_notes"),
   ]);
 
   const adminNotesMap: Record<string, string[]> = {};
   if (adminNotesRows.data) {
     for (const row of adminNotesRows.data) {
       adminNotesMap[row.id] = Array.isArray(row.admin_notes) ? row.admin_notes : [];
+    }
+  }
+
+  const missionAdminNotesMap: Record<string, string[]> = {};
+  if (missionAdminNotesRows.data) {
+    for (const row of missionAdminNotesRows.data) {
+      missionAdminNotesMap[row.id] = Array.isArray(row.admin_notes) ? row.admin_notes : [];
     }
   }
 
@@ -76,6 +85,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     users,
     missionsWithAccess,
     adminNotesMap,
+    missionAdminNotesMap,
   };
 }
 
@@ -549,6 +559,30 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     }
 
     const { error } = await supabase.from("instructions").update({ admin_notes: notes }).eq("id", instructionId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, message: "Admin notes saved!" };
+  }
+
+  if (actionType === "saveMissionAdminNote") {
+    const missionId = formData.get("missionId") as string;
+    const notesJson = formData.get("notes") as string;
+
+    if (!missionId) {
+      return { success: false, error: "Mission ID is required" };
+    }
+
+    let notes: string[];
+    try {
+      notes = JSON.parse(notesJson);
+    } catch {
+      return { success: false, error: "Invalid notes format" };
+    }
+
+    const { error } = await supabase.from("missions").update({ admin_notes: notes }).eq("id", missionId);
 
     if (error) {
       return { success: false, error: error.message };
