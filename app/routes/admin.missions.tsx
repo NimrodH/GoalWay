@@ -835,6 +835,34 @@ function EditMissionForm({
                     </button>
                     <button
                       type="button"
+                      onClick={() => {
+                        if (!selectedMissionInstruction || !selectedAvailableInstructions.length) return;
+                        const isTemp = /^T\d+$/.test(selectedMissionInstruction);
+                        if (!isTemp) return;
+                        const replacementId = selectedAvailableInstructions[0];
+                        setSelectedInstructions(
+                          selectedInstructions.map(([id, title]) =>
+                            id === selectedMissionInstruction
+                              ? ([replacementId, title] as [string, string?])
+                              : ([id, title] as [string, string?]),
+                          ),
+                        );
+                        setSelectedMissionInstruction(replacementId);
+                        setSelectedAvailableInstructions([]);
+                      }}
+                      className={styles.addButton}
+                      disabled={
+                        !selectedMissionInstruction ||
+                        !/^T\d+$/.test(selectedMissionInstruction || "") ||
+                        selectedAvailableInstructions.length !== 1
+                      }
+                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                      title="Replace the selected temporary entry's ID with the selected available instruction's ID (keeps local title)"
+                    >
+                      Assign ID
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setShowNewInstructionDialog(true)}
                       className={styles.addButton}
                       disabled={!selectedMissionId || !session}
