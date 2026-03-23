@@ -118,7 +118,6 @@ function EditMissionForm({
   const [originalCode, setOriginalCode] = useState("");
   const [searchParams] = useSearchParams();
   const missionFetcher = useFetcher<typeof action>();
-  const instructionFetcher = useFetcher<typeof action>();
   const deleteMissionFetcher = useFetcher<typeof action>();
   const [showNewInstructionDialog, setShowNewInstructionDialog] = useState(false);
   const [newInstructionTitle, setNewInstructionTitle] = useState("");
@@ -180,46 +179,24 @@ function EditMissionForm({
     }
   }, [selectedMissionId]);
 
-  const handleCreateAndAddInstruction = () => {
+  const handleAddTempInstruction = () => {
     if (!newInstructionTitle.trim()) {
       alert("Please enter a title for the new instruction");
       return;
     }
 
-    const allIds = instructions.map((i) => i.id);
-    const numericIds = allIds.map((id: string) => parseInt(id, 10)).filter((id: number) => !isNaN(id));
-    const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
-    const newId = String(maxId + 1);
+    // Find the highest existing temp ID number
+    const tempIds = selectedInstructions
+      .map(([id]) => id)
+      .filter((id) => id.startsWith("T"))
+      .map((id) => parseInt(id.slice(1), 10))
+      .filter((n) => !isNaN(n));
+    const nextTempNum = tempIds.length > 0 ? Math.max(...tempIds) + 1 : 1;
+    const tempId = `T${nextTempNum}`;
 
-    const newInstruction = {
-      id: newId,
-      title: newInstructionTitle.trim(),
-      explanation: [],
-    };
-
-    const updatedInstructions = [...selectedInstructions, [newId]];
-    const updatedMission = {
-      id,
-      title,
-      description,
-      instructions: updatedInstructions,
-    };
-
-    const instructionFormData = new FormData();
-    instructionFormData.append("actionType", "saveInstruction");
-    instructionFormData.append("id", newId);
-    instructionFormData.append("dataEn", JSON.stringify(newInstruction));
-    instructionFormData.append("language", language);
-    instructionFormData.append("accessToken", session?.access_token || "");
-
-    (window as any).__pendingMissionUpdate = {
-      missionId: selectedMissionId,
-      missionData: JSON.stringify(updatedMission),
-      language,
-      accessToken: session?.access_token || "",
-    };
-
-    instructionFetcher.submit(instructionFormData, { method: "post" });
+    setSelectedInstructions([...selectedInstructions, [tempId, newInstructionTitle.trim()]]);
+    setShowNewInstructionDialog(false);
+    setNewInstructionTitle("");
   };
 
   const handleAddComment = () => {
@@ -339,38 +316,6 @@ function EditMissionForm({
       }
     }
   }, [deleteMissionFetcher.data, deleteMissionFetcher.state, language]);
-
-  useEffect(() => {
-    if (instructionFetcher.data && instructionFetcher.state === "idle") {
-      if (instructionFetcher.data.success) {
-        const pendingMissionUpdate = (window as any).__pendingMissionUpdate;
-        if (pendingMissionUpdate) {
-          const missionFormData = new FormData();
-          missionFormData.append("actionType", "saveMission");
-          missionFormData.append("id", pendingMissionUpdate.missionId);
-          missionFormData.append("dataEn", pendingMissionUpdate.missionData);
-          missionFormData.append("language", pendingMissionUpdate.language);
-          missionFormData.append("accessToken", pendingMissionUpdate.accessToken);
-
-          delete (window as any).__pendingMissionUpdate;
-
-          setShowNewInstructionDialog(false);
-          setNewInstructionTitle("");
-
-          fetch("/admin", {
-            method: "POST",
-            body: missionFormData,
-          }).then(() => {
-            window.location.href = `/admin/missions?lang=${language}&missionId=${selectedMissionId}`;
-          });
-        } else if (instructionFetcher.data.newInstructionId) {
-          window.location.href = `/admin/instructions?lang=${language}&instructionId=${instructionFetcher.data.newInstructionId}`;
-        }
-      } else if (instructionFetcher.data.error) {
-        alert(`Failed to create instruction: ${instructionFetcher.data.error}`);
-      }
-    }
-  }, [instructionFetcher.data, instructionFetcher.state, language, selectedMissionId]);
 
   const handleAddNote = () => {
     const trimmed = newNoteText.trim();
@@ -827,11 +772,12 @@ function EditMissionForm({
                 >
                   {selectedInstructions.map(([instructionId, customTitle]) => {
                     const isComment = instructionId.startsWith("comment-") || instructionId === "0";
-                    const instruction = !isComment ? instructions.find((i) => i.id === instructionId) : null;
+                    const isTemp = instructionId.startsWith("T") && /^T\d+$/.test(instructionId);
+                    const instruction = !isComment && !isTemp ? instructions.find((i) => i.id === instructionId) : null;
 
-                    if (!isComment && !instruction) return null;
+                    if (!isComment && !isTemp && !instruction) return null;
 
-                    const displayTitle = isComment ? customTitle : customTitle || instruction?.title || "";
+                    const displayTitle = isComment || isTemp ? customTitle : customTitle || instruction?.title || "";
                     return (
                       <label
                         key={instructionId}
@@ -840,6 +786,7 @@ function EditMissionForm({
                           padding: "var(--space-2)",
                           borderBottom: "1px solid var(--color-neutral-4)",
                           margin: 0,
+                          background: isTemp ? "var(--color-accent-2)" : undefined,
                         }}
                       >
                         <input
@@ -851,6 +798,10 @@ function EditMissionForm({
                         <span>
                           {isComment ? (
                             <span style={{ color: "var(--color-accent-11)", fontStyle: "italic" }}>💬 Comment:</span>
+                          ) : isTemp ? (
+                            <span style={{ color: "var(--color-accent-10)", fontWeight: 600 }} title="Temporary — not yet saved to DB">
+                              {instructionId}
+                            </span>
                           ) : (
                             <span style={{ color: instruction?.status === "full explanation" ? "green" : "inherit" }}>
                               {instructionId}
@@ -858,7 +809,7 @@ function EditMissionForm({
                           )}
                           {!isComment && " - "}
                           {displayTitle}
-                          {!isComment && customTitle && (
+                          {!isComment && !isTemp && customTitle && (
                             <span
                               style={{
                                 color: "var(--color-accent-11)",
@@ -866,7 +817,7 @@ function EditMissionForm({
                                 marginLeft: "var(--space-2)",
                               }}
                             >
-                              {!isComment && instruction && `(${instruction.title})`}
+                              {instruction && `(${instruction.title})`}
                             </span>
                           )}
                         </span>
@@ -1328,12 +1279,15 @@ function EditMissionForm({
         <div className={styles.dialogOverlay} onClick={() => setShowNewInstructionDialog(false)}>
           <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.dialogHeader}>
-              <h2 className={styles.dialogTitle}>Create New Instruction</h2>
+              <h2 className={styles.dialogTitle}>Add New Instruction Title</h2>
               <button className={styles.dialogClose} onClick={() => setShowNewInstructionDialog(false)}>
                 ✕
               </button>
             </div>
-            <div className={styles.formGroup} style={{ marginTop: "var(--space-4)" }}>
+            <p style={{ padding: "var(--space-3) var(--space-4) 0", margin: 0, fontSize: "0.875rem", color: "var(--color-neutral-10)" }}>
+              A temporary placeholder (e.g. <strong>T1</strong>) will be added to the mission list. No instruction is created in the database yet.
+            </p>
+            <div className={styles.formGroup} style={{ marginTop: "var(--space-3)", padding: "0 var(--space-4)" }}>
               <label className={styles.label}>Instruction Title</label>
               <input
                 type="text"
@@ -1342,12 +1296,13 @@ function EditMissionForm({
                 onChange={(e) => setNewInstructionTitle(e.target.value)}
                 placeholder="Enter instruction title..."
                 autoFocus
+                onKeyDown={(e) => { if (e.key === "Enter" && newInstructionTitle.trim()) handleAddTempInstruction(); }}
               />
             </div>
-            <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)" }}>
+            <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)", padding: "0 var(--space-4) var(--space-4)" }}>
               <button
                 type="button"
-                onClick={() => setShowNewInstructionDialog(false)}
+                onClick={() => { setShowNewInstructionDialog(false); setNewInstructionTitle(""); }}
                 className={styles.removeButton}
                 style={{ flex: 1 }}
               >
@@ -1355,12 +1310,12 @@ function EditMissionForm({
               </button>
               <button
                 type="button"
-                onClick={handleCreateAndAddInstruction}
+                onClick={handleAddTempInstruction}
                 className={styles.submitButton}
                 style={{ flex: 1 }}
                 disabled={!newInstructionTitle.trim()}
               >
-                Create & Add to Mission
+                Add to Mission
               </button>
             </div>
           </div>
