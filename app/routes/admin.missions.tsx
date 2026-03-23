@@ -24,6 +24,7 @@ export default function AdminMissionsPage() {
           instructions={loaderData.instructions}
           missions={loaderData.missions}
           allMissionIds={loaderData.allMissionIds}
+          allInstructionIds={loaderData.allInstructionIds}
           instructionsEn={loaderData.instructionsEn}
           instructionsHe={loaderData.instructionsHe}
           language={loaderData.language}
@@ -79,6 +80,7 @@ function EditMissionForm({
   instructions,
   missions,
   allMissionIds,
+  allInstructionIds,
   instructionsEn,
   instructionsHe,
   language,
@@ -98,6 +100,7 @@ function EditMissionForm({
   instructions: Instruction[];
   missions: Mission[];
   allMissionIds: string[];
+  allInstructionIds: string[];
   instructionsEn: Instruction[];
   instructionsHe: Instruction[];
   language: string;
@@ -133,6 +136,8 @@ function EditMissionForm({
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [newNoteText, setNewNoteText] = useState("");
   const adminNotesFetcher = useFetcher<typeof action>();
+  const createAndEditFetcher = useFetcher<typeof action>();
+  const [pendingTempEdit, setPendingTempEdit] = useState<{ tempId: string; title: string } | null>(null);
 
   useEffect(() => {
     if (selectedMissionId) {
@@ -317,6 +322,30 @@ function EditMissionForm({
     }
   }, [deleteMissionFetcher.data, deleteMissionFetcher.state, language]);
 
+  useEffect(() => {
+    if (createAndEditFetcher.data && createAndEditFetcher.state === "idle" && pendingTempEdit) {
+      const result = createAndEditFetcher.data;
+      if (result.success && result.newInstructionId) {
+        const newId = result.newInstructionId;
+        const { tempId } = pendingTempEdit;
+        // Replace the temp ID in the mission's instruction list with the real new ID
+        const updatedInstructions = selectedInstructions.map(([id, title]) =>
+          id === tempId ? ([newId, title] as [string, string?]) : ([id, title] as [string, string?]),
+        );
+        setSelectedInstructions(updatedInstructions);
+        setPendingTempEdit(null);
+        if (selectedMissionId) {
+          localStorage.setItem("lastSelectedMissionId", selectedMissionId);
+        }
+        // Navigate to the instructions page with the new instruction selected
+        window.location.href = `/admin/instructions?lang=${language}&instructionId=${newId}`;
+      } else if (result.error) {
+        alert(`Failed to create instruction: ${result.error}`);
+        setPendingTempEdit(null);
+      }
+    }
+  }, [createAndEditFetcher.data, createAndEditFetcher.state, pendingTempEdit, selectedInstructions, selectedMissionId, language]);
+
   const handleAddNote = () => {
     const trimmed = newNoteText.trim();
     if (!trimmed || !selectedMissionId) return;
@@ -341,6 +370,38 @@ function EditMissionForm({
     formData.append("notes", JSON.stringify(notes));
     formData.append("accessToken", session.access_token || "");
     adminNotesFetcher.submit(formData, { method: "post" });
+  };
+
+  const handleEditInstruction = (instructionId: string) => {
+    const isTemp = /^T\d+$/.test(instructionId);
+
+    if (!isTemp) {
+      // Existing instruction — navigate directly
+      if (selectedMissionId) {
+        localStorage.setItem("lastSelectedMissionId", selectedMissionId);
+      }
+      onNavigationRequest(() => {
+        window.location.href = `/admin/instructions?lang=${language}&instructionId=${instructionId}`;
+      });
+      return;
+    }
+
+    // Temp instruction — create a real one first
+    const entryData = selectedInstructions.find(([id]) => id === instructionId);
+    const tempTitle = entryData?.[1] || "";
+
+    const numericIds = allInstructionIds.map((id: string) => parseInt(id, 10)).filter((id: number) => !isNaN(id));
+    const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+    const newInstructionId = String(maxId + 1);
+
+    setPendingTempEdit({ tempId: instructionId, title: tempTitle });
+
+    const formData = new FormData();
+    formData.append("actionType", "createInstruction");
+    formData.append("newId", newInstructionId);
+    formData.append("language", language);
+    formData.append("accessToken", session?.access_token || "");
+    createAndEditFetcher.submit(formData, { method: "post" });
   };
 
   const handleClearForNewMission = () => {
@@ -715,21 +776,23 @@ function EditMissionForm({
                       type="button"
                       onClick={() => {
                         if (selectedMissionInstruction) {
-                          if (selectedMissionId) {
-                            localStorage.setItem("lastSelectedMissionId", selectedMissionId);
-                          }
-                          onNavigationRequest(() => {
-                            window.location.href = `/admin/instructions?lang=${language}&instructionId=${selectedMissionInstruction}`;
-                          });
+                          handleEditInstruction(selectedMissionInstruction);
                         } else {
                           alert("Please select an instruction from the list using the radio button first");
                         }
                       }}
                       className={styles.addButton}
-                      disabled={!selectedMissionInstruction}
+                      disabled={!selectedMissionInstruction || createAndEditFetcher.state !== "idle"}
                       style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                      title={
+                        selectedMissionInstruction && /^T\d+$/.test(selectedMissionInstruction)
+                          ? "Create a real instruction from this temporary entry and open it for editing"
+                          : "Edit this instruction"
+                      }
                     >
-                      Edit
+                      {createAndEditFetcher.state !== "idle" && pendingTempEdit?.tempId === selectedMissionInstruction
+                        ? "Creating..."
+                        : "Edit"}
                     </button>
                     <button
                       type="button"
