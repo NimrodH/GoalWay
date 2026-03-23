@@ -137,7 +137,9 @@ function EditMissionForm({
   const [newNoteText, setNewNoteText] = useState("");
   const adminNotesFetcher = useFetcher<typeof action>();
   const createAndEditFetcher = useFetcher<typeof action>();
+  const saveMissionAfterCreateFetcher = useFetcher<typeof action>();
   const [pendingTempEdit, setPendingTempEdit] = useState<{ tempId: string; title: string } | null>(null);
+  const [pendingNavigateToInstructionId, setPendingNavigateToInstructionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedMissionId) {
@@ -334,17 +336,54 @@ function EditMissionForm({
         );
         setSelectedInstructions(updatedInstructions);
         setPendingTempEdit(null);
-        if (selectedMissionId) {
-          localStorage.setItem("lastSelectedMissionId", selectedMissionId);
+        setPendingNavigateToInstructionId(newId);
+
+        if (selectedMissionId && session) {
+          // Save the mission with the updated instruction list (temp ID → real ID) before navigating
+          const updatedMission = {
+            id,
+            title,
+            description,
+            instructions: updatedInstructions,
+            status,
+          };
+          if (selectedMissionId) {
+            localStorage.setItem("lastSelectedMissionId", selectedMissionId);
+          }
+          const formData = new FormData();
+          formData.append("actionType", "saveMission");
+          formData.append("id", id);
+          formData.append("dataEn", JSON.stringify(updatedMission));
+          formData.append("language", language);
+          formData.append("isExample", String(isExample));
+          formData.append("accessToken", session.access_token || "");
+          saveMissionAfterCreateFetcher.submit(formData, { method: "post" });
+        } else {
+          // No mission to save — navigate immediately
+          window.location.href = `/admin/instructions?lang=${language}&instructionId=${newId}`;
         }
-        // Navigate to the instructions page with the new instruction selected
-        window.location.href = `/admin/instructions?lang=${language}&instructionId=${newId}`;
       } else if (result.error) {
         alert(`Failed to create instruction: ${result.error}`);
         setPendingTempEdit(null);
       }
     }
   }, [createAndEditFetcher.data, createAndEditFetcher.state, pendingTempEdit, selectedInstructions, selectedMissionId, language]);
+
+  useEffect(() => {
+    if (saveMissionAfterCreateFetcher.data && saveMissionAfterCreateFetcher.state === "idle" && pendingNavigateToInstructionId) {
+      const result = saveMissionAfterCreateFetcher.data;
+      if (result.success) {
+        const instructionId = pendingNavigateToInstructionId;
+        setPendingNavigateToInstructionId(null);
+        window.location.href = `/admin/instructions?lang=${language}&instructionId=${instructionId}`;
+      } else if (result.error) {
+        alert(`Warning: Instruction created but mission save failed: ${result.error}`);
+        const instructionId = pendingNavigateToInstructionId;
+        setPendingNavigateToInstructionId(null);
+        window.location.href = `/admin/instructions?lang=${language}&instructionId=${instructionId}`;
+      }
+    }
+  }, [saveMissionAfterCreateFetcher.data, saveMissionAfterCreateFetcher.state, pendingNavigateToInstructionId, language]);
 
   const handleAddNote = () => {
     const trimmed = newNoteText.trim();
