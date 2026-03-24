@@ -263,18 +263,22 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   }, [selectedLinkedInstructionId]);
 
   return (
-    <div className={styles.container}>
+    <>
+      {isPreview && (
+        <div className={styles.previewBar}>
+          <button
+            onClick={() => navigate(`/admin/missions?missionId=${mission.id}`)}
+            className={styles.menuLink}
+          >
+            <ArrowLeft size={18} />
+            Back to Admin
+          </button>
+        </div>
+      )}
+      <div className={styles.container}>
       <section className={styles.instructionListSection}>
         <div className={styles.headerWrapper}>
-          {isPreview ? (
-            <button
-              onClick={() => navigate(`/admin/missions?missionId=${mission.id}`)}
-              className={styles.menuLink}
-            >
-              <ArrowLeft size={18} />
-              Back to Admin
-            </button>
-          ) : (
+          {!isPreview && (
             <Link to="/" className={styles.menuLink}>
               <BookOpen size={18} />
               View All Missions
@@ -396,5 +400,6 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
         <ExplanationDisplay instruction={instructionToDisplay} className={styles.explanationContainer} />
       </section>
     </div>
+    </>  
   );
 }
