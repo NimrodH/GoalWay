@@ -33,8 +33,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   const profile = await getUserProfile(request);
 
-  // Admins and preview mode bypass all access checks
-  if (!isPreview && (!profile || !isAdmin(profile))) {
+  // Admins always have full access to all missions
+  const userIsAdmin = isAdmin(profile);
+
+  // Non-admins in normal (non-preview) mode must pass the access check
+  if (!userIsAdmin && !isPreview) {
     const hasAccess = await checkMissionAccess(params.missionId, profile?.organization_id ?? null);
     if (!hasAccess) {
       throw redirect("/unauthorized");
