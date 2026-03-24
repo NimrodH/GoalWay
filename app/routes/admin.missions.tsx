@@ -983,12 +983,35 @@ function EditMissionForm({
             </div>
           </div>
           <div className={styles.formSection}>
-            <h2
-              className={styles.sectionTitle}
-              style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "var(--space-3)",
+              }}
             >
-              Mission Details
-            </h2>
+              <h2
+                className={styles.sectionTitle}
+                style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)", margin: 0 }}
+              >
+                Mission Details
+              </h2>
+              <button
+                type="button"
+                onClick={() =>
+                  onNavigationRequest(() => {
+                    window.open(`/missions/${id}`, "_blank");
+                  })
+                }
+                className={styles.addButton}
+                disabled={!id}
+                title="Preview this mission in the public view"
+                style={{ fontSize: "0.8125rem" }}
+              >
+                👁 Preview
+              </button>
+            </div>
             <div className={styles.formGrid}>
               <div className={styles.div7}>
                 <div className={styles.formGroup}>
