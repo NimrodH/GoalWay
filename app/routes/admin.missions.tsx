@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Form, useActionData, useFetcher, useLoaderData, useSearchParams } from "react-router";
+import { Form, useActionData, useFetcher, useLoaderData, useNavigate, useSearchParams } from "react-router";
 import { AdminLayout } from "~/components/admin-layout/admin-layout";
 import { useAuth } from "~/hooks/use-auth";
 import classNames from "classnames";
@@ -108,6 +108,7 @@ function EditMissionForm({
   onNavigationRequest: (navigationFn: () => void) => void;
   missionAdminNotesMap: Record<string, string[]>;
 }) {
+  const navigate = useNavigate();
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -1001,7 +1002,7 @@ function EditMissionForm({
                 type="button"
                 onClick={() =>
                   onNavigationRequest(() => {
-                    window.open(`/missions/${id}?preview=true`, "_blank");
+                    navigate(`/missions/${id}?preview=true`);
                   })
                 }
                 className={styles.addButton}

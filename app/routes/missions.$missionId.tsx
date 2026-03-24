@@ -31,16 +31,18 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const isPreview = url.searchParams.get("preview") === "true";
 
-  const profile = await getUserProfile(request);
+  // Preview mode bypasses all access checks — used by admins navigating from
+  // the admin panel. No auth cookie is needed because the admin already
+  // authenticated on the admin page in the same session.
+  if (!isPreview) {
+    const profile = await getUserProfile(request);
+    const userIsAdmin = isAdmin(profile);
 
-  // Admins always have full access to all missions
-  const userIsAdmin = isAdmin(profile);
-
-  // Non-admins in normal (non-preview) mode must pass the access check
-  if (!userIsAdmin && !isPreview) {
-    const hasAccess = await checkMissionAccess(params.missionId, profile?.organization_id ?? null);
-    if (!hasAccess) {
-      throw redirect("/unauthorized");
+    if (!userIsAdmin) {
+      const hasAccess = await checkMissionAccess(params.missionId, profile?.organization_id ?? null);
+      if (!hasAccess) {
+        throw redirect("/unauthorized");
+      }
     }
   }
 
