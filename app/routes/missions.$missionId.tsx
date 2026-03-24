@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { data, redirect, Link, useNavigate, useLocation } from "react-router";
+import { data, redirect, Link, useNavigate, useLocation, useSearchParams } from "react-router";
 import type { Route } from "./+types/missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
@@ -28,10 +28,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     throw data("Mission not found", { status: 404 });
   }
 
+  const url = new URL(request.url);
+  const isPreview = url.searchParams.get("preview") === "true";
+
   const profile = await getUserProfile(request);
 
-  // Admins bypass all access checks
-  if (!profile || !isAdmin(profile)) {
+  // Admins and preview mode bypass all access checks
+  if (!isPreview && (!profile || !isAdmin(profile))) {
     const hasAccess = await checkMissionAccess(params.missionId, profile?.organization_id ?? null);
     if (!hasAccess) {
       throw redirect("/unauthorized");
@@ -42,11 +45,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const instructionIds = mission.instructions.map(([id]) => id);
   const instructions = await getInstructionsByIds(instructionIds);
 
-  return { mission, instructions, allMissions };
+  return { mission, instructions, allMissions, isPreview };
 }
 
 export default function MissionPage({ loaderData }: Route.ComponentProps) {
-  const { mission, instructions, allMissions } = loaderData;
+  const { mission, instructions, allMissions, isPreview } = loaderData;
 
   // Map instructions to maintain order from mission.instructions and apply custom titles
   // Comments (ID "0") are handled separately as they don't exist in the database
@@ -93,6 +96,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
   // Get the previous mission from location state or default to home
   const previousMissionId = (location.state as { from?: string })?.from;
@@ -257,11 +261,21 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
     <div className={styles.container}>
       <section className={styles.instructionListSection}>
         <div className={styles.headerWrapper}>
-          <Link to="/" className={styles.menuLink}>
-            <BookOpen size={18} />
-            View All Missions
-          </Link>
-          {previousMissionId && (
+          {isPreview ? (
+            <button
+              onClick={() => navigate(`/admin/missions?missionId=${mission.id}`)}
+              className={styles.menuLink}
+            >
+              <ArrowLeft size={18} />
+              Back to Admin
+            </button>
+          ) : (
+            <Link to="/" className={styles.menuLink}>
+              <BookOpen size={18} />
+              View All Missions
+            </Link>
+          )}
+          {!isPreview && previousMissionId && (
             <button onClick={handleBackClick} className={styles.menuLink}>
               <ArrowLeft size={18} />
               Back to Previous Mission

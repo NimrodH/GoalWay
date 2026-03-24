@@ -1001,7 +1001,7 @@ function EditMissionForm({
                 type="button"
                 onClick={() =>
                   onNavigationRequest(() => {
-                    window.open(`/missions/${id}`, "_blank");
+                    window.open(`/missions/${id}?preview=true`, "_blank");
                   })
                 }
                 className={styles.addButton}
