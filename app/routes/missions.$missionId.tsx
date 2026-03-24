@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { data, redirect, Link, useNavigate, useLocation, useSearchParams } from "react-router";
 import Markdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
@@ -294,7 +295,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
           <h1 className={styles.sectionHeader}>{mission.title}</h1>
         </div>
         <div className={styles.missionDescription}>
-          <Markdown>{mission.description}</Markdown>
+          <Markdown remarkPlugins={[remarkBreaks]}>{mission.description}</Markdown>
         </div>
         <div className={styles.instructionList}>
           {missionInstructions.map((instruction, index) => {
@@ -326,7 +327,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                   >
                     <span style={{ marginRight: "var(--space-2)", flexShrink: 0 }}>💬</span>
                     <div className={styles.commentMarkdown}>
-                      <Markdown>{instruction.title}</Markdown>
+                      <Markdown remarkPlugins={[remarkBreaks]}>{instruction.title}</Markdown>
                     </div>
                   </div>
                 </div>

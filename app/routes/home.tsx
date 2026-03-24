@@ -1,5 +1,6 @@
 import { Form, Link, redirect, useNavigate } from "react-router";
 import Markdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/home";
 import { BookOpen, HelpCircle, LogIn, LogOut, Star } from "lucide-react";
 import styles from "./instructions.module.css";
@@ -193,13 +194,13 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <div className={styles.missionHeader}>
                 <BookOpen className={styles.missionIcon} />
                 <div className={styles.missionTitle}>
-                  <Markdown components={{ p: ({ children }) => <span>{children}</span>, a: ({ children }) => <span>{children}</span> }}>
+                  <Markdown remarkPlugins={[remarkBreaks]} components={{ p: ({ children }) => <span>{children}</span>, a: ({ children }) => <span>{children}</span> }}>
                     {mission.title}
                   </Markdown>
                 </div>
               </div>
               <div className={styles.missionDescription}>
-                <Markdown components={{ a: ({ children }) => <span>{children}</span> }}>
+                <Markdown remarkPlugins={[remarkBreaks]} components={{ a: ({ children }) => <span>{children}</span> }}>
                   {mission.description}
                 </Markdown>
               </div>

@@ -1,6 +1,7 @@
 import type { Instruction, InstructionContent } from "~/data/instructions";
 import styles from "./explanation-display.module.css";
 import Markdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 
 interface ExplanationDisplayProps {
   /**
@@ -37,7 +38,7 @@ export function ExplanationDisplay({ instruction, title, explanation, className 
           if (item.type === "text") {
             return (
               <div key={index} className={styles.markdown}>
-                <Markdown>{item.content}</Markdown>
+                <Markdown remarkPlugins={[remarkBreaks]}>{item.content}</Markdown>
               </div>
             );
           }

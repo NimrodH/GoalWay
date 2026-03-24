@@ -1,6 +1,7 @@
 import classNames from "classnames";
 import { FileText, Link2, Image, Video } from "lucide-react";
 import Markdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import styles from "./instruction-list-item.module.css";
 
 interface InstructionContent {
@@ -97,14 +98,14 @@ export function InstructionListItem({
         )}
         <div className={styles.title}>
           <div className={styles.titleMarkdown}>
-            <Markdown>{title}</Markdown>
+            <Markdown remarkPlugins={[remarkBreaks]}>{title}</Markdown>
           </div>
         </div>
         {indicator}
       </div>
       {description && (
         <div className={styles.description}>
-          <Markdown>{description}</Markdown>
+          <Markdown remarkPlugins={[remarkBreaks]}>{description}</Markdown>
         </div>
       )}
     </div>
