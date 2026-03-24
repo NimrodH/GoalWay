@@ -367,10 +367,21 @@ function EditMissionForm({
         setPendingTempEdit(null);
       }
     }
-  }, [createAndEditFetcher.data, createAndEditFetcher.state, pendingTempEdit, selectedInstructions, selectedMissionId, language]);
+  }, [
+    createAndEditFetcher.data,
+    createAndEditFetcher.state,
+    pendingTempEdit,
+    selectedInstructions,
+    selectedMissionId,
+    language,
+  ]);
 
   useEffect(() => {
-    if (saveMissionAfterCreateFetcher.data && saveMissionAfterCreateFetcher.state === "idle" && pendingNavigateToInstructionId) {
+    if (
+      saveMissionAfterCreateFetcher.data &&
+      saveMissionAfterCreateFetcher.state === "idle" &&
+      pendingNavigateToInstructionId
+    ) {
       const result = saveMissionAfterCreateFetcher.data;
       if (result.success) {
         const instructionId = pendingNavigateToInstructionId;
@@ -383,7 +394,12 @@ function EditMissionForm({
         window.location.href = `/admin/instructions?lang=${language}&instructionId=${instructionId}`;
       }
     }
-  }, [saveMissionAfterCreateFetcher.data, saveMissionAfterCreateFetcher.state, pendingNavigateToInstructionId, language]);
+  }, [
+    saveMissionAfterCreateFetcher.data,
+    saveMissionAfterCreateFetcher.state,
+    pendingNavigateToInstructionId,
+    language,
+  ]);
 
   const handleAddNote = () => {
     const trimmed = newNoteText.trim();
@@ -564,7 +580,10 @@ function EditMissionForm({
             marginBottom: "var(--space-3)",
           }}
         >
-          <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}>
+          <h2
+            className={styles.sectionTitle}
+            style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}
+          >
             Select Mission to Edit
           </h2>
           <div style={{ display: "flex", gap: "var(--space-2)" }}>
@@ -762,6 +781,34 @@ function EditMissionForm({
                 >
                   ←
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!selectedMissionInstruction || !selectedAvailableInstructions.length) return;
+                    const isTemp = /^T\d+$/.test(selectedMissionInstruction);
+                    if (!isTemp) return;
+                    const replacementId = selectedAvailableInstructions[0];
+                    setSelectedInstructions(
+                      selectedInstructions.map(([id, title]) =>
+                        id === selectedMissionInstruction
+                          ? ([replacementId, title] as [string, string?])
+                          : ([id, title] as [string, string?]),
+                      ),
+                    );
+                    setSelectedMissionInstruction(replacementId);
+                    setSelectedAvailableInstructions([]);
+                  }}
+                  className={styles.addButton}
+                  disabled={
+                    !selectedMissionInstruction ||
+                    !/^T\d+$/.test(selectedMissionInstruction || "") ||
+                    selectedAvailableInstructions.length !== 1
+                  }
+                  style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                  title="Replace the selected temporary entry's ID with the selected available instruction's ID (keeps local title)"
+                >
+                  Assign ID
+                </button>
               </div>
 
               <div style={{ flex: 1 }}>
@@ -835,34 +882,6 @@ function EditMissionForm({
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (!selectedMissionInstruction || !selectedAvailableInstructions.length) return;
-                        const isTemp = /^T\d+$/.test(selectedMissionInstruction);
-                        if (!isTemp) return;
-                        const replacementId = selectedAvailableInstructions[0];
-                        setSelectedInstructions(
-                          selectedInstructions.map(([id, title]) =>
-                            id === selectedMissionInstruction
-                              ? ([replacementId, title] as [string, string?])
-                              : ([id, title] as [string, string?]),
-                          ),
-                        );
-                        setSelectedMissionInstruction(replacementId);
-                        setSelectedAvailableInstructions([]);
-                      }}
-                      className={styles.addButton}
-                      disabled={
-                        !selectedMissionInstruction ||
-                        !/^T\d+$/.test(selectedMissionInstruction || "") ||
-                        selectedAvailableInstructions.length !== 1
-                      }
-                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                      title="Replace the selected temporary entry's ID with the selected available instruction's ID (keeps local title)"
-                    >
-                      Assign ID
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => setShowNewInstructionDialog(true)}
                       className={styles.addButton}
                       disabled={!selectedMissionId || !session}
@@ -874,7 +893,9 @@ function EditMissionForm({
                       type="button"
                       onClick={() => {
                         if (selectedMissionInstruction) {
-                          const instructionData = selectedInstructions.find(([id]) => id === selectedMissionInstruction);
+                          const instructionData = selectedInstructions.find(
+                            ([id]) => id === selectedMissionInstruction,
+                          );
                           const currentAltTitle = instructionData?.[1] || "";
                           setRenameInstructionId(selectedMissionInstruction);
                           setAlternativeTitle(currentAltTitle);
@@ -929,7 +950,10 @@ function EditMissionForm({
                           {isComment ? (
                             <span style={{ color: "var(--color-accent-11)", fontStyle: "italic" }}>💬 Comment:</span>
                           ) : isTemp ? (
-                            <span style={{ color: "var(--color-accent-10)", fontWeight: 600 }} title="Temporary — not yet saved to DB">
+                            <span
+                              style={{ color: "var(--color-accent-10)", fontWeight: 600 }}
+                              title="Temporary — not yet saved to DB"
+                            >
                               {instructionId}
                             </span>
                           ) : (
@@ -959,7 +983,10 @@ function EditMissionForm({
             </div>
           </div>
           <div className={styles.formSection}>
-            <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}>
+            <h2
+              className={styles.sectionTitle}
+              style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}
+            >
               Mission Details
             </h2>
             <div className={styles.formGrid}>
@@ -1184,7 +1211,10 @@ function EditMissionForm({
               )}
             </div>
 
-            <h2 className={styles.previewTitle} style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}>
+            <h2
+              className={styles.previewTitle}
+              style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}
+            >
               Updated Code
             </h2>
             <textarea
@@ -1199,8 +1229,7 @@ function EditMissionForm({
                   setStatus(parsed.status || "For all");
                   setIsExample(parsed.isExample ?? false);
                   setSelectedInstructions(parsed.instructions || []);
-                } catch (err) {
-                }
+                } catch (err) {}
               }}
               spellCheck={false}
               style={{
@@ -1414,8 +1443,16 @@ function EditMissionForm({
                 ✕
               </button>
             </div>
-            <p style={{ padding: "var(--space-3) var(--space-4) 0", margin: 0, fontSize: "0.875rem", color: "var(--color-neutral-10)" }}>
-              A temporary placeholder (e.g. <strong>T1</strong>) will be added to the mission list. No instruction is created in the database yet.
+            <p
+              style={{
+                padding: "var(--space-3) var(--space-4) 0",
+                margin: 0,
+                fontSize: "0.875rem",
+                color: "var(--color-neutral-10)",
+              }}
+            >
+              A temporary placeholder (e.g. <strong>T1</strong>) will be added to the mission list. No instruction is
+              created in the database yet.
             </p>
             <div className={styles.formGroup} style={{ marginTop: "var(--space-3)", padding: "0 var(--space-4)" }}>
               <label className={styles.label}>Instruction Title</label>
@@ -1426,13 +1463,25 @@ function EditMissionForm({
                 onChange={(e) => setNewInstructionTitle(e.target.value)}
                 placeholder="Enter instruction title..."
                 autoFocus
-                onKeyDown={(e) => { if (e.key === "Enter" && newInstructionTitle.trim()) handleAddTempInstruction(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newInstructionTitle.trim()) handleAddTempInstruction();
+                }}
               />
             </div>
-            <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)", padding: "0 var(--space-4) var(--space-4)" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: "var(--space-2)",
+                marginTop: "var(--space-4)",
+                padding: "0 var(--space-4) var(--space-4)",
+              }}
+            >
               <button
                 type="button"
-                onClick={() => { setShowNewInstructionDialog(false); setNewInstructionTitle(""); }}
+                onClick={() => {
+                  setShowNewInstructionDialog(false);
+                  setNewInstructionTitle("");
+                }}
                 className={styles.removeButton}
                 style={{ flex: 1 }}
               >
