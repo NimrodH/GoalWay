@@ -1,5 +1,6 @@
 import classNames from "classnames";
 import { FileText, Link2, Image, Video } from "lucide-react";
+import Markdown from "react-markdown";
 import styles from "./instruction-list-item.module.css";
 
 interface InstructionContent {
@@ -94,10 +95,18 @@ export function InstructionListItem({
             {orderNumber}
           </div>
         )}
-        <h3 className={styles.title}>{title}</h3>
+        <div className={styles.title}>
+          <div className={styles.titleMarkdown}>
+            <Markdown>{title}</Markdown>
+          </div>
+        </div>
         {indicator}
       </div>
-      {description && <p className={styles.description}>{description}</p>}
+      {description && (
+        <div className={styles.description}>
+          <Markdown>{description}</Markdown>
+        </div>
+      )}
     </div>
   );
 }

@@ -57,6 +57,27 @@
   color: var(--color-neutral-12);
   margin: 0;
   flex: 1;
+  min-width: 0;
+}
+
+/* Markdown reset inside title — strips block-level spacing so it renders inline-like */
+.titleMarkdown p,
+.titleMarkdown h1,
+.titleMarkdown h2,
+.titleMarkdown h3 {
+  margin: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.titleMarkdown strong { font-weight: 700; }
+.titleMarkdown em { font-style: italic; }
+.titleMarkdown code {
+  font-family: var(--font-code);
+  font-size: 0.9em;
+  background: var(--color-neutral-3);
+  padding: 0.1em 0.3em;
+  border-radius: var(--radius-1);
 }
 
 .item.selected .title {
@@ -80,7 +101,23 @@
   color: var(--color-neutral-11);
   margin: var(--space-1) 0 0 0;
   line-height: var(--font-lineheight-2);
-  white-space: pre-line;
+}
+
+/* Markdown reset inside description */
+.description p { margin: 0 0 var(--space-1) 0; }
+.description p:last-child { margin-bottom: 0; }
+.description strong { font-weight: 700; }
+.description em { font-style: italic; }
+.description ul, .description ol {
+  padding-left: var(--space-4);
+  margin: var(--space-1) 0;
+}
+.description code {
+  font-family: var(--font-code);
+  font-size: 0.9em;
+  background: var(--color-neutral-3);
+  padding: 0.1em 0.3em;
+  border-radius: var(--radius-1);
 }
 
 .item.selected .description {

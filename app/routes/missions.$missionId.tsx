@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { data, redirect, Link, useNavigate, useLocation, useSearchParams } from "react-router";
+import Markdown from "react-markdown";
 import type { Route } from "./+types/missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
@@ -292,7 +293,9 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
           )}
           <h1 className={styles.sectionHeader}>{mission.title}</h1>
         </div>
-        <p className={styles.missionDescription}>{mission.description}</p>
+        <div className={styles.missionDescription}>
+          <Markdown>{mission.description}</Markdown>
+        </div>
         <div className={styles.instructionList}>
           {missionInstructions.map((instruction, index) => {
             const isComment = instruction.type === "comment";
@@ -321,8 +324,10 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                       opacity: 0.8,
                     }}
                   >
-                    <span style={{ marginRight: "var(--space-2)" }}>💬</span>
-                    <span>{instruction.title}</span>
+                    <span style={{ marginRight: "var(--space-2)", flexShrink: 0 }}>💬</span>
+                    <div className={styles.commentMarkdown}>
+                      <Markdown>{instruction.title}</Markdown>
+                    </div>
                   </div>
                 </div>
               );

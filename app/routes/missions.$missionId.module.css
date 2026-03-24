@@ -54,7 +54,24 @@
   background: var(--color-neutral-2);
   border-left: 3px solid var(--color-accent-9);
   border-radius: var(--radius-2);
-  white-space: pre-line;
+}
+
+/* Markdown reset inside mission description */
+.missionDescription p { margin: 0 0 var(--space-2) 0; }
+.missionDescription p:last-child { margin-bottom: 0; }
+.missionDescription strong { font-weight: 700; }
+.missionDescription em { font-style: italic; }
+.missionDescription ul, .missionDescription ol {
+  padding-left: var(--space-5);
+  margin: var(--space-2) 0;
+}
+.missionDescription li { margin-bottom: var(--space-1); }
+.missionDescription code {
+  font-family: var(--font-code);
+  font-size: 0.9em;
+  background: var(--color-neutral-3);
+  padding: 0.1em 0.4em;
+  border-radius: var(--radius-1);
 }
 
 @media (max-width: 768px) {
@@ -124,4 +141,20 @@
 
 .li1 {
   margin-bottom: var(--space-4);
+}
+
+/* Comment Markdown — renders inline, strips block spacing */
+.commentMarkdown p {
+  margin: 0;
+  font-style: italic;
+  color: inherit;
+}
+.commentMarkdown strong { font-weight: 700; }
+.commentMarkdown em { font-style: italic; }
+.commentMarkdown code {
+  font-family: var(--font-code);
+  font-size: 0.9em;
+  background: var(--color-accent-3);
+  padding: 0.1em 0.3em;
+  border-radius: var(--radius-1);
 }
