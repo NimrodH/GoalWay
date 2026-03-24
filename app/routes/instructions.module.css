@@ -77,12 +77,46 @@
   margin: 0;
 }
 
+.missionTitle p,
+.missionTitle span {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+}
+
 .missionDescription {
   font-family: var(--font-body);
   font-size: 0.95rem;
   color: var(--color-neutral-11);
   line-height: 1.5;
   margin: 0;
+}
+
+.missionDescription p {
+  margin: 0 0 var(--space-2) 0;
+}
+
+.missionDescription p:last-child {
+  margin-bottom: 0;
+}
+
+.missionDescription ul,
+.missionDescription ol {
+  margin: 0 0 var(--space-2) 0;
+  padding-left: var(--space-4);
+}
+
+.missionDescription strong {
+  font-weight: 600;
+  color: var(--color-neutral-12);
+}
+
+.missionDescription code {
+  font-family: var(--font-code);
+  font-size: 0.85em;
+  background: var(--color-neutral-4);
+  padding: 1px 4px;
+  border-radius: var(--radius-1);
 }
 
 .missionFooter {
