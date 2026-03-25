@@ -136,6 +136,8 @@ function EditMissionForm({
   const [adminNotes, setAdminNotes] = useState<string[]>([]);
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [newNoteText, setNewNoteText] = useState("");
+  const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState("");
   const adminNotesFetcher = useFetcher<typeof action>();
   const createAndEditFetcher = useFetcher<typeof action>();
   const saveMissionAfterCreateFetcher = useFetcher<typeof action>();
@@ -416,6 +418,27 @@ function EditMissionForm({
     const updatedNotes = adminNotes.filter((_, i) => i !== index);
     setAdminNotes(updatedNotes);
     saveMissionAdminNotes(updatedNotes);
+  };
+
+  const handleStartEditNote = (index: number) => {
+    setEditingNoteIndex(index);
+    setEditingNoteText(adminNotes[index]);
+  };
+
+  const handleSaveEditedNote = () => {
+    if (editingNoteIndex === null) return;
+    const trimmed = editingNoteText.trim();
+    if (!trimmed) return;
+    const updatedNotes = adminNotes.map((n, i) => (i === editingNoteIndex ? trimmed : n));
+    setAdminNotes(updatedNotes);
+    setEditingNoteIndex(null);
+    setEditingNoteText("");
+    saveMissionAdminNotes(updatedNotes);
+  };
+
+  const handleCancelEditNote = () => {
+    setEditingNoteIndex(null);
+    setEditingNoteText("");
   };
 
   const saveMissionAdminNotes = (notes: string[]) => {
@@ -1183,8 +1206,8 @@ function EditMissionForm({
                         alignItems: "flex-start",
                         gap: "var(--space-2)",
                         padding: "var(--space-2) var(--space-3)",
-                        background: "var(--color-neutral-2)",
-                        border: "1px solid var(--color-neutral-6)",
+                        background: editingNoteIndex === idx ? "var(--color-accent-2)" : "var(--color-neutral-2)",
+                        border: editingNoteIndex === idx ? "1px solid var(--color-accent-7)" : "1px solid var(--color-neutral-6)",
                         borderRadius: "var(--radius-2)",
                       }}
                     >
@@ -1198,31 +1221,87 @@ function EditMissionForm({
                       >
                         ☐
                       </span>
-                      <span
-                        style={{
-                          flex: 1,
-                          fontFamily: "var(--font-body)",
-                          fontSize: "0.875rem",
-                          color: "var(--color-neutral-12)",
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {note}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveNote(idx)}
-                        className={styles.removeButton}
-                        style={{
-                          marginRight: 0,
-                          flexShrink: 0,
-                          fontSize: "0.75rem",
-                          padding: "var(--space-1) var(--space-2)",
-                        }}
-                        title="Remove note"
-                      >
-                        ✕
-                      </button>
+                      {editingNoteIndex === idx ? (
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                          <textarea
+                            className={styles.textarea}
+                            value={editingNoteText}
+                            onChange={(e) => setEditingNoteText(e.target.value)}
+                            style={{ minHeight: "60px", fontSize: "0.875rem", marginBottom: 0 }}
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                                e.preventDefault();
+                                handleSaveEditedNote();
+                              } else if (e.key === "Escape") {
+                                handleCancelEditNote();
+                              }
+                            }}
+                          />
+                          <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end" }}>
+                            <button
+                              type="button"
+                              onClick={handleCancelEditNote}
+                              className={styles.addButton}
+                              style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSaveEditedNote}
+                              className={styles.submitButton}
+                              disabled={!editingNoteText.trim()}
+                              style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <span
+                          style={{
+                            flex: 1,
+                            fontFamily: "var(--font-body)",
+                            fontSize: "0.875rem",
+                            color: "var(--color-neutral-12)",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {note}
+                        </span>
+                      )}
+                      {editingNoteIndex !== idx && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditNote(idx)}
+                            className={styles.addButton}
+                            style={{
+                              flexShrink: 0,
+                              fontSize: "0.75rem",
+                              padding: "var(--space-1) var(--space-2)",
+                            }}
+                            title="Edit note"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveNote(idx)}
+                            className={styles.removeButton}
+                            style={{
+                              marginRight: 0,
+                              flexShrink: 0,
+                              fontSize: "0.75rem",
+                              padding: "var(--space-1) var(--space-2)",
+                            }}
+                            title="Remove note"
+                          >
+                            ✕
+                          </button>
+                        </>
+                      )}
                     </li>
                   ))}
                 </ul>
