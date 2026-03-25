@@ -354,7 +354,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                       onClick={() => navigate(`/admin/instructions?instructionId=${instruction.id}`)}
                       title={`Edit instruction ${instruction.id}`}
                     >
-                      ✏️ Edit
+                      ✏️ Edit ^
                     </button>
                   )}
                   {instruction.type === "link" && "missionId" in instruction && (

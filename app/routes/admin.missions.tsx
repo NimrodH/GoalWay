@@ -789,21 +789,7 @@ function EditMissionForm({
                   style={{ width: "80px" }}
                   disabled={selectedAvailableInstructions.length === 0}
                 >
-                  →
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (selectedMissionInstruction) {
-                      setSelectedInstructions(selectedInstructions.filter(([id]) => id !== selectedMissionInstruction));
-                      setSelectedMissionInstruction(null);
-                    }
-                  }}
-                  className={styles.addButton}
-                  style={{ width: "80px" }}
-                  disabled={!selectedMissionInstruction}
-                >
-                  ←
+                 Add →
                 </button>
                 <button
                   type="button"
@@ -831,7 +817,48 @@ function EditMissionForm({
                   style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
                   title="Replace the selected temporary entry's ID with the selected available instruction's ID (keeps local title)"
                 >
-                  Assign ID
+                  Link →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedMissionInstruction) {
+                      setSelectedInstructions(selectedInstructions.filter(([id]) => id !== selectedMissionInstruction));
+                      setSelectedMissionInstruction(null);
+                    }
+                  }}
+                  className={styles.addButton}
+                  style={{ width: "80px" }}
+                  disabled={!selectedMissionInstruction}
+                >
+                  ← Del
+                </button>
+                <button
+                  type="button"
+                  onClick={moveInstructionUp}
+                  className={styles.addButton}
+                  disabled={
+                    !selectedMissionInstruction ||
+                    selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) === 0
+                  }
+                  title="Move selected instruction up"
+                  style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                >
+                  ↑ Up
+                </button>
+                <button
+                  type="button"
+                  onClick={moveInstructionDown}
+                  className={styles.addButton}
+                  disabled={
+                    !selectedMissionInstruction ||
+                    selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) ===
+                      selectedInstructions.length - 1
+                  }
+                  title="Move selected instruction down"
+                  style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                >
+                  ↓ Down
                 </button>
               </div>
 
@@ -845,43 +872,25 @@ function EditMissionForm({
                   }}
                 >
                   <h3 style={{ fontSize: "0.875rem", fontWeight: 600 }}>Mission Instructions</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewInstructionDialog(true)}
+                    className={styles.addButton}
+                    disabled={!selectedMissionId || !session}
+                    style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                  >
+                    + New
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCommentDialog(true)}
+                    className={styles.addButton}
+                    disabled={!selectedMissionId || !session}
+                    style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                  >
+                    💬 Comment
+                  </button>
                   <div style={{ display: "flex", gap: "var(--space-2)" }}>
-                    <button
-                      type="button"
-                      onClick={() => setShowCommentDialog(true)}
-                      className={styles.addButton}
-                      disabled={!selectedMissionId || !session}
-                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                    >
-                      💬 Comment
-                    </button>
-                    <button
-                      type="button"
-                      onClick={moveInstructionUp}
-                      className={styles.addButton}
-                      disabled={
-                        !selectedMissionInstruction ||
-                        selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) === 0
-                      }
-                      title="Move selected instruction up"
-                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                    >
-                      ↑ Up
-                    </button>
-                    <button
-                      type="button"
-                      onClick={moveInstructionDown}
-                      className={styles.addButton}
-                      disabled={
-                        !selectedMissionInstruction ||
-                        selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) ===
-                          selectedInstructions.length - 1
-                      }
-                      title="Move selected instruction down"
-                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                    >
-                      ↓ Down
-                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -903,15 +912,6 @@ function EditMissionForm({
                       {createAndEditFetcher.state !== "idle" && pendingTempEdit?.tempId === selectedMissionInstruction
                         ? "Creating..."
                         : "Edit"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowNewInstructionDialog(true)}
-                      className={styles.addButton}
-                      disabled={!selectedMissionId || !session}
-                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                    >
-                      + New
                     </button>
                     <button
                       type="button"
@@ -1207,7 +1207,10 @@ function EditMissionForm({
                         gap: "var(--space-2)",
                         padding: "var(--space-2) var(--space-3)",
                         background: editingNoteIndex === idx ? "var(--color-accent-2)" : "var(--color-neutral-2)",
-                        border: editingNoteIndex === idx ? "1px solid var(--color-accent-7)" : "1px solid var(--color-neutral-6)",
+                        border:
+                          editingNoteIndex === idx
+                            ? "1px solid var(--color-accent-7)"
+                            : "1px solid var(--color-neutral-6)",
                         borderRadius: "var(--radius-2)",
                       }}
                     >
