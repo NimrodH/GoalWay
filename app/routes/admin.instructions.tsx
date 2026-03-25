@@ -459,6 +459,10 @@ function ExplanationContentItem({
   onRemove,
   isSelected,
   onSelect,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
   instructions,
   instructionsEn,
   instructionsHe,
@@ -472,6 +476,10 @@ function ExplanationContentItem({
   onRemove: (index: number) => void;
   isSelected: boolean;
   onSelect: (index: number) => void;
+  onMoveUp: (index: number) => void;
+  onMoveDown: (index: number) => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
   instructions: Instruction[];
   instructionsEn: Instruction[];
   instructionsHe: Instruction[];
@@ -677,9 +685,31 @@ function ExplanationContentItem({
           />
           <span className={styles.contentItemType}>{item.type}</span>
         </div>
-        <button className={styles.removeButton} onClick={() => onRemove(index)}>
-          Remove
-        </button>
+        <div style={{ display: "flex", gap: "var(--space-1)", alignItems: "center" }}>
+          <button
+            type="button"
+            className={styles.addButton}
+            onClick={() => onMoveUp(index)}
+            disabled={!canMoveUp}
+            title="Move block up"
+            style={{ padding: "var(--space-1) var(--space-2)", fontSize: "0.875rem", lineHeight: 1 }}
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            className={styles.addButton}
+            onClick={() => onMoveDown(index)}
+            disabled={!canMoveDown}
+            title="Move block down"
+            style={{ padding: "var(--space-1) var(--space-2)", fontSize: "0.875rem", lineHeight: 1 }}
+          >
+            ↓
+          </button>
+          <button className={styles.removeButton} onClick={() => onRemove(index)}>
+            Remove
+          </button>
+        </div>
       </div>
 
       {item.type === "text" ? (
@@ -1129,38 +1159,28 @@ function EditInstructionForm({
     }
   };
 
-  const moveContentUp = () => {
-    if (selectedContentIndex === null || selectedContentIndex === 0) return;
+  const moveContentUp = (idx: number) => {
+    if (idx === 0) return;
     const updated = [...explanation];
-    [updated[selectedContentIndex - 1], updated[selectedContentIndex]] = [
-      updated[selectedContentIndex],
-      updated[selectedContentIndex - 1],
-    ];
+    [updated[idx - 1], updated[idx]] = [updated[idx], updated[idx - 1]];
     setExplanation(updated);
     const updatedFiles = [...explanationFiles];
-    [updatedFiles[selectedContentIndex - 1], updatedFiles[selectedContentIndex]] = [
-      updatedFiles[selectedContentIndex],
-      updatedFiles[selectedContentIndex - 1],
-    ];
+    [updatedFiles[idx - 1], updatedFiles[idx]] = [updatedFiles[idx], updatedFiles[idx - 1]];
     setExplanationFiles(updatedFiles);
-    setSelectedContentIndex(selectedContentIndex - 1);
+    if (selectedContentIndex === idx) setSelectedContentIndex(idx - 1);
+    else if (selectedContentIndex === idx - 1) setSelectedContentIndex(idx);
   };
 
-  const moveContentDown = () => {
-    if (selectedContentIndex === null || selectedContentIndex >= explanation.length - 1) return;
+  const moveContentDown = (idx: number) => {
+    if (idx >= explanation.length - 1) return;
     const updated = [...explanation];
-    [updated[selectedContentIndex], updated[selectedContentIndex + 1]] = [
-      updated[selectedContentIndex + 1],
-      updated[selectedContentIndex],
-    ];
+    [updated[idx], updated[idx + 1]] = [updated[idx + 1], updated[idx]];
     setExplanation(updated);
     const updatedFiles = [...explanationFiles];
-    [updatedFiles[selectedContentIndex], updatedFiles[selectedContentIndex + 1]] = [
-      updatedFiles[selectedContentIndex + 1],
-      updatedFiles[selectedContentIndex],
-    ];
+    [updatedFiles[idx], updatedFiles[idx + 1]] = [updatedFiles[idx + 1], updatedFiles[idx]];
     setExplanationFiles(updatedFiles);
-    setSelectedContentIndex(selectedContentIndex + 1);
+    if (selectedContentIndex === idx) setSelectedContentIndex(idx + 1);
+    else if (selectedContentIndex === idx + 1) setSelectedContentIndex(idx);
   };
 
   /** Auto-upload pending images then submit via fetcher */
@@ -1566,41 +1586,12 @@ function EditInstructionForm({
         <>
           {type === "default" && (
             <div className={styles.formSection}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "var(--space-3)",
-                }}
+              <h2
+                className={styles.sectionTitle}
+                style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}
               >
-                <h2
-                  className={styles.sectionTitle}
-                  style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)", marginBottom: 0 }}
-                >
-                  Explanation Content
-                </h2>
-                <div style={{ display: "flex", gap: "var(--space-2)" }}>
-                  <button
-                    type="button"
-                    onClick={moveContentUp}
-                    className={styles.addButton}
-                    disabled={selectedContentIndex === null || selectedContentIndex === 0}
-                    title="Move selected content up"
-                  >
-                    ↑ Up
-                  </button>
-                  <button
-                    type="button"
-                    onClick={moveContentDown}
-                    className={styles.addButton}
-                    disabled={selectedContentIndex === null || selectedContentIndex >= explanation.length - 1}
-                    title="Move selected content down"
-                  >
-                    ↓ Down
-                  </button>
-                </div>
-              </div>
+                Explanation Content
+              </h2>
 
               {explanation.map((item, index) => (
                 <ExplanationContentItem
@@ -1611,6 +1602,10 @@ function EditInstructionForm({
                   onRemove={removeContent}
                   isSelected={selectedContentIndex === index}
                   onSelect={setSelectedContentIndex}
+                  onMoveUp={moveContentUp}
+                  onMoveDown={moveContentDown}
+                  canMoveUp={index > 0}
+                  canMoveDown={index < explanation.length - 1}
                   instructions={instructions}
                   instructionsEn={instructionsEn}
                   instructionsHe={instructionsHe}
