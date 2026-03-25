@@ -348,6 +348,15 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                     orderNumber={orderNumber}
                     isCompleted={completedInstructions.has(instruction.id)}
                   />
+                  {isPreview && (
+                    <button
+                      className={styles.editInstructionButton}
+                      onClick={() => navigate(`/admin/instructions?instructionId=${instruction.id}`)}
+                      title={`Edit instruction ${instruction.id}`}
+                    >
+                      ✏️ Edit
+                    </button>
+                  )}
                   {instruction.type === "link" && "missionId" in instruction && (
                     <div style={{ marginLeft: "1rem", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
                       {isLoading ? "Loading..." : isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
