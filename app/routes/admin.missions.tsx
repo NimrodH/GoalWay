@@ -597,7 +597,7 @@ function EditMissionForm({
       />,
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMissionId, id, title, isExample, language, session]);
+  }, [selectedMissionId, id, title, description, status, isExample, selectedInstructions, language, session]);
 
   const handleTranslateAndSwitch = async () => {
     if (!title || !description) {
