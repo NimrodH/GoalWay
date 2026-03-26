@@ -150,6 +150,8 @@ function EditMissionForm({
   const [jsonSaveError, setJsonSaveError] = useState<string | null>(null);
   const jsonFetcher = useFetcher<typeof action>();
   const duplicateMissionFetcher = useFetcher<typeof action>();
+  const [codeEditorValue, setCodeEditorValue] = useState("");
+  const [codeEditorError, setCodeEditorError] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedMissionId) {
@@ -312,6 +314,30 @@ function EditMissionForm({
     };
 
     return JSON.stringify(mission, null, 2);
+  };
+
+  // Sync the code editor draft whenever the form state changes from outside
+  // (mission load, instruction list edits, field changes) — but NOT when the
+  // user is actively typing in the editor (codeEditorValue already diverges).
+  useEffect(() => {
+    setCodeEditorValue(generateCode());
+    setCodeEditorError(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, title, description, status, isExample, selectedInstructions, selectedMissionId]);
+
+  const handleApplyCodeEditor = () => {
+    try {
+      const parsed = JSON.parse(codeEditorValue);
+      setId(parsed.id || "");
+      setTitle(parsed.title || "");
+      setDescription(parsed.description || "");
+      setStatus(parsed.status || "For all");
+      setIsExample(parsed.isExample ?? false);
+      setSelectedInstructions(parsed.instructions || []);
+      setCodeEditorError(null);
+    } catch {
+      setCodeEditorError("Invalid JSON — fix syntax errors before applying");
+    }
   };
 
   useEffect(() => {
@@ -1417,25 +1443,40 @@ function EditMissionForm({
               )}
             </div>
 
-            <h2
-              className={styles.previewTitle}
-              style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)" }}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "var(--space-2)",
+              }}
             >
-              Updated Code
-            </h2>
+              <h2
+                className={styles.previewTitle}
+                style={{ color: hasUnsavedChangesMission ? "red" : "var(--color-neutral-12)", margin: 0 }}
+              >
+                Updated Code
+              </h2>
+              <button
+                type="button"
+                onClick={handleApplyCodeEditor}
+                className={styles.submitButton}
+                style={{ fontSize: "0.8125rem", padding: "var(--space-1) var(--space-3)" }}
+              >
+                Apply JSON
+              </button>
+            </div>
+            {codeEditorError && (
+              <p style={{ margin: "0 0 var(--space-2)", fontSize: "0.8125rem", color: "var(--color-error-11)" }}>
+                {codeEditorError}
+              </p>
+            )}
             <textarea
               className={styles.codeEditor}
-              value={generateCode()}
+              value={codeEditorValue}
               onChange={(e) => {
-                try {
-                  const parsed = JSON.parse(e.target.value);
-                  setId(parsed.id || "");
-                  setTitle(parsed.title || "");
-                  setDescription(parsed.description || "");
-                  setStatus(parsed.status || "For all");
-                  setIsExample(parsed.isExample ?? false);
-                  setSelectedInstructions(parsed.instructions || []);
-                } catch (err) {}
+                setCodeEditorValue(e.target.value);
+                setCodeEditorError(null);
               }}
               spellCheck={false}
               style={{
@@ -1444,7 +1485,9 @@ function EditMissionForm({
                 fontFamily: "monospace",
                 fontSize: "0.875rem",
                 padding: "var(--space-3)",
-                border: "1px solid var(--color-neutral-6)",
+                border: codeEditorError
+                  ? "1px solid var(--color-error-8)"
+                  : "1px solid var(--color-neutral-6)",
                 borderRadius: "var(--radius-2)",
                 backgroundColor: "var(--color-neutral-2)",
                 color: "var(--color-neutral-12)",
