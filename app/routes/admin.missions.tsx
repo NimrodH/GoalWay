@@ -1611,6 +1611,14 @@ function EditMissionForm({
           >
             <div className={styles.dialogHeader}>
               <h2 className={styles.dialogTitle}>JSON — Instruction {jsonDialogInstructionId}</h2>
+              <button
+                type="button"
+                onClick={handleSaveJson}
+                className={styles.submitButton}
+                disabled={isJsonSaving || !session}
+              >
+                {isJsonSaving ? "Saving..." : "Save to Supabase"}
+              </button>
               <button className={styles.dialogClose} onClick={() => setShowJsonDialog(false)}>
                 ✕
               </button>
@@ -1650,23 +1658,7 @@ function EditMissionForm({
                   Error: {jsonFetcher.data.error}
                 </p>
               )}
-              <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end" }}>
-                <button
-                  type="button"
-                  onClick={() => setShowJsonDialog(false)}
-                  className={styles.removeButton}
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveJson}
-                  className={styles.submitButton}
-                  disabled={isJsonSaving || !session}
-                >
-                  {isJsonSaving ? "Saving..." : "Save to Supabase"}
-                </button>
-              </div>
+              <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end" }}></div>
             </div>
           </div>
         </div>
