@@ -144,6 +144,11 @@ function EditMissionForm({
   const saveMissionAfterCreateFetcher = useFetcher<typeof action>();
   const [pendingTempEdit, setPendingTempEdit] = useState<{ tempId: string; title: string } | null>(null);
   const [pendingNavigateToInstructionId, setPendingNavigateToInstructionId] = useState<string | null>(null);
+  const [showJsonDialog, setShowJsonDialog] = useState(false);
+  const [jsonDialogInstructionId, setJsonDialogInstructionId] = useState<string | null>(null);
+  const [jsonEditorValue, setJsonEditorValue] = useState("");
+  const [jsonSaveError, setJsonSaveError] = useState<string | null>(null);
+  const jsonFetcher = useFetcher<typeof action>();
 
   useEffect(() => {
     if (selectedMissionId) {
@@ -594,6 +599,47 @@ function EditMissionForm({
 
   const hasUnsavedChanges = selectedMissionId && originalCode !== "" && generateCode() !== originalCode;
 
+  const handleOpenJsonDialog = () => {
+    if (!selectedMissionInstruction) {
+      alert("Please select an instruction from the list using the radio button first");
+      return;
+    }
+    const isComment = selectedMissionInstruction.startsWith("comment-") || selectedMissionInstruction === "0";
+    const isTemp = /^T\d+$/.test(selectedMissionInstruction);
+    if (isComment || isTemp) {
+      alert("JSON editing is only available for real saved instructions");
+      return;
+    }
+    const allInstructions = language === "he" ? instructionsHe : instructionsEn;
+    const instruction = allInstructions.find((i) => i.id === selectedMissionInstruction);
+    const jsonValue = instruction ? JSON.stringify(instruction, null, 2) : `{ "id": "${selectedMissionInstruction}" }`;
+    setJsonDialogInstructionId(selectedMissionInstruction);
+    setJsonEditorValue(jsonValue);
+    setJsonSaveError(null);
+    setShowJsonDialog(true);
+  };
+
+  const handleSaveJson = () => {
+    if (!jsonDialogInstructionId || !session) return;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(jsonEditorValue);
+    } catch {
+      setJsonSaveError("Invalid JSON — please fix syntax errors before saving");
+      return;
+    }
+    setJsonSaveError(null);
+    const formData = new FormData();
+    formData.append("actionType", "saveInstruction");
+    formData.append("id", jsonDialogInstructionId);
+    formData.append("dataEn", JSON.stringify(parsed));
+    formData.append("language", language);
+    formData.append("accessToken", session.access_token || "");
+    jsonFetcher.submit(formData, { method: "post" });
+  };
+
+  const isJsonSaving = jsonFetcher.state !== "idle";
+
   return (
     <div className={styles.div4}>
       <div className={styles.formSection}>
@@ -895,6 +941,21 @@ function EditMissionForm({
                       {createAndEditFetcher.state !== "idle" && pendingTempEdit?.tempId === selectedMissionInstruction
                         ? "Creating..."
                         : "Edit"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenJsonDialog}
+                      className={styles.addButton}
+                      disabled={
+                        !selectedMissionInstruction ||
+                        selectedMissionInstruction.startsWith("comment-") ||
+                        selectedMissionInstruction === "0" ||
+                        /^T\d+$/.test(selectedMissionInstruction || "")
+                      }
+                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                      title="View and edit the raw JSON for this instruction"
+                    >
+                      JSON
                     </button>
                     <button
                       type="button"
@@ -1534,6 +1595,76 @@ function EditMissionForm({
                   disabled={!commentText.trim()}
                 >
                   Add Comment
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showJsonDialog && (
+        <div className={styles.dialogOverlay} onClick={() => setShowJsonDialog(false)}>
+          <div
+            className={styles.dialogContent}
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "720px", width: "95vw" }}
+          >
+            <div className={styles.dialogHeader}>
+              <h2 className={styles.dialogTitle}>JSON — Instruction {jsonDialogInstructionId}</h2>
+              <button className={styles.dialogClose} onClick={() => setShowJsonDialog(false)}>
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: "var(--space-4)", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+              <textarea
+                value={jsonEditorValue}
+                onChange={(e) => {
+                  setJsonEditorValue(e.target.value);
+                  setJsonSaveError(null);
+                }}
+                spellCheck={false}
+                rows={20}
+                style={{
+                  width: "100%",
+                  fontFamily: "monospace",
+                  fontSize: "0.8125rem",
+                  padding: "var(--space-3)",
+                  border: jsonSaveError ? "1px solid var(--color-error-8)" : "1px solid var(--color-neutral-6)",
+                  borderRadius: "var(--radius-2)",
+                  backgroundColor: "var(--color-neutral-2)",
+                  color: "var(--color-neutral-12)",
+                  resize: "vertical",
+                  boxSizing: "border-box",
+                }}
+              />
+              {jsonSaveError && (
+                <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--color-error-11)" }}>{jsonSaveError}</p>
+              )}
+              {jsonFetcher.data?.success && (
+                <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--color-success-11)" }}>
+                  ✓ Saved successfully!
+                </p>
+              )}
+              {jsonFetcher.data?.error && (
+                <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--color-error-11)" }}>
+                  Error: {jsonFetcher.data.error}
+                </p>
+              )}
+              <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowJsonDialog(false)}
+                  className={styles.removeButton}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveJson}
+                  className={styles.submitButton}
+                  disabled={isJsonSaving || !session}
+                >
+                  {isJsonSaving ? "Saving..." : "Save to Supabase"}
                 </button>
               </div>
             </div>
