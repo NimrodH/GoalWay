@@ -18,7 +18,7 @@ export default function AdminMissionsPage() {
 
   return (
     <AdminLayout loaderData={loaderData} activeSection="missions">
-      {({ onChangesDetected, onNavigationRequest, clearActionData }) => (
+      {({ onChangesDetected, onNavigationRequest, clearActionData, onRegisterSaveButton }) => (
         <EditMissionForm
           actionData={actionData}
           clearActionData={clearActionData}
@@ -32,6 +32,7 @@ export default function AdminMissionsPage() {
           onChangesDetected={onChangesDetected}
           onNavigationRequest={onNavigationRequest}
           missionAdminNotesMap={loaderData.missionAdminNotesMap}
+          onRegisterSaveButton={onRegisterSaveButton}
         />
       )}
     </AdminLayout>
@@ -88,6 +89,7 @@ function EditMissionForm({
   onChangesDetected,
   onNavigationRequest,
   missionAdminNotesMap,
+  onRegisterSaveButton,
 }: {
   actionData?: {
     success: boolean;
@@ -108,6 +110,7 @@ function EditMissionForm({
   onChangesDetected: (hasChanges: boolean) => void;
   onNavigationRequest: (navigationFn: () => void) => void;
   missionAdminNotesMap: Record<string, string[]>;
+  onRegisterSaveButton: (node: React.ReactNode) => void;
 }) {
   const navigate = useNavigate();
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
@@ -576,6 +579,25 @@ function EditMissionForm({
   };
 
   const hasUnsavedChangesMission = selectedMissionId && originalCode !== "" && generateCode() !== originalCode;
+
+  // Register the Save to Database button in the sticky nav
+  useEffect(() => {
+    if (!selectedMissionId) {
+      onRegisterSaveButton(null);
+      return;
+    }
+    onRegisterSaveButton(
+      <AuthenticatedForm
+        actionType="saveMission"
+        id={id}
+        isExample={isExample}
+        data={generateCode()}
+        disabled={!id || !title}
+        language={language}
+      />
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMissionId, id, title, isExample, language, session]);
 
   const handleTranslateAndSwitch = async () => {
     if (!title || !description) {
@@ -1506,15 +1528,6 @@ function EditMissionForm({
                 {isTranslating ? "Translating..." : `Translate to ${language === "en" ? "Hebrew" : "English"} & Switch`}
               </button>
             </div>
-
-            <AuthenticatedForm
-              actionType="saveMission"
-              id={id}
-              isExample={isExample}
-              data={generateCode()}
-              disabled={!id || !title}
-              language={language}
-            />
 
             {actionData?.success && actionData.message && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
