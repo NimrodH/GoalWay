@@ -171,15 +171,16 @@ function EditMissionForm({
 
   useEffect(() => {
     const missionIdFromUrl = searchParams.get("missionId");
-    if (missionIdFromUrl && allMissionIds.includes(missionIdFromUrl) && selectedMissionId !== missionIdFromUrl) {
+    if (missionIdFromUrl && allMissionIds.includes(missionIdFromUrl)) {
       updateMissionFormFields(missionIdFromUrl);
-    } else if (!missionIdFromUrl && !selectedMissionId && allMissionIds.length > 0) {
+    } else if (!missionIdFromUrl && allMissionIds.length > 0) {
       const lastMissionId = localStorage.getItem("lastSelectedMissionId");
       if (lastMissionId && allMissionIds.includes(lastMissionId)) {
         updateMissionFormFields(lastMissionId);
       }
     }
-  }, [searchParams, allMissionIds, selectedMissionId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, allMissionIds]);
 
   useEffect(() => {
     const shouldScroll = localStorage.getItem("scrollToInstructions");
