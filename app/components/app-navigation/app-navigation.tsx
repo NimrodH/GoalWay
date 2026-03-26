@@ -5,7 +5,6 @@ interface AppNavigationProps {
   onNavigate?: (path: string) => boolean;
   adminTab?: string;
   pendingUsersCount?: number;
-  rightSlot?: React.ReactNode;
 }
 
 const ADMIN_PAGES = [
@@ -14,7 +13,7 @@ const ADMIN_PAGES = [
   { value: "users", legacyValue: "users", label: "Users", path: "/admin/users" },
 ] as const;
 
-export function AppNavigation({ onNavigate, adminTab, pendingUsersCount = 0, rightSlot }: AppNavigationProps = {}) {
+export function AppNavigation({ onNavigate, adminTab, pendingUsersCount = 0 }: AppNavigationProps = {}) {
   const location = useLocation();
   const isOnAdmin = location.pathname.startsWith("/admin");
 
@@ -79,8 +78,6 @@ export function AppNavigation({ onNavigate, adminTab, pendingUsersCount = 0, rig
           })}
         </div>
       )}
-
-      {rightSlot && <div className={styles.rightSlot}>{rightSlot}</div>}
     </nav>
   );
 }

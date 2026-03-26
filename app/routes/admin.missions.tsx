@@ -18,7 +18,7 @@ export default function AdminMissionsPage() {
 
   return (
     <AdminLayout loaderData={loaderData} activeSection="missions">
-      {({ onChangesDetected, onNavigationRequest, clearActionData, onRegisterSaveButton }) => (
+      {({ onChangesDetected, onNavigationRequest, clearActionData }) => (
         <EditMissionForm
           actionData={actionData}
           clearActionData={clearActionData}
@@ -32,7 +32,6 @@ export default function AdminMissionsPage() {
           onChangesDetected={onChangesDetected}
           onNavigationRequest={onNavigationRequest}
           missionAdminNotesMap={loaderData.missionAdminNotesMap}
-          onRegisterSaveButton={onRegisterSaveButton}
         />
       )}
     </AdminLayout>
@@ -57,7 +56,7 @@ function AuthenticatedForm({
   const { session } = useAuth();
 
   return (
-    <Form method="post" style={{ marginTop: "var(--space-4)" }} className={styles0.form}>
+    <Form method="post" style={{ marginTop: "var(--space-4)" }}>
       <input type="hidden" name="actionType" value={actionType} />
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="dataEn" value={data} />
@@ -89,7 +88,6 @@ function EditMissionForm({
   onChangesDetected,
   onNavigationRequest,
   missionAdminNotesMap,
-  onRegisterSaveButton,
 }: {
   actionData?: {
     success: boolean;
@@ -110,7 +108,6 @@ function EditMissionForm({
   onChangesDetected: (hasChanges: boolean) => void;
   onNavigationRequest: (navigationFn: () => void) => void;
   missionAdminNotesMap: Record<string, string[]>;
-  onRegisterSaveButton: (node: React.ReactNode) => void;
 }) {
   const navigate = useNavigate();
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
@@ -184,7 +181,7 @@ function EditMissionForm({
         updateMissionFormFields(lastMissionId);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, allMissionIds]);
 
   useEffect(() => {
@@ -325,7 +322,7 @@ function EditMissionForm({
   useEffect(() => {
     setCodeEditorValue(generateCode());
     setCodeEditorError(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, title, description, status, isExample, selectedInstructions, selectedMissionId]);
 
   const handleApplyCodeEditor = () => {
@@ -579,25 +576,6 @@ function EditMissionForm({
   };
 
   const hasUnsavedChangesMission = selectedMissionId && originalCode !== "" && generateCode() !== originalCode;
-
-  // Register the Save to Database button in the sticky nav
-  useEffect(() => {
-    if (!selectedMissionId) {
-      onRegisterSaveButton(null);
-      return;
-    }
-    onRegisterSaveButton(
-      <AuthenticatedForm
-        actionType="saveMission"
-        id={id}
-        isExample={isExample}
-        data={generateCode()}
-        disabled={!id || !title}
-        language={language}
-      />,
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMissionId, id, title, description, status, isExample, selectedInstructions, language, session]);
 
   const handleTranslateAndSwitch = async () => {
     if (!title || !description) {
@@ -1507,7 +1485,9 @@ function EditMissionForm({
                 fontFamily: "monospace",
                 fontSize: "0.875rem",
                 padding: "var(--space-3)",
-                border: codeEditorError ? "1px solid var(--color-error-8)" : "1px solid var(--color-neutral-6)",
+                border: codeEditorError
+                  ? "1px solid var(--color-error-8)"
+                  : "1px solid var(--color-neutral-6)",
                 borderRadius: "var(--radius-2)",
                 backgroundColor: "var(--color-neutral-2)",
                 color: "var(--color-neutral-12)",
@@ -1526,6 +1506,15 @@ function EditMissionForm({
                 {isTranslating ? "Translating..." : `Translate to ${language === "en" ? "Hebrew" : "English"} & Switch`}
               </button>
             </div>
+
+            <AuthenticatedForm
+              actionType="saveMission"
+              id={id}
+              isExample={isExample}
+              data={generateCode()}
+              disabled={!id || !title}
+              language={language}
+            />
 
             {actionData?.success && actionData.message && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>

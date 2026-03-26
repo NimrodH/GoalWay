@@ -20,7 +20,7 @@ export default function AdminInstructionsPage() {
 
   return (
     <AdminLayout loaderData={loaderData} activeSection="instructions">
-      {({ onChangesDetected, onNavigationRequest, clearActionData, onRegisterSaveButton }) => (
+      {({ onChangesDetected, onNavigationRequest, clearActionData }) => (
         <EditInstructionForm
           actionData={actionData}
           clearActionData={clearActionData}
@@ -34,7 +34,6 @@ export default function AdminInstructionsPage() {
           onChangesDetected={onChangesDetected}
           onNavigationRequest={onNavigationRequest}
           adminNotesMap={loaderData.adminNotesMap}
-          onRegisterSaveButton={onRegisterSaveButton}
         />
       )}
     </AdminLayout>
@@ -814,7 +813,6 @@ function EditInstructionForm({
   onChangesDetected,
   onNavigationRequest,
   adminNotesMap,
-  onRegisterSaveButton,
 }: {
   actionData?: {
     success: boolean;
@@ -835,7 +833,6 @@ function EditInstructionForm({
   onChangesDetected: (hasChanges: boolean) => void;
   onNavigationRequest: (navigationFn: () => void) => void;
   adminNotesMap: Record<string, string[]>;
-  onRegisterSaveButton: (node: React.ReactNode) => void;
 }) {
   const [searchParams] = useSearchParams();
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
@@ -1334,30 +1331,6 @@ function EditInstructionForm({
 
   // Track if there are unsaved changes
   const hasUnsavedChanges = selectedInstructionId && originalCode !== "" && generateCode() !== originalCode;
-
-  // Register the Save to Database button in the sticky nav
-  useEffect(() => {
-    if (!selectedInstructionId) {
-      onRegisterSaveButton(null);
-      return;
-    }
-    const isSaving = isSavingWithUploads || saveFetcher.state !== "idle";
-    onRegisterSaveButton(
-      <button
-        type="button"
-        className={styles.submitButton}
-        disabled={!selectedInstructionId || !session || isSaving}
-        onClick={handleSaveWithUploads}
-        data-admin-primary-save="true"
-        style={{ fontSize: "0.875rem", padding: "var(--space-2) var(--space-4)" }}
-      >
-        {isSaving
-          ? "Saving..."
-          : `Save to Database (${language === "he" ? "Hebrew" : "English"})`}
-      </button>
-    );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedInstructionId, isSavingWithUploads, saveFetcher.state, session, language]);
 
   // Get missions that include the selected instruction
   const getMissionsForInstruction = (instructionId: string) => {
@@ -2019,6 +1992,22 @@ function EditInstructionForm({
                 {isTranslating ? "Translating..." : `Translate to ${language === "en" ? "Hebrew" : "English"} & Switch`}
               </button>
             </div>
+
+            {/* Custom save button that auto-uploads pending images first */}
+            <div style={{ marginTop: "var(--space-4)" }}>
+              <button
+                type="button"
+                className={styles.submitButton}
+                disabled={!selectedInstructionId || !session || isSavingWithUploads || saveFetcher.state !== "idle"}
+                onClick={handleSaveWithUploads}
+                data-admin-primary-save="true"
+              >
+                {isSavingWithUploads || saveFetcher.state !== "idle"
+                  ? "Saving..."
+                  : `Save to Database (${language === "he" ? "Hebrew" : "English"})`}
+              </button>
+            </div>
+            {/* Note: replaced by handleSaveWithUploads button above */}
 
             {((actionData?.success && actionData.message) || (saveFetcher.data?.success && saveFetcher.data.message)) && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>

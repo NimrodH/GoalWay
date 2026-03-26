@@ -62,7 +62,7 @@ export function InstructionListItem({
   const getIndicator = () => {
     // 1. Link type
     if (instructionType === "link") {
-      return <Link2 className={styles.indicator} size={24} />;
+      return <Link2 className={styles.indicator} size={14} />;
     }
     
     // 2. No explanation
@@ -76,11 +76,11 @@ export function InstructionListItem({
     
     if (hasImage || hasVideo) {
       const Icon = hasVideo ? Video : Image;
-      return <Icon className={styles.indicator} size={24} />;
+      return <Icon className={styles.indicator} size={14} />;
     }
     
     // 4. Text-only explanation
-    return <FileText className={styles.indicator} size={24} />;
+    return <FileText className={styles.indicator} size={14} />;
   };
   
   const indicator = getIndicator();

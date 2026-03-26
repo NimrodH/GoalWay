@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "~/hooks/use-auth";
 import { initSupabase } from "~/lib/supabase";
@@ -19,7 +19,6 @@ type AdminLayoutRenderProps = {
   onNavigationRequest: (navigationFn: () => void) => void;
   clearActionData: () => void;
   sessionAccessToken: string | null;
-  onRegisterSaveButton: (node: React.ReactNode) => void;
 };
 
 const SECTION_PATHS: Record<AdminSection, string> = {
@@ -40,7 +39,6 @@ export function AdminLayout<TLoaderData extends AdminLayoutLoaderData>({
   const navigate = useNavigate();
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
-  const [saveButtonNode, setSaveButtonNode] = useState<React.ReactNode>(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -209,7 +207,6 @@ export function AdminLayout<TLoaderData extends AdminLayoutLoaderData>({
         onNavigate={handleMenuNavigation}
         adminTab={activeSection}
         pendingUsersCount={loaderData.users.filter((u) => !u.organization_id && u.role !== "admin").length}
-        rightSlot={saveButtonNode}
       />
 
       <header className={styles.header}>
@@ -257,7 +254,6 @@ export function AdminLayout<TLoaderData extends AdminLayoutLoaderData>({
         onNavigationRequest,
         clearActionData,
         sessionAccessToken: session?.access_token ?? null,
-        onRegisterSaveButton: setSaveButtonNode,
       })}
 
       {pendingNavigation && (
