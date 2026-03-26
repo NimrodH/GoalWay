@@ -432,6 +432,81 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     }
   }
 
+  if (actionType === "duplicateMission") {
+    const accessToken = formData.get("accessToken") as string | null;
+    const sourceMissionId = formData.get("sourceMissionId") as string | null;
+
+    if (!accessToken) {
+      return { success: false, error: "Unauthorized: Authentication required" };
+    }
+    if (!sourceMissionId) {
+      return { success: false, error: "Source mission ID is required" };
+    }
+
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+        global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      });
+
+      // Fetch the source mission row in full
+      const { data: sourceRow, error: fetchError } = await supabase
+        .from("missions")
+        .select("data_en, data_he, is_example, admin_notes")
+        .eq("id", sourceMissionId)
+        .single();
+
+      if (fetchError || !sourceRow) {
+        return { success: false, error: fetchError?.message || "Source mission not found" };
+      }
+
+      // Generate next numeric ID
+      const { data: existingMissions, error: listError } = await supabase
+        .from("missions")
+        .select("id")
+        .order("created_at", { ascending: true });
+
+      if (listError) {
+        return { success: false, error: listError.message };
+      }
+
+      const numericIds = (existingMissions || [])
+        .map((m: any) => parseInt(m.id, 10))
+        .filter((n: number) => !isNaN(n));
+      const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+      const newId = String(maxId + 1);
+
+      // Deep-copy and update id inside data_en / data_he payloads
+      const newDataEn = sourceRow.data_en ? { ...sourceRow.data_en, id: newId } : null;
+      const newDataHe = sourceRow.data_he ? { ...sourceRow.data_he, id: newId } : null;
+
+      const insertData: any = {
+        id: newId,
+        data_en: newDataEn,
+        data_he: newDataHe,
+        is_example: sourceRow.is_example ?? false,
+        admin_notes: sourceRow.admin_notes ?? null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: insertError } = await supabase.from("missions").insert(insertData);
+
+      if (insertError) {
+        return { success: false, error: insertError.message };
+      }
+
+      return {
+        success: true,
+        message: `Mission duplicated as ${newId}!`,
+        newMissionId: newId,
+      };
+    } catch (error) {
+      console.error("Error in duplicateMission:", error);
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
   if (actionType === "createInstruction") {
     const newId = formData.get("newId") as string;
     const targetLanguage = formData.get("language") as string;

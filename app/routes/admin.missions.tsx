@@ -149,6 +149,7 @@ function EditMissionForm({
   const [jsonEditorValue, setJsonEditorValue] = useState("");
   const [jsonSaveError, setJsonSaveError] = useState<string | null>(null);
   const jsonFetcher = useFetcher<typeof action>();
+  const duplicateMissionFetcher = useFetcher<typeof action>();
 
   useEffect(() => {
     if (selectedMissionId) {
@@ -332,6 +333,16 @@ function EditMissionForm({
       }
     }
   }, [deleteMissionFetcher.data, deleteMissionFetcher.state, language]);
+
+  useEffect(() => {
+    if (duplicateMissionFetcher.data && duplicateMissionFetcher.state === "idle") {
+      if (duplicateMissionFetcher.data.success && duplicateMissionFetcher.data.newMissionId) {
+        window.location.href = `/admin/missions?lang=${language}&missionId=${duplicateMissionFetcher.data.newMissionId}`;
+      } else if (duplicateMissionFetcher.data.error) {
+        alert(`Failed to duplicate mission: ${duplicateMissionFetcher.data.error}`);
+      }
+    }
+  }, [duplicateMissionFetcher.data, duplicateMissionFetcher.state, language]);
 
   useEffect(() => {
     if (createAndEditFetcher.data && createAndEditFetcher.state === "idle" && pendingTempEdit) {
@@ -640,6 +651,23 @@ function EditMissionForm({
 
   const isJsonSaving = jsonFetcher.state !== "idle";
 
+  const handleDuplicateMission = () => {
+    if (!selectedMissionId) {
+      alert("Please select a mission first");
+      return;
+    }
+    const confirmDuplicate = window.confirm(
+      `Duplicate mission "${id} - ${title}"?\n\nA new mission will be created with the same data and a new ID.`,
+    );
+    if (!confirmDuplicate) return;
+
+    const formData = new FormData();
+    formData.append("actionType", "duplicateMission");
+    formData.append("sourceMissionId", selectedMissionId);
+    formData.append("accessToken", session?.access_token || "");
+    duplicateMissionFetcher.submit(formData, { method: "post" });
+  };
+
   return (
     <div className={styles.div4}>
       <div className={styles.formSection}>
@@ -665,6 +693,15 @@ function EditMissionForm({
               disabled={!selectedMissionId || deleteMissionFetcher.state !== "idle" || !session}
             >
               {deleteMissionFetcher.state !== "idle" ? "Deleting..." : "Delete"}
+            </button>
+            <button
+              type="button"
+              onClick={handleDuplicateMission}
+              className={styles.addButton}
+              disabled={!selectedMissionId || duplicateMissionFetcher.state !== "idle" || !session}
+              title="Create a copy of the selected mission with a new ID"
+            >
+              {duplicateMissionFetcher.state !== "idle" ? "Duplicating..." : "Duplicate Mission"}
             </button>
             <button
               type="button"
