@@ -214,7 +214,24 @@ function EditMissionForm({
     const nextTempNum = tempIds.length > 0 ? Math.max(...tempIds) + 1 : 1;
     const tempId = `T${nextTempNum}`;
 
-    setSelectedInstructions([...selectedInstructions, [tempId, newInstructionTitle.trim()]]);
+    let updatedInstructions: Array<[string, string?]>;
+    if (selectedMissionInstruction) {
+      const selectedIndex = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
+      if (selectedIndex !== -1) {
+        updatedInstructions = [
+          ...selectedInstructions.slice(0, selectedIndex),
+          [tempId, newInstructionTitle.trim()],
+          ...selectedInstructions.slice(selectedIndex),
+        ];
+      } else {
+        updatedInstructions = [...selectedInstructions, [tempId, newInstructionTitle.trim()]];
+      }
+    } else {
+      updatedInstructions = [...selectedInstructions, [tempId, newInstructionTitle.trim()]];
+    }
+
+    setSelectedInstructions(updatedInstructions);
+    setSelectedMissionInstruction(tempId);
     setShowNewInstructionDialog(false);
     setNewInstructionTitle("");
   };
