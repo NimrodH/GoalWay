@@ -7,6 +7,7 @@ import styles from "./admin.module.css";
 import { loader as adminLoader, action as adminAction } from "~/routes/admin";
 import type { Instruction } from "~/services/instructions.server";
 import type { Mission } from "~/services/missions.server";
+import styles0 from "./admin.missions.module.css";
 
 export const loader = adminLoader;
 export const action = adminAction;
@@ -789,7 +790,7 @@ function EditMissionForm({
                   style={{ width: "80px" }}
                   disabled={selectedAvailableInstructions.length === 0}
                 >
-                 Add →
+                  Add →
                 </button>
                 <button
                   type="button"
@@ -872,25 +873,7 @@ function EditMissionForm({
                   }}
                 >
                   <h3 style={{ fontSize: "0.875rem", fontWeight: 600 }}>Mission Instructions</h3>
-                  <button
-                    type="button"
-                    onClick={() => setShowNewInstructionDialog(true)}
-                    className={styles.addButton}
-                    disabled={!selectedMissionId || !session}
-                    style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                  >
-                    + New
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowCommentDialog(true)}
-                    className={styles.addButton}
-                    disabled={!selectedMissionId || !session}
-                    style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                  >
-                    💬 Comment
-                  </button>
-                  <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                  <div style={{ display: "flex", gap: "var(--space-0)" }} className={styles0.div1}>
                     <button
                       type="button"
                       onClick={() => {
@@ -912,6 +895,24 @@ function EditMissionForm({
                       {createAndEditFetcher.state !== "idle" && pendingTempEdit?.tempId === selectedMissionInstruction
                         ? "Creating..."
                         : "Edit"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewInstructionDialog(true)}
+                      className={styles.addButton}
+                      disabled={!selectedMissionId || !session}
+                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                    >
+                      + New
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowCommentDialog(true)}
+                      className={styles.addButton}
+                      disabled={!selectedMissionId || !session}
+                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                    >
+                      💬 Comment
                     </button>
                     <button
                       type="button"
