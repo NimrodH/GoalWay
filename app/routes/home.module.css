@@ -230,3 +230,69 @@
   font-weight: 600;
   letter-spacing: 0.02em;
 }
+
+/* View toggle */
+.viewToggle {
+  display: flex;
+  gap: 2px;
+  background: var(--color-neutral-3);
+  border-radius: var(--radius-2);
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.viewToggleButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--radius-2);
+  background: transparent;
+  color: var(--color-neutral-9);
+  cursor: pointer;
+  transition: all 0.15s var(--ease-out);
+}
+
+.viewToggleButton:hover {
+  color: var(--color-neutral-11);
+  background: var(--color-neutral-4);
+}
+
+.viewToggleActive {
+  background: var(--color-accent-9);
+  color: var(--color-accent-contrast);
+}
+
+.viewToggleActive:hover {
+  background: var(--color-accent-10);
+  color: var(--color-accent-contrast);
+}
+
+/* List view */
+.missionsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-8);
+}
+
+.missionListItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-neutral-2);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.15s var(--ease-out);
+  cursor: pointer;
+}
+
+.missionListItem:hover {
+  background: var(--color-neutral-3);
+  border-color: var(--color-accent-7);
+}

@@ -2,7 +2,7 @@ import { Form, Link, redirect, useNavigate } from "react-router";
 import Markdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/home";
-import { BookOpen, HelpCircle, LogIn, LogOut, Star } from "lucide-react";
+import { BookOpen, HelpCircle, LogIn, LogOut, Star, LayoutGrid, List } from "lucide-react";
 import styles from "./instructions.module.css";
 import homeStyles from "./home.module.css";
 import { getAllMissions, getExampleMissions, getMissionsForOrganization } from "~/services/missions.server";
@@ -65,6 +65,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const { missions, isAnonymous, isPending, isAdmin: adminView, profile } = loaderData;
   const navigate = useNavigate();
   const [missionFilter, setMissionFilter] = useState("");
+  const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
 
   const filteredMissions = missions.filter((mission) => {
     if (!missionFilter.trim()) return true;
@@ -127,7 +128,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         {/* Admin badge */}
         {adminView && <div className={homeStyles.adminBanner}>👑 Admin view — showing all missions</div>}
 
-        <div style={{ marginBottom: "var(--space-4)", display: "flex", gap: "var(--space-2)" }}>
+        <div style={{ marginBottom: "var(--space-4)", display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
           <Link
             to="/help"
             style={{
@@ -186,11 +187,31 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           >
             Clear
           </button>
+          <div className={homeStyles.viewToggle}>
+            <button
+              className={`${homeStyles.viewToggleButton} ${viewMode === "cards" ? homeStyles.viewToggleActive : ""}`}
+              onClick={() => setViewMode("cards")}
+              title="Card view"
+            >
+              <LayoutGrid size={18} />
+            </button>
+            <button
+              className={`${homeStyles.viewToggleButton} ${viewMode === "list" ? homeStyles.viewToggleActive : ""}`}
+              onClick={() => setViewMode("list")}
+              title="List view"
+            >
+              <List size={18} />
+            </button>
+          </div>
         </div>
 
-        <div className={styles.missionsGrid}>
+        <div className={viewMode === "list" ? homeStyles.missionsList : styles.missionsGrid}>
           {filteredMissions.map((mission) => (
-            <Link key={mission.id} to={`/missions/${mission.id}`} className={styles.missionCard}>
+            <Link
+              key={mission.id}
+              to={`/missions/${mission.id}`}
+              className={viewMode === "list" ? homeStyles.missionListItem : styles.missionCard}
+            >
               <div className={styles.missionHeader}>
                 <BookOpen className={styles.missionIcon} />
                 <div className={styles.missionTitle}>
@@ -199,11 +220,13 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                   </Markdown>
                 </div>
               </div>
-              <div className={styles.missionDescription}>
-                <Markdown remarkPlugins={[remarkBreaks]} components={{ a: ({ children }) => <span>{children}</span> }}>
-                  {mission.description}
-                </Markdown>
-              </div>
+              {viewMode === "cards" && (
+                <div className={styles.missionDescription}>
+                  <Markdown remarkPlugins={[remarkBreaks]} components={{ a: ({ children }) => <span>{children}</span> }}>
+                    {mission.description}
+                  </Markdown>
+                </div>
+              )}
               <div className={styles.missionFooter}>
                 <span className={styles.instructionCount}>
                   {mission.instructions.length} {mission.instructions.length === 1 ? "instruction" : "instructions"}
