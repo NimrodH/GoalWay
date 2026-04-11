@@ -101,6 +101,43 @@
   border-color: var(--color-accent-8);
 }
 
+.viewToggle {
+  display: flex;
+  gap: 2px;
+  background: var(--color-neutral-3);
+  border-radius: var(--radius-2);
+  padding: 2px;
+}
+
+.viewToggleButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--radius-2);
+  background: transparent;
+  color: var(--color-neutral-9);
+  cursor: pointer;
+  transition: all 0.15s var(--ease-out);
+}
+
+.viewToggleButton:hover {
+  color: var(--color-neutral-11);
+  background: var(--color-neutral-4);
+}
+
+.viewToggleActive {
+  background: var(--color-accent-9);
+  color: var(--color-accent-contrast);
+}
+
+.viewToggleActive:hover {
+  background: var(--color-accent-10);
+  color: var(--color-accent-contrast);
+}
+
 .instructionList {
   display: flex;
   flex-direction: column;
@@ -108,6 +145,12 @@
   border-radius: var(--radius-3);
   padding: var(--space-4);
   box-shadow: var(--shadow-1);
+}
+
+.listModeItem {
+  padding: var(--space-2) var(--space-3);
+  border-width: 1px;
+  margin-bottom: var(--space-1);
 }
 
 .instructionItem {
