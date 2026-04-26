@@ -236,6 +236,51 @@ function EditMissionForm({
     setNewInstructionTitle("");
   };
 
+  const handleAddIf = () => {
+    const ifId = `if-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const defaultText = "IF";
+
+    let updatedInstructions: Array<[string, string?]>;
+    if (selectedMissionInstruction) {
+      const selectedIndex = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
+      if (selectedIndex !== -1) {
+        updatedInstructions = [
+          ...selectedInstructions.slice(0, selectedIndex + 1),
+          [ifId, defaultText],
+          ...selectedInstructions.slice(selectedIndex + 1),
+        ];
+      } else {
+        updatedInstructions = [...selectedInstructions, [ifId, defaultText]];
+      }
+    } else {
+      updatedInstructions = [...selectedInstructions, [ifId, defaultText]];
+    }
+    setSelectedInstructions(updatedInstructions);
+    setSelectedMissionInstruction(ifId);
+  };
+
+  const handleAddEndIf = () => {
+    const endIfId = `end-if-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    let updatedInstructions: Array<[string, string?]>;
+    if (selectedMissionInstruction) {
+      const selectedIndex = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
+      if (selectedIndex !== -1) {
+        updatedInstructions = [
+          ...selectedInstructions.slice(0, selectedIndex + 1),
+          [endIfId, "END-IF"],
+          ...selectedInstructions.slice(selectedIndex + 1),
+        ];
+      } else {
+        updatedInstructions = [...selectedInstructions, [endIfId, "END-IF"]];
+      }
+    } else {
+      updatedInstructions = [...selectedInstructions, [endIfId, "END-IF"]];
+    }
+    setSelectedInstructions(updatedInstructions);
+    setSelectedMissionInstruction(endIfId);
+  };
+
   const handleAddComment = () => {
     if (!commentText.trim()) {
       alert("Please enter a comment");
@@ -660,8 +705,10 @@ function EditMissionForm({
       return;
     }
     const isComment = selectedMissionInstruction.startsWith("comment-") || selectedMissionInstruction === "0";
+    const isIf = selectedMissionInstruction.startsWith("if-");
+    const isEndIf = selectedMissionInstruction.startsWith("end-if-");
     const isTemp = /^T\d+$/.test(selectedMissionInstruction);
-    if (isComment || isTemp) {
+    if (isComment || isIf || isEndIf || isTemp) {
       alert("JSON editing is only available for real saved instructions");
       return;
     }
@@ -1001,6 +1048,26 @@ function EditMissionForm({
                 >
                   ↓ Down
                 </button>
+                <button
+                  type="button"
+                  onClick={handleAddIf}
+                  className={styles.addButton}
+                  disabled={!selectedMissionId || !session}
+                  title="Insert an IF conditional block after the selected instruction"
+                  style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)", marginTop: "var(--space-2)" }}
+                >
+                  🔀 IF
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddEndIf}
+                  className={styles.addButton}
+                  disabled={!selectedMissionId || !session}
+                  title="Insert an END-IF marker after the selected instruction"
+                  style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                >
+                  🔁 END-IF
+                </button>
               </div>
 
               <div style={{ flex: 1 }}>
@@ -1024,7 +1091,12 @@ function EditMissionForm({
                         }
                       }}
                       className={styles.addButton}
-                      disabled={!selectedMissionInstruction || createAndEditFetcher.state !== "idle"}
+                      disabled={
+                        !selectedMissionInstruction ||
+                        createAndEditFetcher.state !== "idle" ||
+                        selectedMissionInstruction.startsWith("if-") ||
+                        selectedMissionInstruction.startsWith("end-if-")
+                      }
                       style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
                       title={
                         selectedMissionInstruction && /^T\d+$/.test(selectedMissionInstruction)
@@ -1043,6 +1115,8 @@ function EditMissionForm({
                       disabled={
                         !selectedMissionInstruction ||
                         selectedMissionInstruction.startsWith("comment-") ||
+                        selectedMissionInstruction.startsWith("if-") ||
+                        selectedMissionInstruction.startsWith("end-if-") ||
                         selectedMissionInstruction === "0" ||
                         /^T\d+$/.test(selectedMissionInstruction || "")
                       }
@@ -1103,12 +1177,14 @@ function EditMissionForm({
                 >
                   {selectedInstructions.map(([instructionId, customTitle]) => {
                     const isComment = instructionId.startsWith("comment-") || instructionId === "0";
+                    const isIf = instructionId.startsWith("if-");
+                    const isEndIf = instructionId.startsWith("end-if-");
                     const isTemp = instructionId.startsWith("T") && /^T\d+$/.test(instructionId);
-                    const instruction = !isComment && !isTemp ? instructions.find((i) => i.id === instructionId) : null;
+                    const instruction = !isComment && !isIf && !isEndIf && !isTemp ? instructions.find((i) => i.id === instructionId) : null;
 
-                    if (!isComment && !isTemp && !instruction) return null;
+                    if (!isComment && !isIf && !isEndIf && !isTemp && !instruction) return null;
 
-                    const displayTitle = isComment || isTemp ? customTitle : customTitle || instruction?.title || "";
+                    const displayTitle = isComment || isIf || isEndIf || isTemp ? customTitle : customTitle || instruction?.title || "";
                     return (
                       <label
                         key={instructionId}
@@ -1117,7 +1193,13 @@ function EditMissionForm({
                           padding: "var(--space-2)",
                           borderBottom: "1px solid var(--color-neutral-4)",
                           margin: 0,
-                          background: isTemp ? "var(--color-accent-2)" : undefined,
+                          background: isIf
+                            ? "var(--color-success-3)"
+                            : isEndIf
+                            ? "var(--color-neutral-3)"
+                            : isTemp
+                            ? "var(--color-accent-2)"
+                            : undefined,
                         }}
                       >
                         <input
@@ -1129,6 +1211,10 @@ function EditMissionForm({
                         <span>
                           {isComment ? (
                             <span style={{ color: "var(--color-accent-11)", fontStyle: "italic" }}>💬 Comment:</span>
+                          ) : isIf ? (
+                            <span style={{ color: "var(--color-success-11)", fontWeight: 700 }}>🔀 IF:</span>
+                          ) : isEndIf ? (
+                            <span style={{ color: "var(--color-neutral-10)", fontWeight: 600, opacity: 0.7 }}>🔁 END-IF</span>
                           ) : isTemp ? (
                             <span
                               style={{ color: "var(--color-accent-10)", fontWeight: 600 }}
@@ -1151,9 +1237,9 @@ function EditMissionForm({
                               {instructionId}
                             </span>
                           )}
-                          {!isComment && " - "}
-                          {displayTitle}
-                          {!isComment && !isTemp && customTitle && (
+                          {!isComment && !isEndIf && " "}
+                          {!isEndIf && displayTitle}
+                          {!isComment && !isIf && !isEndIf && !isTemp && customTitle && (
                             <span
                               style={{
                                 color: "var(--color-accent-11)",

@@ -5,7 +5,7 @@ import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
-import { BookOpen, ArrowLeft, ChevronUp, ChevronDown, LayoutGrid, List } from "lucide-react";
+import { BookOpen, ArrowLeft, ChevronUp, ChevronDown, LayoutGrid, List, GitBranch } from "lucide-react";
 import styles from "./missions.$missionId.module.css";
 import { getMissionById, getAllMissions, checkMissionAccess } from "~/services/missions.server";
 import { getInstructionsByIds } from "~/services/instructions.server";
@@ -55,33 +55,89 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return { mission, instructions, allMissions, isPreview };
 }
 
+type CommentEntry = {
+  id: string;
+  title: string;
+  description: string;
+  status: "comment";
+  type: "comment";
+  explanation: [];
+};
+
+type IfEntry = {
+  id: string;
+  title: string;
+  description: string;
+  status: "if";
+  type: "if";
+  explanation: [];
+};
+
+type MissionInstruction =
+  | (typeof import("../services/instructions.server")["getInstructionsByIds"] extends (...args: any) => Promise<infer R> ? R : never)[number]
+  | CommentEntry
+  | IfEntry;
+
 export default function MissionPage({ loaderData }: Route.ComponentProps) {
   const { mission, instructions, allMissions, isPreview } = loaderData;
 
-  // Map instructions to maintain order from mission.instructions and apply custom titles
-  // Comments (ID "0") are handled separately as they don't exist in the database
+  // Build the flat list, skipping END-IF (hidden from end user)
   const missionInstructions = mission.instructions
     .map(([id, customTitle]) => {
-      // Handle comments (ID starts with "comment-" or is "0" for legacy comments) - they don't have a database entry
       if (id.startsWith("comment-") || id === "0") {
         return {
-          id: "0",
+          id,
           title: customTitle || "",
           description: "",
           status: "comment" as const,
           type: "comment" as const,
-          explanation: [], // Comments don't have explanations
+          explanation: [] as [],
         };
       }
-
+      if (id.startsWith("if-")) {
+        return {
+          id,
+          title: customTitle || "IF",
+          description: "",
+          status: "if" as const,
+          type: "if" as const,
+          explanation: [] as [],
+        };
+      }
+      // END-IF is invisible to end user
+      if (id.startsWith("end-if-")) {
+        return null;
+      }
       const instruction = instructions.find((inst) => inst.id === id);
       if (!instruction) return null;
       return customTitle ? { ...instruction, title: customTitle } : instruction;
     })
-    .filter(Boolean) as (
-    | (typeof instructions)[number]
-    | { id: string; title: string; description: string; status: "comment"; type: "comment"; explanation: [] }
-  )[];
+    .filter(Boolean) as (NonNullable<ReturnType<typeof instructions["find"]>> | CommentEntry | IfEntry)[];
+
+  // Build map: ifId -> array of raw instruction IDs inside the block
+  const ifBlockMap = (() => {
+    const map = new Map<string, string[]>();
+    let currentIfId: string | null = null;
+    const inside: string[] = [];
+    for (const [id] of mission.instructions) {
+      if (id.startsWith("if-")) {
+        currentIfId = id;
+      } else if (id.startsWith("end-if-")) {
+        if (currentIfId) {
+          map.set(currentIfId, [...inside]);
+          inside.length = 0;
+          currentIfId = null;
+        }
+      } else if (currentIfId) {
+        inside.push(id);
+      }
+    }
+    // If there is no matching END-IF, still capture the block
+    if (currentIfId) {
+      map.set(currentIfId, [...inside]);
+    }
+    return map;
+  })();
 
   const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
@@ -90,12 +146,32 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
   const [loadingLinkInstructions, setLoadingLinkInstructions] = useState<Set<string>>(new Set());
   const [completedInstructions, setCompletedInstructions] = useState<Set<string>>(new Set());
+  // Track which IF blocks the user has expanded
+  const [expandedIfBlocks, setExpandedIfBlocks] = useState<Set<string>>(new Set());
+
+  // Set of instruction IDs hidden inside a collapsed IF block
+  const hiddenByIf = new Set<string>();
+  for (const [ifId, ids] of ifBlockMap) {
+    if (!expandedIfBlocks.has(ifId)) {
+      for (const id of ids) hiddenByIf.add(id);
+    }
+  }
+
+  const toggleIfBlock = (ifId: string) => {
+    setExpandedIfBlocks((prev) => {
+      const next = new Set(prev);
+      if (next.has(ifId)) {
+        next.delete(ifId);
+      } else {
+        next.add(ifId);
+      }
+      return next;
+    });
+  };
 
   // Reset completion state when navigating away from the mission
   useEffect(() => {
-    // Cleanup function runs when component unmounts (user navigates away)
     return () => {
-      // Clear completion state for this mission when leaving
       if (typeof window !== "undefined") {
         localStorage.removeItem(`completed-${mission.id}`);
       }
@@ -110,18 +186,14 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   const previousMissionId = (location.state as { from?: string })?.from;
 
   const handleLinkInstructionClick = async (instructionId: string, linkedMissionId: string) => {
-    // Toggle expansion state
     if (expandedLinkInstructions.has(instructionId)) {
-      // Collapse - remove from map
       const newMap = new Map(expandedLinkInstructions);
       newMap.delete(instructionId);
       setExpandedLinkInstructions(newMap);
     } else {
-      // Expand - fetch linked mission instructions
       setLoadingLinkInstructions(new Set([...loadingLinkInstructions, instructionId]));
 
       try {
-        // Fetch linked mission data
         const response = await fetch(`/api/missions/${linkedMissionId}`);
         if (!response.ok) {
           console.error("Failed to fetch linked mission");
@@ -132,7 +204,6 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
         const linkedMission = linkedMissionData.mission;
         const linkedInstructions = linkedMissionData.instructions;
 
-        // Map linked mission instructions with custom titles
         const linkedMissionInstructions = linkedMission.instructions
           .map(([id, customTitle]: [string, string?]) => {
             const instruction = linkedInstructions.find((inst: Instruction) => inst.id === id);
@@ -141,7 +212,6 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
           })
           .filter(Boolean) as Instruction[];
 
-        // Add to expanded map
         const newMap = new Map(expandedLinkInstructions);
         newMap.set(instructionId, linkedMissionInstructions);
         setExpandedLinkInstructions(newMap);
@@ -161,7 +231,6 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
       return;
     }
 
-    // Close any open main-mission instruction
     if (selectedInstructionId) {
       setCompletedInstructions((c) => new Set([...c, selectedInstructionId]));
       setSelectedInstructionId(null);
@@ -171,7 +240,6 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
       const newMap = new Map(prev);
       const current = newMap.get(parentLinkId);
       if (current === linkedInstruction.id) {
-        // Deselect
         newMap.set(parentLinkId, null);
         setCompletedInstructions((c) => new Set([...c, linkedInstruction.id]));
       } else {
@@ -187,29 +255,29 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   const handleInstructionClick = (instructionId: string, event?: React.MouseEvent) => {
     const instruction = missionInstructions.find((inst) => inst?.id === instructionId);
 
-    // If Shift key is pressed, navigate to admin page with instruction selected
     if (event?.shiftKey) {
       navigate(`/admin/instructions?instructionId=${instructionId}`);
       return;
     }
 
-    // If it's a link type instruction, expand/collapse inline
-    if (instruction?.type === "link" && instruction.missionId) {
-      handleLinkInstructionClick(instructionId, instruction.missionId);
+    // IF block toggle
+    if (instruction && "type" in instruction && instruction.type === "if") {
+      toggleIfBlock(instructionId);
       return;
     }
 
-    // Otherwise, toggle selection as usual
+    if (instruction && "type" in instruction && instruction.type === "link" && "missionId" in instruction && instruction.missionId) {
+      handleLinkInstructionClick(instructionId, instruction.missionId as string);
+      return;
+    }
+
     if (selectedInstructionId === instructionId) {
       setSelectedInstructionId(null);
-      // Mark instruction as completed when closed
       setCompletedInstructions((prev) => new Set([...prev, instructionId]));
     } else {
-      // Mark previously selected instruction as completed when switching to another
       if (selectedInstructionId) {
         setCompletedInstructions((prev) => new Set([...prev, selectedInstructionId]));
       }
-      // Close any open sub-mission instruction
       setSelectedLinkedInstructionId((prev) => {
         const newMap = new Map(prev);
         for (const [key, val] of newMap) {
@@ -234,8 +302,13 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
 
   const selectedInstruction = missionInstructions.find((inst) => inst?.id === selectedInstructionId) || null;
 
-  // Don't pass comments to ExplanationDisplay - they don't have explanations
-  const instructionToDisplay = selectedInstruction?.type === "comment" ? null : selectedInstruction;
+  // Don't pass comments or IF entries to ExplanationDisplay
+  const instructionToDisplay =
+    selectedInstruction &&
+    "type" in selectedInstruction &&
+    (selectedInstruction.type === "comment" || selectedInstruction.type === "if")
+      ? null
+      : selectedInstruction;
 
   // Scroll selected master-mission instruction to top after render
   useEffect(() => {
@@ -251,7 +324,6 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
 
   // Scroll selected sub-mission instruction to top after render
   useEffect(() => {
-    // Find the most recently selected linked instruction across all sub-missions
     for (const [parentId, linkedId] of selectedLinkedInstructionId) {
       if (linkedId) {
         requestAnimationFrame(() => {
@@ -260,7 +332,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
             element.scrollIntoView({ behavior: "smooth", block: "start" });
           }
         });
-        break; // Only one sub-mission instruction can be selected at a time
+        break;
       }
     }
   }, [selectedLinkedInstructionId]);
@@ -279,161 +351,190 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
         </div>
       )}
       <div className={styles.container}>
-      <section className={styles.instructionListSection}>
-        <div className={styles.headerWrapper}>
-          {!isPreview && (
-            <Link to="/" className={styles.menuLink}>
-              <BookOpen size={18} />
-              View All Missions
-            </Link>
-          )}
-          {!isPreview && previousMissionId && (
-            <button onClick={handleBackClick} className={styles.menuLink}>
-              <ArrowLeft size={18} />
-              Back to Previous Mission
-            </button>
-          )}
-          <h1 className={styles.sectionHeader}>{mission.title}</h1>
-          <div className={styles.viewToggle}>
-            <button
-              className={`${styles.viewToggleButton} ${viewMode === "cards" ? styles.viewToggleActive : ""}`}
-              onClick={() => setViewMode("cards")}
-              title="Card view"
-            >
-              <LayoutGrid size={18} />
-            </button>
-            <button
-              className={`${styles.viewToggleButton} ${viewMode === "list" ? styles.viewToggleActive : ""}`}
-              onClick={() => setViewMode("list")}
-              title="List view"
-            >
-              <List size={18} />
-            </button>
+        <section className={styles.instructionListSection}>
+          <div className={styles.headerWrapper}>
+            {!isPreview && (
+              <Link to="/" className={styles.menuLink}>
+                <BookOpen size={18} />
+                View All Missions
+              </Link>
+            )}
+            {!isPreview && previousMissionId && (
+              <button onClick={handleBackClick} className={styles.menuLink}>
+                <ArrowLeft size={18} />
+                Back to Previous Mission
+              </button>
+            )}
+            <h1 className={styles.sectionHeader}>{mission.title}</h1>
+            <div className={styles.viewToggle}>
+              <button
+                className={`${styles.viewToggleButton} ${viewMode === "cards" ? styles.viewToggleActive : ""}`}
+                onClick={() => setViewMode("cards")}
+                title="Card view"
+              >
+                <LayoutGrid size={18} />
+              </button>
+              <button
+                className={`${styles.viewToggleButton} ${viewMode === "list" ? styles.viewToggleActive : ""}`}
+                onClick={() => setViewMode("list")}
+                title="List view"
+              >
+                <List size={18} />
+              </button>
+            </div>
           </div>
-        </div>
-        {viewMode === "cards" && (
-          <div className={styles.missionDescription}>
-            <Markdown remarkPlugins={[remarkBreaks]}>{mission.description}</Markdown>
-          </div>
-        )}
-        <div className={styles.instructionList}>
-          {missionInstructions.map((instruction, index) => {
-            const isComment = instruction.type === "comment";
-            const isExpanded = expandedLinkInstructions.has(instruction.id);
-            const isLoading = loadingLinkInstructions.has(instruction.id);
-            const expandedInstructions = expandedLinkInstructions.get(instruction.id);
+          {viewMode === "cards" && (
+            <div className={styles.missionDescription}>
+              <Markdown remarkPlugins={[remarkBreaks]}>{mission.description}</Markdown>
+            </div>
+          )}
+          <div className={styles.instructionList}>
+            {missionInstructions.map((instruction, index) => {
+              const isComment = "type" in instruction && instruction.type === "comment";
+              const isIf = "type" in instruction && instruction.type === "if";
+              const isIfExpanded = isIf && expandedIfBlocks.has(instruction.id);
+              const isLinkExpanded = expandedLinkInstructions.has(instruction.id);
+              const isLoading = loadingLinkInstructions.has(instruction.id);
+              const expandedInstructions = expandedLinkInstructions.get(instruction.id);
 
-            // Calculate order number (excluding comments)
-            const orderNumber = missionInstructions
-              .slice(0, index + 1)
-              .filter((inst) => inst.type !== "comment").length;
+              // Hide instructions that are inside a collapsed IF block
+              if (hiddenByIf.has(instruction.id)) {
+                return null;
+              }
 
-            // Render comments differently (non-clickable, styled)
-            if (isComment) {
-              return (
-                <div key={instruction.id} className={styles.instructionItem}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      padding: "var(--space-3) var(--space-4)",
-                      color: "var(--color-accent-11)",
-                      fontStyle: "italic",
-                      fontSize: "0.9rem",
-                      cursor: "default",
-                      opacity: 0.8,
-                    }}
-                  >
-                    <span style={{ marginRight: "var(--space-2)", flexShrink: 0 }}>💬</span>
-                    <div className={styles.commentMarkdown}>
-                      <Markdown remarkPlugins={[remarkBreaks]}>{instruction.title}</Markdown>
+              // Order number (excluding comments and IF entries)
+              const orderNumber = missionInstructions
+                .slice(0, index + 1)
+                .filter(
+                  (inst) =>
+                    inst && "type" in inst && inst.type !== "comment" && inst.type !== "if",
+                ).length;
+
+              // Render comments
+              if (isComment) {
+                return (
+                  <div key={instruction.id} className={styles.instructionItem}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "var(--space-3) var(--space-4)",
+                        color: "var(--color-accent-11)",
+                        fontStyle: "italic",
+                        fontSize: "0.9rem",
+                        cursor: "default",
+                        opacity: 0.8,
+                      }}
+                    >
+                      <span style={{ marginRight: "var(--space-2)", flexShrink: 0 }}>💬</span>
+                      <div className={styles.commentMarkdown}>
+                        <Markdown remarkPlugins={[remarkBreaks]}>{instruction.title}</Markdown>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            }
+                );
+              }
 
-            return (
-              <div key={instruction.id}>
-                <div className={styles.instructionItem} data-instruction-id={instruction.id}>
-                  <InstructionListItem
-                    title={instruction.title}
-                    description={viewMode === "cards" ? instruction.description : undefined}
-                    selected={selectedInstructionId === instruction.id}
-                    onClick={(event) => handleInstructionClick(instruction.id, event)}
-                    instructionType={instruction.type}
-                    explanation={"explanation" in instruction ? instruction.explanation : []}
-                    className={`${styles.instructionListItem} ${viewMode === "list" ? styles.listModeItem : ""}`}
-                    orderNumber={orderNumber}
-                    isCompleted={completedInstructions.has(instruction.id)}
-                  />
-                  {isPreview && (
+              // Render IF block toggle
+              if (isIf) {
+                return (
+                  <div key={instruction.id} className={styles.instructionItem} data-instruction-id={instruction.id}>
                     <button
-                      className={styles.editInstructionButton}
-                      onClick={() => navigate(`/admin/instructions?instructionId=${instruction.id}`)}
-                      title={`Edit instruction ${instruction.id}`}
+                      onClick={() => toggleIfBlock(instruction.id)}
+                      className={styles.ifBlockButton}
+                      aria-expanded={isIfExpanded}
                     >
-                      ✏️ Edit ^
+                      <GitBranch size={18} className={styles.ifBlockIcon} />
+                      <span className={styles.ifBlockTitle}>{instruction.title}</span>
+                      {isIfExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                     </button>
-                  )}
-                  {instruction.type === "link" && "missionId" in instruction && (
-                    <div style={{ marginLeft: "1rem", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
-                      {isLoading ? "Loading..." : isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </div>
-                  )}
-                  {selectedInstructionId === instruction.id &&
-                    instruction.type !== "link" &&
-                    !isComment &&
-                    "explanation" in instruction &&
-                    instruction.explanation.length > 0 && (
-                      <div className={styles.mobileExplanation}>
-                        <ExplanationDisplay instruction={instruction as Instruction} />
+                  </div>
+                );
+              }
+
+              return (
+                <div key={instruction.id}>
+                  <div className={styles.instructionItem} data-instruction-id={instruction.id}>
+                    <InstructionListItem
+                      title={instruction.title}
+                      description={viewMode === "cards" ? instruction.description : undefined}
+                      selected={selectedInstructionId === instruction.id}
+                      onClick={(event) => handleInstructionClick(instruction.id, event)}
+                      instructionType={"type" in instruction ? instruction.type : undefined}
+                      explanation={"explanation" in instruction ? instruction.explanation : []}
+                      className={`${styles.instructionListItem} ${viewMode === "list" ? styles.listModeItem : ""}`}
+                      orderNumber={orderNumber}
+                      isCompleted={completedInstructions.has(instruction.id)}
+                    />
+                    {isPreview && (
+                      <button
+                        className={styles.editInstructionButton}
+                        onClick={() => navigate(`/admin/instructions?instructionId=${instruction.id}`)}
+                        title={`Edit instruction ${instruction.id}`}
+                      >
+                        ✏️ Edit ^
+                      </button>
+                    )}
+                    {"type" in instruction && instruction.type === "link" && "missionId" in instruction && (
+                      <div style={{ marginLeft: "1rem", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
+                        {isLoading ? "Loading..." : isLinkExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                       </div>
                     )}
-                </div>
-
-                {/* Render expanded linked mission instructions */}
-                {isExpanded && expandedInstructions && (
-                  <div style={{ marginLeft: "2rem", marginTop: "0.5rem", marginBottom: "1rem" }}>
-                    {expandedInstructions.map((linkedInstruction, linkedIndex) => {
-                      const linkedSelected =
-                        selectedLinkedInstructionId.get(instruction.id) === linkedInstruction.id;
-                      return (
-                        <div
-                          key={`${instruction.id}-${linkedInstruction.id}`}
-                          className={styles.instructionItem}
-                          data-instruction-id={`linked-${instruction.id}-${linkedInstruction.id}`}
-                        >
-                          <InstructionListItem
-                            title={linkedInstruction.title}
-                            description={linkedInstruction.description}
-                            selected={linkedSelected}
-                            instructionType={linkedInstruction.type}
-                            explanation={linkedInstruction.explanation}
-                            orderNumber={linkedIndex + 1}
-                            isCompleted={completedInstructions.has(`${instruction.id}-${linkedInstruction.id}`)}
-                            onClick={(event) => handleLinkedInstructionClick(instruction.id, linkedInstruction, event)}
-                          />
-                          {linkedSelected && linkedInstruction.type !== "link" && (
-                            <div className={styles.mobileExplanation}>
-                              <ExplanationDisplay instruction={linkedInstruction} />
-                            </div>
-                          )}
+                    {selectedInstructionId === instruction.id &&
+                      "type" in instruction &&
+                      instruction.type !== "link" &&
+                      !isComment &&
+                      "explanation" in instruction &&
+                      Array.isArray(instruction.explanation) &&
+                      instruction.explanation.length > 0 && (
+                        <div className={styles.mobileExplanation}>
+                          <ExplanationDisplay instruction={instruction as Instruction} />
                         </div>
-                      );
-                    })}
+                      )}
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </section>
 
-      <section className={styles.explanationSection}>
-        <ExplanationDisplay instruction={instructionToDisplay} className={styles.explanationContainer} />
-      </section>
-    </div>
-    </>  
+                  {/* Render expanded linked mission instructions */}
+                  {isLinkExpanded && expandedInstructions && (
+                    <div style={{ marginLeft: "2rem", marginTop: "0.5rem", marginBottom: "1rem" }}>
+                      {expandedInstructions.map((linkedInstruction, linkedIndex) => {
+                        const linkedSelected =
+                          selectedLinkedInstructionId.get(instruction.id) === linkedInstruction.id;
+                        return (
+                          <div
+                            key={`${instruction.id}-${linkedInstruction.id}`}
+                            className={styles.instructionItem}
+                            data-instruction-id={`linked-${instruction.id}-${linkedInstruction.id}`}
+                          >
+                            <InstructionListItem
+                              title={linkedInstruction.title}
+                              description={linkedInstruction.description}
+                              selected={linkedSelected}
+                              instructionType={linkedInstruction.type}
+                              explanation={linkedInstruction.explanation}
+                              orderNumber={linkedIndex + 1}
+                              isCompleted={completedInstructions.has(`${instruction.id}-${linkedInstruction.id}`)}
+                              onClick={(event) => handleLinkedInstructionClick(instruction.id, linkedInstruction, event)}
+                            />
+                            {linkedSelected && linkedInstruction.type !== "link" && (
+                              <div className={styles.mobileExplanation}>
+                                <ExplanationDisplay instruction={linkedInstruction} />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className={styles.explanationSection}>
+          <ExplanationDisplay instruction={instructionToDisplay as Instruction | null} className={styles.explanationContainer} />
+        </section>
+      </div>
+    </>
   );
 }

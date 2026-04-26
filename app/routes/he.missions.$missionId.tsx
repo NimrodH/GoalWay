@@ -3,7 +3,7 @@ import { data, Link, useNavigate, useLocation } from "react-router";
 import type { Route } from "./+types/he.missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
-import { BookOpen, ArrowLeft, ChevronUp, ChevronDown } from "lucide-react";
+import { BookOpen, ArrowLeft, ChevronUp, ChevronDown, GitBranch } from "lucide-react";
 import styles from "./home.module.css";
 import { getMissionByIdHe, getAllMissionsHe } from "~/services/missions.server";
 import { getInstructionsByIdsHe } from "~/services/instructions.server";
@@ -38,13 +38,53 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
   const { mission, instructions, allMissions } = loaderData;
 
   // Map instructions to maintain order from mission.instructions and apply custom titles
+  // IF entries are special conditional blocks; END-IF is hidden from end user
   const missionInstructions = mission.instructions.map(([id, customTitle]) => {
+    if (id.startsWith("comment-") || id === "0") {
+      return { id, title: customTitle || "", description: "", status: "comment" as const, type: "comment" as const, explanation: [] as [] };
+    }
+    if (id.startsWith("if-")) {
+      return { id, title: customTitle || "IF", description: "", status: "if" as const, type: "if" as const, explanation: [] as [] };
+    }
+    if (id.startsWith("end-if-")) return null;
     const instruction = instructions.find(inst => inst.id === id);
     if (!instruction) return null;
     return customTitle ? { ...instruction, title: customTitle } : instruction;
-  }).filter(Boolean) as typeof instructions;
+  }).filter(Boolean) as (typeof instructions[number] | { id: string; title: string; description: string; status: "comment"; type: "comment"; explanation: [] } | { id: string; title: string; description: string; status: "if"; type: "if"; explanation: [] })[];
+
+  // Build map: ifId -> array of raw instruction IDs inside the block
+  const ifBlockMap = (() => {
+    const map = new Map<string, string[]>();
+    let currentIfId: string | null = null;
+    const inside: string[] = [];
+    for (const [id] of mission.instructions) {
+      if (id.startsWith("if-")) {
+        currentIfId = id;
+      } else if (id.startsWith("end-if-")) {
+        if (currentIfId) { map.set(currentIfId, [...inside]); inside.length = 0; currentIfId = null; }
+      } else if (currentIfId) {
+        inside.push(id);
+      }
+    }
+    if (currentIfId) map.set(currentIfId, [...inside]);
+    return map;
+  })();
 
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
+  const [expandedIfBlocks, setExpandedIfBlocks] = useState<Set<string>>(new Set());
+
+  const toggleIfBlock = (ifId: string) => {
+    setExpandedIfBlocks(prev => {
+      const next = new Set(prev);
+      if (next.has(ifId)) next.delete(ifId); else next.add(ifId);
+      return next;
+    });
+  };
+
+  const hiddenByIf = new Set<string>();
+  for (const [ifId, ids] of ifBlockMap) {
+    if (!expandedIfBlocks.has(ifId)) { for (const id of ids) hiddenByIf.add(id); }
+  }
   const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
   const [loadingLinkInstructions, setLoadingLinkInstructions] = useState<Set<string>>(new Set());
 
@@ -101,19 +141,22 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
   const handleInstructionClick = (instructionId: string, event?: React.MouseEvent) => {
     const instruction = missionInstructions.find((inst) => inst?.id === instructionId);
     
-    // If Shift key is pressed, navigate to admin page with instruction selected
     if (event?.shiftKey) {
       navigate(`/admin/instructions?instructionId=${instructionId}`);
       return;
     }
-    
-    // If it's a link type instruction, expand/collapse inline
-    if (instruction?.type === "link" && instruction.missionId) {
-      handleLinkInstructionClick(instructionId, instruction.missionId);
+
+    // IF block toggle
+    if (instruction && "type" in instruction && instruction.type === "if") {
+      toggleIfBlock(instructionId);
       return;
     }
     
-    // Otherwise, toggle selection as usual
+    if (instruction && "type" in instruction && instruction.type === "link" && "missionId" in instruction && instruction.missionId) {
+      handleLinkInstructionClick(instructionId, instruction.missionId as string);
+      return;
+    }
+    
     if (selectedInstructionId === instructionId) {
       setSelectedInstructionId(null);
     } else {
@@ -150,9 +193,49 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
         <p className={styles.missionDescription}>{mission.description}</p>
         <div className={styles.instructionList}>
           {missionInstructions.map((instruction) => {
-            const isExpanded = expandedLinkInstructions.has(instruction.id);
+            if (hiddenByIf.has(instruction.id)) return null;
+
+            const isComment = "type" in instruction && instruction.type === "comment";
+            const isIf = "type" in instruction && instruction.type === "if";
+            const isIfExpanded = isIf && expandedIfBlocks.has(instruction.id);
+            const isLinkExpanded = expandedLinkInstructions.has(instruction.id);
             const isLoading = loadingLinkInstructions.has(instruction.id);
             const expandedInstructions = expandedLinkInstructions.get(instruction.id);
+
+            if (isComment) {
+              return (
+                <div key={instruction.id} className={styles.instructionItem}>
+                  <div style={{ display: "flex", alignItems: "center", padding: "var(--space-3) var(--space-4)", color: "var(--color-accent-11)", fontStyle: "italic", fontSize: "0.9rem", opacity: 0.8 }}>
+                    <span style={{ marginLeft: "var(--space-2)", flexShrink: 0 }}>💬</span>
+                    {instruction.title}
+                  </div>
+                </div>
+              );
+            }
+
+            if (isIf) {
+              return (
+                <div key={instruction.id} className={styles.instructionItem}>
+                  <button
+                    onClick={() => toggleIfBlock(instruction.id)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "var(--space-2)",
+                      width: "100%", padding: "var(--space-3) var(--space-4)",
+                      background: isIfExpanded ? "var(--color-success-4)" : "var(--color-success-3)",
+                      border: `1px solid ${isIfExpanded ? "var(--color-success-8)" : "var(--color-success-7)"}`,
+                      borderRadius: "var(--radius-2)", color: "var(--color-success-11)",
+                      fontFamily: "var(--font-body)", fontSize: "0.9375rem", fontWeight: 600,
+                      cursor: "pointer", textAlign: "right", marginBottom: "var(--space-1)",
+                    }}
+                    aria-expanded={isIfExpanded}
+                  >
+                    <GitBranch size={18} style={{ flexShrink: 0, color: "var(--color-success-9)" }} />
+                    <span style={{ flex: 1 }}>{instruction.title}</span>
+                    {isIfExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </button>
+                </div>
+              );
+            }
             
             return (
               <div key={instruction.id}>
@@ -163,20 +246,19 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
                     selected={selectedInstructionId === instruction.id}
                     onClick={(event) => handleInstructionClick(instruction.id, event)}
                   />
-                  {instruction.type === "link" && (
+                  {"type" in instruction && instruction.type === "link" && (
                     <div style={{ marginRight: '1rem', fontSize: '0.875rem', color: 'var(--color-neutral-11)' }}>
-                      {isLoading ? "טוען..." : (isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
+                      {isLoading ? "טוען..." : (isLinkExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
                     </div>
                   )}
-                  {selectedInstructionId === instruction.id && instruction.type !== "link" && (
+                  {selectedInstructionId === instruction.id && (
                     <div className={styles.mobileExplanation}>
-                      <ExplanationDisplay instruction={instruction} />
+                      <ExplanationDisplay instruction={instruction as Instruction} />
                     </div>
                   )}
                 </div>
                 
-                {/* Render expanded linked mission instructions */}
-                {isExpanded && expandedInstructions && (
+                {isLinkExpanded && expandedInstructions && (
                   <div style={{ marginRight: '2rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
                     {expandedInstructions.map((linkedInstruction) => (
                       <div key={linkedInstruction.id} className={styles.instructionItem}>
@@ -185,12 +267,10 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
                           description={linkedInstruction.description}
                           selected={selectedInstructionId === linkedInstruction.id}
                           onClick={(event) => {
-                            // If Shift key is pressed, navigate to admin page
                             if (event?.shiftKey) {
                               navigate(`/admin/instructions?instructionId=${linkedInstruction.id}`);
                               return;
                             }
-                            // Toggle selection
                             if (selectedInstructionId === linkedInstruction.id) {
                               setSelectedInstructionId(null);
                             } else {
@@ -214,7 +294,16 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
       </section>
 
       <section className={styles.explanationSection}>
-        <ExplanationDisplay instruction={selectedInstruction} className={styles.explanationContainer} />
+        <ExplanationDisplay
+          instruction={
+            selectedInstruction &&
+            "status" in selectedInstruction &&
+            (selectedInstruction.status === "comment" || selectedInstruction.status === "if")
+              ? null
+              : (selectedInstruction as Instruction | null)
+          }
+          className={styles.explanationContainer}
+        />
       </section>
     </div>
   );
