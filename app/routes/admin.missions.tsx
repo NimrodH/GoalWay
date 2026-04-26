@@ -1096,13 +1096,13 @@ function EditMissionForm({
                     if (!isComment && !isTemp && !instruction) return null;
 
                     const displayTitle = isComment || isTemp ? customTitle : customTitle || instruction?.title || "";
-                    const radioAccentColor =
+                    const statusColor =
                       !isComment && !isTemp
                         ? instruction?.status === "full explanation"
-                          ? "green"
+                          ? "#22c55e"
                           : instruction?.status === "only title"
-                            ? "red"
-                            : undefined
+                            ? "#ef4444"
+                            : "#94a3b8"
                         : undefined;
                     return (
                       <label
@@ -1120,8 +1120,21 @@ function EditMissionForm({
                           name="missionInstructionRadio"
                           checked={selectedMissionInstruction === instructionId}
                           onChange={() => setSelectedMissionInstruction(instructionId)}
-                          style={radioAccentColor ? { accentColor: radioAccentColor } : undefined}
                         />
+                        {statusColor && (
+                          <span
+                            style={{
+                              display: "inline-block",
+                              width: "10px",
+                              height: "10px",
+                              borderRadius: "50%",
+                              backgroundColor: statusColor,
+                              flexShrink: 0,
+                              marginRight: "4px",
+                            }}
+                            title={instruction?.status || "unknown"}
+                          />
+                        )}
                         <span>
                           {isComment ? (
                             <span style={{ color: "var(--color-accent-11)", fontStyle: "italic" }}>💬 Comment:</span>
