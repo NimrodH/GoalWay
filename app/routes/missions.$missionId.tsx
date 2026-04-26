@@ -73,10 +73,20 @@ type IfEntry = {
   explanation: [];
 };
 
+type EndIfEntry = {
+  id: string;
+  title: string;
+  description: string;
+  status: "end-if";
+  type: "end-if";
+  explanation: [];
+};
+
 type MissionInstruction =
   | (typeof import("../services/instructions.server")["getInstructionsByIds"] extends (...args: any) => Promise<infer R> ? R : never)[number]
   | CommentEntry
-  | IfEntry;
+  | IfEntry
+  | EndIfEntry;
 
 export default function MissionPage({ loaderData }: Route.ComponentProps) {
   const { mission, instructions, allMissions, isPreview } = loaderData;
@@ -104,15 +114,22 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
           explanation: [] as [],
         };
       }
-      // END-IF is invisible to end user
+      // END-IF renders as a thin green divider
       if (id.startsWith("end-if-")) {
-        return null;
+        return {
+          id,
+          title: "",
+          description: "",
+          status: "end-if" as const,
+          type: "end-if" as const,
+          explanation: [] as [],
+        };
       }
       const instruction = instructions.find((inst) => inst.id === id);
       if (!instruction) return null;
       return customTitle ? { ...instruction, title: customTitle } : instruction;
     })
-    .filter(Boolean) as (NonNullable<ReturnType<typeof instructions["find"]>> | CommentEntry | IfEntry)[];
+    .filter(Boolean) as (NonNullable<ReturnType<typeof instructions["find"]>> | CommentEntry | IfEntry | EndIfEntry)[];
 
   // Build map: ifId -> array of raw instruction IDs inside the block
   const ifBlockMap = (() => {
@@ -392,6 +409,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
             {missionInstructions.map((instruction, index) => {
               const isComment = "type" in instruction && instruction.type === "comment";
               const isIf = "type" in instruction && instruction.type === "if";
+              const isEndIf = "type" in instruction && instruction.type === "end-if";
               const isIfExpanded = isIf && expandedIfBlocks.has(instruction.id);
               const isLinkExpanded = expandedLinkInstructions.has(instruction.id);
               const isLoading = loadingLinkInstructions.has(instruction.id);
@@ -402,13 +420,13 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                 return null;
               }
 
-              // Order number (excluding comments and IF entries)
+              // Order number (excluding comments, IF and END-IF entries)
               const orderNumber = missionInstructions
                 .slice(0, index + 1)
                 .filter(
                   (inst) => {
                     if (!inst) return false;
-                    if ("type" in inst) return inst.type !== "comment" && inst.type !== "if";
+                    if ("type" in inst) return inst.type !== "comment" && inst.type !== "if" && inst.type !== "end-if";
                     return true; // no type field = default instruction, count it
                   }
                 ).length;
@@ -453,6 +471,11 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                     </button>
                   </div>
                 );
+              }
+
+              // Render END-IF as a thin green divider line
+              if (isEndIf) {
+                return <div key={instruction.id} className={styles.endIfDivider} aria-hidden="true" />;
               }
 
               return (
