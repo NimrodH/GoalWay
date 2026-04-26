@@ -1506,7 +1506,19 @@ function EditInstructionForm({
                         onChange={() => handleSelectInstruction(id)}
                       />
                       <span>
-                        {id}
+                        <span
+                          style={{
+                            color:
+                              instruction?.status === "full explanation"
+                                ? "green"
+                                : instruction?.status === "only title"
+                                  ? "red"
+                                  : "inherit",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {id}
+                        </span>
                         {instruction ? ` - ${instruction.title}` : " (No data for this language)"}
                       </span>
                     </label>

@@ -885,7 +885,20 @@ function EditMissionForm({
                           }}
                         />
                         <span>
-                          {instruction.id} - {instruction.title}
+                          <span
+                            style={{
+                              color:
+                                instruction.status === "full explanation"
+                                  ? "green"
+                                  : instruction.status === "only title"
+                                    ? "red"
+                                    : "inherit",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {instruction.id}
+                          </span>
+                          {" - "}{instruction.title}
                         </span>
                       </label>
                     ))}
@@ -1124,7 +1137,17 @@ function EditMissionForm({
                               {instructionId}
                             </span>
                           ) : (
-                            <span style={{ color: instruction?.status === "full explanation" ? "green" : "inherit" }}>
+                            <span
+                              style={{
+                                color:
+                                  instruction?.status === "full explanation"
+                                    ? "green"
+                                    : instruction?.status === "only title"
+                                      ? "red"
+                                      : "inherit",
+                                fontWeight: 600,
+                              }}
+                            >
                               {instructionId}
                             </span>
                           )}
