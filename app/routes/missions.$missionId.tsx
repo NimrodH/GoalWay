@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { data, redirect, Link, useNavigate, useLocation, useSearchParams } from "react-router";
+import { data, redirect, Link, useNavigate, useLocation, useSearchParams, useFetcher } from "react-router";
 import Markdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/missions.$missionId";
@@ -55,6 +55,55 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return { mission, instructions, allMissions, isPreview };
 }
 
+type MissionStatus = "Hide" | "For all" | "Only Adama" | "Only Bazn";
+
+export async function action({ request, params }: Route.ActionArgs) {
+  const formData = await request.formData();
+  const actionType = formData.get("actionType");
+
+  if (actionType === "updateStatus") {
+    const newStatus = formData.get("status") as MissionStatus;
+    const validStatuses: MissionStatus[] = ["Hide", "For all", "Only Adama", "Only Bazn"];
+    if (!validStatuses.includes(newStatus)) {
+      return { success: false, error: "Invalid status value" };
+    }
+
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(
+        process.env.SUPABASE_PROJECT_URL!,
+        process.env.SUPABASE_API_KEY!,
+      );
+
+      // Fetch current data_en to merge the status update into it
+      const { data: row, error: fetchError } = await supabase
+        .from("missions")
+        .select("data_en")
+        .eq("id", params.missionId)
+        .single();
+
+      if (fetchError || !row?.data_en) {
+        return { success: false, error: fetchError?.message || "Mission not found" };
+      }
+
+      const updatedDataEn = { ...row.data_en, status: newStatus };
+
+      const { error } = await supabase
+        .from("missions")
+        .update({ data_en: updatedDataEn, updated_at: new Date().toISOString() })
+        .eq("id", params.missionId);
+
+      if (error) return { success: false, error: error.message };
+
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
+    }
+  }
+
+  return { success: false, error: "Unknown action" };
+}
+
 type CommentEntry = {
   id: string;
   title: string;
@@ -100,6 +149,9 @@ type MissionInstruction =
 
 export default function MissionPage({ loaderData }: Route.ComponentProps) {
   const { mission, instructions, allMissions, isPreview } = loaderData;
+  const statusFetcher = useFetcher();
+  // Optimistic status — show the pending value immediately while saving
+  const currentStatus = (statusFetcher.formData?.get("status") as MissionStatus | undefined) ?? mission.status ?? "For all";
 
   // Build the flat list, skipping END-IF (hidden from end user)
   const missionInstructions = mission.instructions
@@ -386,6 +438,35 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
             <ArrowLeft size={18} />
             Back to Admin
           </button>
+          <statusFetcher.Form method="post" className={styles.statusForm}>
+            <input type="hidden" name="actionType" value="updateStatus" />
+            <label className={styles.statusLabel} htmlFor="mission-status-select">
+              Status:
+            </label>
+            <select
+              id="mission-status-select"
+              name="status"
+              className={styles.statusSelect}
+              value={currentStatus}
+              onChange={(e) => {
+                const fd = new FormData();
+                fd.set("actionType", "updateStatus");
+                fd.set("status", e.target.value);
+                statusFetcher.submit(fd, { method: "post" });
+              }}
+            >
+              <option value="Hide">Hide</option>
+              <option value="For all">For all</option>
+              <option value="Only Adama">Only Adama</option>
+              <option value="Only Bazn">Only Bazn</option>
+            </select>
+            {statusFetcher.state !== "idle" && (
+              <span className={styles.statusSaving}>Saving…</span>
+            )}
+            {statusFetcher.state === "idle" && statusFetcher.data?.success === true && (
+              <span className={styles.statusSaved}>✓ Saved</span>
+            )}
+          </statusFetcher.Form>
         </div>
       )}
       <div className={styles.container}>
