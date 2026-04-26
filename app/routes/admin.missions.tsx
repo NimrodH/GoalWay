@@ -1096,14 +1096,6 @@ function EditMissionForm({
                     if (!isComment && !isTemp && !instruction) return null;
 
                     const displayTitle = isComment || isTemp ? customTitle : customTitle || instruction?.title || "";
-                    const statusColor =
-                      !isComment && !isTemp
-                        ? instruction?.status === "full explanation"
-                          ? "#22c55e"
-                          : instruction?.status === "only title"
-                            ? "#ef4444"
-                            : "#94a3b8"
-                        : undefined;
                     return (
                       <label
                         key={instructionId}
@@ -1121,20 +1113,6 @@ function EditMissionForm({
                           checked={selectedMissionInstruction === instructionId}
                           onChange={() => setSelectedMissionInstruction(instructionId)}
                         />
-                        {statusColor && (
-                          <span
-                            style={{
-                              display: "inline-block",
-                              width: "10px",
-                              height: "10px",
-                              borderRadius: "50%",
-                              backgroundColor: statusColor,
-                              flexShrink: 0,
-                              marginRight: "4px",
-                            }}
-                            title={instruction?.status || "unknown"}
-                          />
-                        )}
                         <span>
                           {isComment ? (
                             <span style={{ color: "var(--color-accent-11)", fontStyle: "italic" }}>💬 Comment:</span>
@@ -1146,16 +1124,7 @@ function EditMissionForm({
                               {instructionId}
                             </span>
                           ) : (
-                            <span
-                              style={{
-                                color:
-                                  instruction?.status === "full explanation"
-                                    ? "green"
-                                    : instruction?.status === "only title"
-                                      ? "red"
-                                      : "inherit",
-                              }}
-                            >
+                            <span style={{ color: instruction?.status === "full explanation" ? "green" : "inherit" }}>
                               {instructionId}
                             </span>
                           )}

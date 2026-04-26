@@ -1496,12 +1496,6 @@ function EditInstructionForm({
                 })
                 .map((id) => {
                   const instruction = instructions.find((i) => i.id === id);
-                  const statusColor =
-                    instruction?.status === "full explanation"
-                      ? "#22c55e"
-                      : instruction?.status === "only title"
-                        ? "#ef4444"
-                        : "#94a3b8";
                   return (
                     <label key={id} className={styles.checkboxLabel} style={{ cursor: "pointer" }}>
                       <input
@@ -1510,18 +1504,6 @@ function EditInstructionForm({
                         value={id}
                         checked={selectedInstructionId === id}
                         onChange={() => handleSelectInstruction(id)}
-                      />
-                      <span
-                        style={{
-                          display: "inline-block",
-                          width: "10px",
-                          height: "10px",
-                          borderRadius: "50%",
-                          backgroundColor: statusColor,
-                          flexShrink: 0,
-                          marginRight: "4px",
-                        }}
-                        title={instruction?.status || "unknown"}
                       />
                       <span>
                         {id}
