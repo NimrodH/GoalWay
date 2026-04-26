@@ -181,7 +181,7 @@ function EditMissionForm({
         updateMissionFormFields(lastMissionId);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, allMissionIds]);
 
   useEffect(() => {
@@ -384,7 +384,7 @@ function EditMissionForm({
   useEffect(() => {
     setCodeEditorValue(generateCode());
     setCodeEditorError(null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, title, description, status, isExample, selectedInstructions, selectedMissionId]);
 
   const handleApplyCodeEditor = () => {
@@ -945,7 +945,8 @@ function EditMissionForm({
                           >
                             {instruction.id}
                           </span>
-                          {" - "}{instruction.title}
+                          {" - "}
+                          {instruction.title}
                         </span>
                       </label>
                     ))}
@@ -982,6 +983,20 @@ function EditMissionForm({
                 <button
                   type="button"
                   onClick={() => {
+                    if (selectedMissionInstruction) {
+                      setSelectedInstructions(selectedInstructions.filter(([id]) => id !== selectedMissionInstruction));
+                      setSelectedMissionInstruction(null);
+                    }
+                  }}
+                  className={styles.addButton}
+                  style={{ width: "80px" }}
+                  disabled={!selectedMissionInstruction}
+                >
+                  ← Del
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
                     if (!selectedMissionInstruction || !selectedAvailableInstructions.length) return;
                     const isTemp = /^T\d+$/.test(selectedMissionInstruction);
                     if (!isTemp) return;
@@ -1009,47 +1024,6 @@ function EditMissionForm({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (selectedMissionInstruction) {
-                      setSelectedInstructions(selectedInstructions.filter(([id]) => id !== selectedMissionInstruction));
-                      setSelectedMissionInstruction(null);
-                    }
-                  }}
-                  className={styles.addButton}
-                  style={{ width: "80px" }}
-                  disabled={!selectedMissionInstruction}
-                >
-                  ← Del
-                </button>
-                <button
-                  type="button"
-                  onClick={moveInstructionUp}
-                  className={styles.addButton}
-                  disabled={
-                    !selectedMissionInstruction ||
-                    selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) === 0
-                  }
-                  title="Move selected instruction up"
-                  style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                >
-                  ↑ Up
-                </button>
-                <button
-                  type="button"
-                  onClick={moveInstructionDown}
-                  className={styles.addButton}
-                  disabled={
-                    !selectedMissionInstruction ||
-                    selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) ===
-                      selectedInstructions.length - 1
-                  }
-                  title="Move selected instruction down"
-                  style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                >
-                  ↓ Down
-                </button>
-                <button
-                  type="button"
                   onClick={handleAddIf}
                   className={styles.addButton}
                   disabled={!selectedMissionId || !session}
@@ -1068,6 +1042,24 @@ function EditMissionForm({
                 >
                   🔁 END-IF
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCommentDialog(true)}
+                  className={styles.addButton}
+                  disabled={!selectedMissionId || !session}
+                  style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                >
+                  💬 Comment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowNewInstructionDialog(true)}
+                  className={styles.addButton}
+                  disabled={!selectedMissionId || !session}
+                  style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                >
+                  + New
+                </button>
               </div>
 
               <div style={{ flex: 1 }}>
@@ -1080,6 +1072,33 @@ function EditMissionForm({
                   }}
                 >
                   <h3 style={{ fontSize: "0.875rem", fontWeight: 600 }}>Mission Instructions</h3>
+                  <button
+                    type="button"
+                    onClick={moveInstructionDown}
+                    className={styles.addButton}
+                    disabled={
+                      !selectedMissionInstruction ||
+                      selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) ===
+                        selectedInstructions.length - 1
+                    }
+                    title="Move selected instruction down"
+                    style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                  >
+                    ↓ Down
+                  </button>
+                  <button
+                    type="button"
+                    onClick={moveInstructionUp}
+                    className={styles.addButton}
+                    disabled={
+                      !selectedMissionInstruction ||
+                      selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) === 0
+                    }
+                    title="Move selected instruction up"
+                    style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                  >
+                    ↑ Up
+                  </button>
                   <div style={{ display: "flex", gap: "var(--space-0)" }} className={styles0.div1}>
                     <button
                       type="button"
@@ -1127,24 +1146,6 @@ function EditMissionForm({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setShowNewInstructionDialog(true)}
-                      className={styles.addButton}
-                      disabled={!selectedMissionId || !session}
-                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                    >
-                      + New
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowCommentDialog(true)}
-                      className={styles.addButton}
-                      disabled={!selectedMissionId || !session}
-                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                    >
-                      💬 Comment
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => {
                         if (selectedMissionInstruction) {
                           const instructionData = selectedInstructions.find(
@@ -1180,11 +1181,15 @@ function EditMissionForm({
                     const isIf = instructionId.startsWith("if-");
                     const isEndIf = instructionId.startsWith("end-if-");
                     const isTemp = instructionId.startsWith("T") && /^T\d+$/.test(instructionId);
-                    const instruction = !isComment && !isIf && !isEndIf && !isTemp ? instructions.find((i) => i.id === instructionId) : null;
+                    const instruction =
+                      !isComment && !isIf && !isEndIf && !isTemp
+                        ? instructions.find((i) => i.id === instructionId)
+                        : null;
 
                     if (!isComment && !isIf && !isEndIf && !isTemp && !instruction) return null;
 
-                    const displayTitle = isComment || isIf || isEndIf || isTemp ? customTitle : customTitle || instruction?.title || "";
+                    const displayTitle =
+                      isComment || isIf || isEndIf || isTemp ? customTitle : customTitle || instruction?.title || "";
                     return (
                       <label
                         key={instructionId}
@@ -1196,10 +1201,10 @@ function EditMissionForm({
                           background: isIf
                             ? "var(--color-success-3)"
                             : isEndIf
-                            ? "var(--color-neutral-3)"
-                            : isTemp
-                            ? "var(--color-accent-2)"
-                            : undefined,
+                              ? "var(--color-neutral-3)"
+                              : isTemp
+                                ? "var(--color-accent-2)"
+                                : undefined,
                         }}
                       >
                         <input
@@ -1214,7 +1219,9 @@ function EditMissionForm({
                           ) : isIf ? (
                             <span style={{ color: "var(--color-success-11)", fontWeight: 700 }}>🔀 IF:</span>
                           ) : isEndIf ? (
-                            <span style={{ color: "var(--color-neutral-10)", fontWeight: 600, opacity: 0.7 }}>🔁 END-IF</span>
+                            <span style={{ color: "var(--color-neutral-10)", fontWeight: 600, opacity: 0.7 }}>
+                              🔁 END-IF
+                            </span>
                           ) : isTemp ? (
                             <span
                               style={{ color: "var(--color-accent-10)", fontWeight: 600 }}
@@ -1611,9 +1618,7 @@ function EditMissionForm({
                 fontFamily: "monospace",
                 fontSize: "0.875rem",
                 padding: "var(--space-3)",
-                border: codeEditorError
-                  ? "1px solid var(--color-error-8)"
-                  : "1px solid var(--color-neutral-6)",
+                border: codeEditorError ? "1px solid var(--color-error-8)" : "1px solid var(--color-neutral-6)",
                 borderRadius: "var(--radius-2)",
                 backgroundColor: "var(--color-neutral-2)",
                 color: "var(--color-neutral-12)",

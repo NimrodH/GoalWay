@@ -146,6 +146,7 @@
   cursor: pointer;
   transition: all 0.2s;
   margin-right: 12px;
+  margin-top: var(--space-1);
 }
 
 .addButton:hover {
