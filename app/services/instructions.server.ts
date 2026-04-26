@@ -1,13 +1,16 @@
 import { getSupabase } from "~/lib/supabase";
 
+export type BadgeSide = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
 export interface Annotation {
   id: string;
-  x: number;       // % from left (0–100)
-  y: number;       // % from top  (0–100)
-  width: number;   // % of image width
-  height: number;  // % of image height
-  label: number;   // sequential number shown on the rect
-  color?: string;  // hex color string, e.g. "#e5484d"
+  x: number;          // % from left (0–100)
+  y: number;          // % from top  (0–100)
+  width: number;      // % of image width
+  height: number;     // % of image height
+  label: number;      // sequential number shown on the badge
+  color?: string;     // hex color string, e.g. "#e5484d"
+  badgeSide?: BadgeSide; // which corner of the rectangle the badge sits on (default top-left)
 }
 
 export interface InstructionContent {

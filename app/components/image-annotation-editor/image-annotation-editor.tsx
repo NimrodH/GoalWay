@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import type { Annotation } from "~/services/instructions.server";
+import type { Annotation, BadgeSide } from "~/services/instructions.server";
 import { ImageAnnotationView } from "~/components/image-annotation-view/image-annotation-view";
 import styles from "./image-annotation-editor.module.css";
 
@@ -20,14 +20,18 @@ const ANNOTATION_COLORS = [
   "#00a2c7", // cyan
 ];
 
+/** Badge side options with their display labels */
+const BADGE_SIDES: { value: BadgeSide; label: string }[] = [
+  { value: "top-left",     label: "↖" },
+  { value: "top-right",    label: "↗" },
+  { value: "bottom-left",  label: "↙" },
+  { value: "bottom-right", label: "↘" },
+];
+
 const MIN_SIZE_PCT = 2; // minimum 2% to avoid accidental tiny rects
 
 function generateId() {
   return `ann-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-}
-
-function pickNextColor(annotations: Annotation[]) {
-  return ANNOTATION_COLORS[annotations.length % ANNOTATION_COLORS.length];
 }
 
 interface ImageAnnotationEditorProps {
@@ -41,6 +45,7 @@ interface ImageAnnotationEditorProps {
  * Admin-only drag-to-draw annotation editor.
  * Click-drag on the image to draw a rectangle.
  * All coordinates are stored as percentages (0–100) of the image dimensions.
+ * The numbered badge can be placed on any of the 4 outside corners of the rectangle.
  */
 export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: ImageAnnotationEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -90,6 +95,7 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
         height: parseFloat(h.toFixed(2)),
         label: nextLabel,
         color: selectedColor,
+        badgeSide: "top-left",
       };
       onChange([...annotations, newAnn]);
       setSelectedId(newAnn.id);
@@ -107,6 +113,10 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
 
   const updateAnnotationColor = (id: string, color: string) => {
     onChange(annotations.map((a) => (a.id === id ? { ...a, color } : a)));
+  };
+
+  const updateAnnotationBadgeSide = (id: string, badgeSide: BadgeSide) => {
+    onChange(annotations.map((a) => (a.id === id ? { ...a, badgeSide } : a)));
   };
 
   // Ghost rect while drawing
@@ -189,34 +199,60 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
                 className={`${styles.annotationRow} ${selectedId === ann.id ? styles.annotationRowSelected : ""}`}
                 onClick={() => setSelectedId(ann.id === selectedId ? null : ann.id)}
               >
-                <div
-                  className={styles.annBadge}
-                  style={{ background: ann.color || "#e5484d" }}
-                >
-                  {ann.label}
+                {/* Top row: badge + coords + delete */}
+                <div className={styles.annTopRow}>
+                  <div
+                    className={styles.annBadge}
+                    style={{ background: ann.color || "#e5484d" }}
+                  >
+                    {ann.label}
+                  </div>
+                  <div className={styles.annCoords}>
+                    x:{ann.x.toFixed(1)}% y:{ann.y.toFixed(1)}%
+                    &nbsp;{ann.width.toFixed(1)}×{ann.height.toFixed(1)}%
+                  </div>
+                  <button
+                    className={styles.deleteBtn}
+                    onClick={(e) => { e.stopPropagation(); deleteAnnotation(ann.id); }}
+                    title="Delete annotation"
+                  >
+                    ✕
+                  </button>
                 </div>
-                <div className={styles.annCoords}>
-                  x:{ann.x.toFixed(1)}% y:{ann.y.toFixed(1)}%
-                  &nbsp;{ann.width.toFixed(1)}×{ann.height.toFixed(1)}%
+
+                {/* Bottom row: color picker + badge-side picker */}
+                <div className={styles.annControlsRow}>
+                  <div className={styles.controlGroup}>
+                    <span className={styles.controlLabel}>Color</span>
+                    <div className={styles.colorPicker} style={{ gap: "var(--space-1)" }}>
+                      {ANNOTATION_COLORS.map((c) => (
+                        <button
+                          key={c}
+                          className={`${styles.colorSwatch} ${styles.colorSwatchSm} ${ann.color === c ? styles.colorSwatchActive : ""}`}
+                          style={{ background: c }}
+                          onClick={(e) => { e.stopPropagation(); updateAnnotationColor(ann.id, c); }}
+                          title={c}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className={styles.controlGroup}>
+                    <span className={styles.controlLabel}>Badge position</span>
+                    <div className={styles.sidePicker}>
+                      {BADGE_SIDES.map(({ value, label }) => (
+                        <button
+                          key={value}
+                          className={`${styles.sideBtn} ${(ann.badgeSide ?? "top-left") === value ? styles.sideBtnActive : ""}`}
+                          onClick={(e) => { e.stopPropagation(); updateAnnotationBadgeSide(ann.id, value); }}
+                          title={value}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div className={styles.colorPicker} style={{ gap: "var(--space-1)" }}>
-                  {ANNOTATION_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      className={`${styles.colorSwatch} ${styles.colorSwatchSm} ${ann.color === c ? styles.colorSwatchActive : ""}`}
-                      style={{ background: c }}
-                      onClick={(e) => { e.stopPropagation(); updateAnnotationColor(ann.id, c); }}
-                      title={c}
-                    />
-                  ))}
-                </div>
-                <button
-                  className={styles.deleteBtn}
-                  onClick={(e) => { e.stopPropagation(); deleteAnnotation(ann.id); }}
-                  title="Delete annotation"
-                >
-                  ✕
-                </button>
               </div>
             ))}
           </div>
