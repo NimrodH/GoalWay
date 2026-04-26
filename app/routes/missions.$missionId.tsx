@@ -56,6 +56,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 type MissionStatus = "Hide" | "For all" | "Only Adama" | "Only Bazn";
+type InstructionStatus = "only title" | "partial explanation" | "full explanation";
 
 export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
@@ -98,6 +99,47 @@ export async function action({ request, params }: Route.ActionArgs) {
       return { success: true };
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
+    }
+  }
+
+  if (actionType === "updateInstructionStatus") {
+    const instructionId = formData.get("instructionId") as string;
+    const newStatus = formData.get("status") as InstructionStatus;
+    const validStatuses: InstructionStatus[] = ["only title", "partial explanation", "full explanation"];
+
+    if (!instructionId || !validStatuses.includes(newStatus)) {
+      return { success: false, error: "Invalid instructionId or status value" };
+    }
+
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(
+        process.env.SUPABASE_PROJECT_URL!,
+        process.env.SUPABASE_API_KEY!,
+      );
+
+      const { data: row, error: fetchError } = await supabase
+        .from("instructions")
+        .select("data_en")
+        .eq("id", instructionId)
+        .single();
+
+      if (fetchError || !row?.data_en) {
+        return { success: false, instructionId, error: fetchError?.message || "Instruction not found" };
+      }
+
+      const updatedDataEn = { ...row.data_en, status: newStatus };
+
+      const { error } = await supabase
+        .from("instructions")
+        .update({ data_en: updatedDataEn, updated_at: new Date().toISOString() })
+        .eq("id", instructionId);
+
+      if (error) return { success: false, instructionId, error: error.message };
+
+      return { success: true, instructionId };
+    } catch (err) {
+      return { success: false, instructionId, error: err instanceof Error ? err.message : "Unknown error" };
     }
   }
 
@@ -152,6 +194,32 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   const statusFetcher = useFetcher();
   // Optimistic status — show the pending value immediately while saving
   const currentStatus = (statusFetcher.formData?.get("status") as MissionStatus | undefined) ?? mission.status ?? "For all";
+
+  // Single shared fetcher for all instruction status updates
+  const instrStatusFetcher = useFetcher<{ success: boolean; instructionId?: string; error?: string }>();
+  // Optimistic instruction statuses — keyed by instruction ID
+  const optimisticInstrStatus: Record<string, InstructionStatus> = {};
+  if (instrStatusFetcher.formData?.get("actionType") === "updateInstructionStatus") {
+    const id = instrStatusFetcher.formData.get("instructionId") as string;
+    const st = instrStatusFetcher.formData.get("status") as InstructionStatus;
+    if (id && st) optimisticInstrStatus[id] = st;
+  }
+
+  const getInstrStatus = (instruction: { id: string; status?: string }): InstructionStatus => {
+    return (
+      optimisticInstrStatus[instruction.id] ??
+      (instruction.status as InstructionStatus | undefined) ??
+      "only title"
+    );
+  };
+
+  const submitInstrStatus = (instructionId: string, newStatus: InstructionStatus) => {
+    const fd = new FormData();
+    fd.set("actionType", "updateInstructionStatus");
+    fd.set("instructionId", instructionId);
+    fd.set("status", newStatus);
+    instrStatusFetcher.submit(fd, { method: "post" });
+  };
 
   // Build the flat list, skipping END-IF (hidden from end user)
   const missionInstructions = mission.instructions
@@ -595,14 +663,43 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                       orderNumber={orderNumber}
                       isCompleted={completedInstructions.has(instruction.id)}
                     />
-                    {isPreview && (
-                      <button
-                        className={styles.editInstructionButton}
-                        onClick={() => navigate(`/admin/instructions?instructionId=${instruction.id}`)}
-                        title={`Edit instruction ${instruction.id}`}
-                      >
-                        ✏️ Edit ^
-                      </button>
+                    {isPreview && !isTemp && (
+                      <div className={styles.editInstructionRow}>
+                        <button
+                          className={styles.editInstructionButton}
+                          onClick={() => navigate(`/admin/instructions?instructionId=${instruction.id}`)}
+                          title={`Edit instruction ${instruction.id}`}
+                        >
+                          ✏️ Edit ^
+                        </button>
+                        <instrStatusFetcher.Form method="post" className={styles.instrStatusForm}>
+                          <input type="hidden" name="actionType" value="updateInstructionStatus" />
+                          <input type="hidden" name="instructionId" value={instruction.id} />
+                          <label className={styles.instrStatusLabel} htmlFor={`instr-status-${instruction.id}`}>
+                            Status:
+                          </label>
+                          <select
+                            id={`instr-status-${instruction.id}`}
+                            name="status"
+                            className={styles.instrStatusSelect}
+                            value={getInstrStatus(instruction as { id: string; status?: string })}
+                            onChange={(e) => submitInstrStatus(instruction.id, e.target.value as InstructionStatus)}
+                          >
+                            <option value="only title">only title</option>
+                            <option value="partial explanation">partial explanation</option>
+                            <option value="full explanation">full explanation</option>
+                          </select>
+                          {instrStatusFetcher.state !== "idle" &&
+                            instrStatusFetcher.formData?.get("instructionId") === instruction.id && (
+                              <span className={styles.statusSaving}>Saving…</span>
+                            )}
+                          {instrStatusFetcher.state === "idle" &&
+                            instrStatusFetcher.data?.success === true &&
+                            instrStatusFetcher.data.instructionId === instruction.id && (
+                              <span className={styles.statusSaved}>✓</span>
+                            )}
+                        </instrStatusFetcher.Form>
+                      </div>
                     )}
                     {"type" in instruction && instruction.type === "link" && "missionId" in instruction && (
                       <div style={{ marginLeft: "1rem", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
