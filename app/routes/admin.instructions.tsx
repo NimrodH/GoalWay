@@ -1496,6 +1496,12 @@ function EditInstructionForm({
                 })
                 .map((id) => {
                   const instruction = instructions.find((i) => i.id === id);
+                  const radioAccentColor =
+                    instruction?.status === "full explanation"
+                      ? "green"
+                      : instruction?.status === "only title"
+                        ? "red"
+                        : undefined;
                   return (
                     <label key={id} className={styles.checkboxLabel} style={{ cursor: "pointer" }}>
                       <input
@@ -1504,6 +1510,7 @@ function EditInstructionForm({
                         value={id}
                         checked={selectedInstructionId === id}
                         onChange={() => handleSelectInstruction(id)}
+                        style={radioAccentColor ? { accentColor: radioAccentColor } : undefined}
                       />
                       <span>
                         {id}

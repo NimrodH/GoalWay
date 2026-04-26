@@ -1096,6 +1096,14 @@ function EditMissionForm({
                     if (!isComment && !isTemp && !instruction) return null;
 
                     const displayTitle = isComment || isTemp ? customTitle : customTitle || instruction?.title || "";
+                    const radioAccentColor =
+                      !isComment && !isTemp
+                        ? instruction?.status === "full explanation"
+                          ? "green"
+                          : instruction?.status === "only title"
+                            ? "red"
+                            : undefined
+                        : undefined;
                     return (
                       <label
                         key={instructionId}
@@ -1112,6 +1120,7 @@ function EditMissionForm({
                           name="missionInstructionRadio"
                           checked={selectedMissionInstruction === instructionId}
                           onChange={() => setSelectedMissionInstruction(instructionId)}
+                          style={radioAccentColor ? { accentColor: radioAccentColor } : undefined}
                         />
                         <span>
                           {isComment ? (
@@ -1124,7 +1133,16 @@ function EditMissionForm({
                               {instructionId}
                             </span>
                           ) : (
-                            <span style={{ color: instruction?.status === "full explanation" ? "green" : "inherit" }}>
+                            <span
+                              style={{
+                                color:
+                                  instruction?.status === "full explanation"
+                                    ? "green"
+                                    : instruction?.status === "only title"
+                                      ? "red"
+                                      : "inherit",
+                              }}
+                            >
                               {instructionId}
                             </span>
                           )}
