@@ -495,10 +495,16 @@ function ExplanationContentItem({
   const [isUploading, setIsUploading] = useState(false);
   const [showImageLibrary, setShowImageLibrary] = useState(false);
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
+  const [imageName, setImageName] = useState("");
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Pre-fill the name field from the original file name (without extension)
+      if (!imageName) {
+        const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+        setImageName(nameWithoutExt);
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         const preview = reader.result as string;
@@ -658,7 +664,7 @@ function ExplanationContentItem({
     if (!imageFile) return;
 
     setIsUploading(true);
-    const result = await uploadImage(imageFile, "instructions");
+    const result = await uploadImage(imageFile, "instructions", imageName || undefined);
     setIsUploading(false);
 
     if ("error" in result) {
@@ -667,7 +673,7 @@ function ExplanationContentItem({
       setImagePreview(result.url);
       onUpdate(index, result.url);
       onImageFileChange(index, null, result.url);
-      alert("Image uploaded successfully!");
+      setImageName("");
     }
   };
 
@@ -749,6 +755,23 @@ function ExplanationContentItem({
             <input type="file" accept="image/*" onChange={handleImageChange} className={styles.input} />
             {imagePreview && (
               <div style={{ marginTop: "var(--space-2)", maxWidth: "400px" }}>
+                {/* Show stored filename if already uploaded to Supabase */}
+                {item.content && !imageFile && (() => {
+                  const storedName = item.content.split("/").pop()?.split("?")[0] ?? "";
+                  return (
+                    <div
+                      style={{
+                        marginBottom: "var(--space-2)",
+                        fontSize: "0.8125rem",
+                        color: "var(--color-neutral-11)",
+                        fontFamily: "var(--font-code)",
+                        wordBreak: "break-all",
+                      }}
+                    >
+                      📁 <strong>Stored as:</strong> {storedName}
+                    </div>
+                  );
+                })()}
                 <ImageAnnotationView
                   src={imagePreview}
                   alt="Preview"
@@ -757,14 +780,28 @@ function ExplanationContentItem({
               </div>
             )}
             {imageFile && !isUploading && (
-              <button
-                type="button"
-                onClick={handleImageUpload}
-                className={styles.addButton}
-                style={{ marginTop: "var(--space-2)" }}
-              >
-                Upload to Supabase
-              </button>
+              <div style={{ marginTop: "var(--space-2)" }}>
+                <label className={styles.label} style={{ fontSize: "0.8125rem", marginBottom: "var(--space-1)", display: "block" }}>
+                  Image name (saved to Supabase as this filename)
+                </label>
+                <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={imageName}
+                    onChange={(e) => setImageName(e.target.value)}
+                    placeholder="e.g. login-screen-step-1"
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleImageUpload}
+                    className={styles.addButton}
+                  >
+                    Upload to Supabase
+                  </button>
+                </div>
+              </div>
             )}
             {isUploading && (
               <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>Uploading...</p>

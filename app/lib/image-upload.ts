@@ -1,12 +1,22 @@
 import { getSupabase } from './supabase';
 
-export async function uploadImage(file: File, folder: string = 'general'): Promise<{ url: string; path: string } | { error: string }> {
+export async function uploadImage(
+  file: File,
+  folder: string = 'general',
+  customName?: string
+): Promise<{ url: string; path: string } | { error: string }> {
   try {
     const supabase = getSupabase();
     
-    // Generate unique filename
+    // Generate filename — prefer custom name (sanitized) over random
     const fileExt = file.name.split('.').pop();
-    const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const sanitized = customName
+      ? customName.trim().replace(/[^a-zA-Z0-9._\-\u0590-\u05FF]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+      : null;
+    const baseName = sanitized && sanitized.length > 0
+      ? `${sanitized}.${fileExt}`
+      : `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const fileName = `${folder}/${baseName}`;
     
     // Upload file to Supabase Storage
     const { data, error } = await supabase.storage
