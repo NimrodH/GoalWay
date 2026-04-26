@@ -406,8 +406,11 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
               const orderNumber = missionInstructions
                 .slice(0, index + 1)
                 .filter(
-                  (inst) =>
-                    inst && "type" in inst && inst.type !== "comment" && inst.type !== "if",
+                  (inst) => {
+                    if (!inst) return false;
+                    if ("type" in inst) return inst.type !== "comment" && inst.type !== "if";
+                    return true; // no type field = default instruction, count it
+                  }
                 ).length;
 
               // Render comments
@@ -481,8 +484,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                       </div>
                     )}
                     {selectedInstructionId === instruction.id &&
-                      "type" in instruction &&
-                      instruction.type !== "link" &&
+                      ("type" in instruction ? instruction.type !== "link" : true) &&
                       !isComment &&
                       "explanation" in instruction &&
                       Array.isArray(instruction.explanation) &&
