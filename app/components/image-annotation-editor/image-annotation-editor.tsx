@@ -193,68 +193,73 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
             {annotations.length === 0 && (
               <p className={styles.listEmpty}>No annotations yet. Drag on the image to add one.</p>
             )}
-            {annotations.map((ann) => (
-              <div
-                key={ann.id}
-                className={`${styles.annotationRow} ${selectedId === ann.id ? styles.annotationRowSelected : ""}`}
-                onClick={() => setSelectedId(ann.id === selectedId ? null : ann.id)}
-              >
-                {/* Top row: badge + coords + delete */}
-                <div className={styles.annTopRow}>
-                  <div
-                    className={styles.annBadge}
-                    style={{ background: ann.color || "#e5484d" }}
-                  >
-                    {ann.label}
-                  </div>
-                  <div className={styles.annCoords}>
-                    x:{ann.x.toFixed(1)}% y:{ann.y.toFixed(1)}%
-                    &nbsp;{ann.width.toFixed(1)}×{ann.height.toFixed(1)}%
-                  </div>
-                  <button
-                    className={styles.deleteBtn}
-                    onClick={(e) => { e.stopPropagation(); deleteAnnotation(ann.id); }}
-                    title="Delete annotation"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Bottom row: color picker + badge-side picker */}
-                <div className={styles.annControlsRow}>
-                  <div className={styles.controlGroup}>
-                    <span className={styles.controlLabel}>Color</span>
-                    <div className={styles.colorPicker} style={{ gap: "var(--space-1)" }}>
-                      {ANNOTATION_COLORS.map((c) => (
-                        <button
-                          key={c}
-                          className={`${styles.colorSwatch} ${styles.colorSwatchSm} ${ann.color === c ? styles.colorSwatchActive : ""}`}
-                          style={{ background: c }}
-                          onClick={(e) => { e.stopPropagation(); updateAnnotationColor(ann.id, c); }}
-                          title={c}
-                        />
-                      ))}
+            {annotations.map((ann) => {
+              const isSelected = selectedId === ann.id;
+              return (
+                <div
+                  key={ann.id}
+                  className={`${styles.annotationRow} ${isSelected ? styles.annotationRowSelected : ""}`}
+                  onClick={() => setSelectedId(isSelected ? null : ann.id)}
+                >
+                  {/* Top row: badge + coords + delete */}
+                  <div className={styles.annTopRow}>
+                    <div
+                      className={styles.annBadge}
+                      style={{ background: ann.color || "#e5484d" }}
+                    >
+                      {ann.label}
                     </div>
+                    <div className={styles.annCoords}>
+                      x:{ann.x.toFixed(1)}% y:{ann.y.toFixed(1)}%
+                      &nbsp;{ann.width.toFixed(1)}×{ann.height.toFixed(1)}%
+                    </div>
+                    <button
+                      className={styles.deleteBtn}
+                      onClick={(e) => { e.stopPropagation(); deleteAnnotation(ann.id); }}
+                      title="Delete annotation"
+                    >
+                      ✕
+                    </button>
                   </div>
 
-                  <div className={styles.controlGroup}>
-                    <span className={styles.controlLabel}>Badge position</span>
-                    <div className={styles.sidePicker}>
-                      {BADGE_SIDES.map(({ value, label }) => (
-                        <button
-                          key={value}
-                          className={`${styles.sideBtn} ${(ann.badgeSide ?? "top-left") === value ? styles.sideBtnActive : ""}`}
-                          onClick={(e) => { e.stopPropagation(); updateAnnotationBadgeSide(ann.id, value); }}
-                          title={value}
-                        >
-                          {label}
-                        </button>
-                      ))}
+                  {/* Controls — only visible when this row is selected */}
+                  {isSelected && (
+                    <div className={styles.annControlsRow}>
+                      <div className={styles.controlGroup}>
+                        <span className={styles.controlLabel}>Color</span>
+                        <div className={styles.colorPicker} style={{ gap: "var(--space-1)" }}>
+                          {ANNOTATION_COLORS.map((c) => (
+                            <button
+                              key={c}
+                              className={`${styles.colorSwatch} ${styles.colorSwatchSm} ${ann.color === c ? styles.colorSwatchActive : ""}`}
+                              style={{ background: c }}
+                              onClick={(e) => { e.stopPropagation(); updateAnnotationColor(ann.id, c); }}
+                              title={c}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className={styles.controlGroup}>
+                        <span className={styles.controlLabel}>Badge position</span>
+                        <div className={styles.sidePicker}>
+                          {BADGE_SIDES.map(({ value, label }) => (
+                            <button
+                              key={value}
+                              className={`${styles.sideBtn} ${(ann.badgeSide ?? "top-left") === value ? styles.sideBtnActive : ""}`}
+                              onClick={(e) => { e.stopPropagation(); updateAnnotationBadgeSide(ann.id, value); }}
+                              title={value}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
