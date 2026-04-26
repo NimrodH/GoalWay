@@ -7,6 +7,7 @@ import { uploadImage, listAllImages } from "~/lib/image-upload";
 import type { Instruction, InstructionContent, Annotation } from "~/services/instructions.server";
 import type { Mission } from "~/services/missions.server";
 import { ImageAnnotationEditor } from "~/components/image-annotation-editor/image-annotation-editor";
+import { ImageAnnotationView } from "~/components/image-annotation-view/image-annotation-view";
 import styles from "./admin.module.css";
 import { loader as adminLoader, action as adminAction } from "~/routes/admin";
 
@@ -747,8 +748,12 @@ function ExplanationContentItem({
             </div>
             <input type="file" accept="image/*" onChange={handleImageChange} className={styles.input} />
             {imagePreview && (
-              <div style={{ marginTop: "var(--space-2)" }}>
-                <img src={imagePreview} alt="Preview" style={{ maxWidth: "200px", borderRadius: "var(--radius-2)" }} />
+              <div style={{ marginTop: "var(--space-2)", maxWidth: "400px" }}>
+                <ImageAnnotationView
+                  src={imagePreview}
+                  alt="Preview"
+                  annotations={item.annotations ?? []}
+                />
               </div>
             )}
             {imageFile && !isUploading && (
