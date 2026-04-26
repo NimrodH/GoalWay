@@ -957,6 +957,20 @@ function EditMissionForm({
                 <button
                   type="button"
                   onClick={() => {
+                    if (selectedMissionInstruction) {
+                      setSelectedInstructions(selectedInstructions.filter(([id]) => id !== selectedMissionInstruction));
+                      setSelectedMissionInstruction(null);
+                    }
+                  }}
+                  className={styles.addButton}
+                  style={{ width: "80px" }}
+                  disabled={!selectedMissionInstruction}
+                >
+                  ← Del
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
                     let newInstructions;
                     if (selectedMissionInstruction) {
                       const insertIndex = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
@@ -979,20 +993,6 @@ function EditMissionForm({
                   disabled={selectedAvailableInstructions.length === 0}
                 >
                   Add →
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (selectedMissionInstruction) {
-                      setSelectedInstructions(selectedInstructions.filter(([id]) => id !== selectedMissionInstruction));
-                      setSelectedMissionInstruction(null);
-                    }
-                  }}
-                  className={styles.addButton}
-                  style={{ width: "80px" }}
-                  disabled={!selectedMissionInstruction}
-                >
-                  ← Del
                 </button>
                 <button
                   type="button"
