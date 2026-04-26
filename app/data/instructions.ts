@@ -1,6 +1,17 @@
+export interface Annotation {
+  id: string;
+  x: number;       // % from left (0–100)
+  y: number;       // % from top  (0–100)
+  width: number;   // % of image width
+  height: number;  // % of image height
+  label: number;   // sequential number shown on the rect
+  color?: string;  // hex color string, e.g. "#e5484d"
+}
+
 export interface InstructionContent {
   type: "text" | "image" | "video";
   content: string;
+  annotations?: Annotation[];
 }
 
 export interface Instruction {

@@ -2,6 +2,7 @@ import type { Instruction, InstructionContent } from "~/data/instructions";
 import styles from "./explanation-display.module.css";
 import Markdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
+import { ImageAnnotationView } from "~/components/image-annotation-view/image-annotation-view";
 
 interface ExplanationDisplayProps {
   /**
@@ -45,11 +46,11 @@ export function ExplanationDisplay({ instruction, title, explanation, className 
 
           if (item.type === "image") {
             return (
-              <img
+              <ImageAnnotationView
                 key={index}
                 src={item.content}
                 alt={`Illustration for ${displayTitle}`}
-                className={styles.image}
+                annotations={item.annotations ?? []}
               />
             );
           }

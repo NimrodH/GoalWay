@@ -4,12 +4,13 @@ import classNames from "classnames";
 import { AdminLayout } from "~/components/admin-layout/admin-layout";
 import { useAuth } from "~/hooks/use-auth";
 import { uploadImage, listAllImages } from "~/lib/image-upload";
-import type { Instruction, InstructionContent } from "~/services/instructions.server";
+import type { Instruction, InstructionContent, Annotation } from "~/services/instructions.server";
 import type { Mission } from "~/services/missions.server";
+import { ImageAnnotationEditor } from "~/components/image-annotation-editor/image-annotation-editor";
 import styles from "./admin.module.css";
 import { loader as adminLoader, action as adminAction } from "~/routes/admin";
 
-type InstructionContentWithKey = InstructionContent & { _key?: string };
+type InstructionContentWithKey = InstructionContent & { _key?: string; annotations?: Annotation[] };
 
 export const loader = adminLoader;
 export const action = adminAction;
@@ -469,6 +470,7 @@ function ExplanationContentItem({
   onNavigationRequest,
   imageFile,
   onImageFileChange,
+  onUpdateAnnotations,
 }: {
   item: InstructionContentWithKey;
   index: number;
@@ -486,10 +488,12 @@ function ExplanationContentItem({
   onNavigationRequest: (navigationFn: () => void) => void;
   imageFile: File | null;
   onImageFileChange: (index: number, file: File | null, preview: string) => void;
+  onUpdateAnnotations: (index: number, annotations: Annotation[]) => void;
 }) {
   const [imagePreview, setImagePreview] = useState<string>(item.type === "image" ? item.content : "");
   const [isUploading, setIsUploading] = useState(false);
   const [showImageLibrary, setShowImageLibrary] = useState(false);
+  const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -762,7 +766,16 @@ function ExplanationContentItem({
             )}
           </div>
           {item.content && (
-            <div style={{ marginTop: "var(--space-3)" }}>
+            <div style={{ marginTop: "var(--space-3)", display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => setShowAnnotationEditor(true)}
+                className={styles.addButton}
+                style={{ fontWeight: 600 }}
+                title="Add numbered rectangles to this image"
+              >
+                📐 Annotate ({item.annotations?.length ?? 0})
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -776,6 +789,14 @@ function ExplanationContentItem({
                 🔍 View Instructions with This Image
               </button>
             </div>
+          )}
+          {showAnnotationEditor && item.content && (
+            <ImageAnnotationEditor
+              src={item.content}
+              annotations={item.annotations ?? []}
+              onChange={(annotations) => onUpdateAnnotations(index, annotations)}
+              onClose={() => setShowAnnotationEditor(false)}
+            />
           )}
           <ImageLibraryDialog
             isOpen={showImageLibrary}
@@ -1149,6 +1170,12 @@ function EditInstructionForm({
     setExplanationFiles(updated);
   };
 
+  const handleUpdateAnnotations = (index: number, annotations: Annotation[]) => {
+    const updated = [...explanation];
+    updated[index] = { ...updated[index], annotations };
+    setExplanation(updated);
+  };
+
   const removeContent = (index: number) => {
     setExplanation(explanation.filter((_, i) => i !== index));
     setExplanationFiles(explanationFiles.filter((_, i) => i !== index));
@@ -1212,7 +1239,7 @@ function EditInstructionForm({
         setExplanation(updatedExplanation);
         setExplanationFiles(updatedFiles);
 
-        // Generate code from the updated explanation
+        // Generate code from the updated explanation; preserve annotations
         const cleanExplanation: InstructionContent[] = updatedExplanation.map(({ _key, ...item }) => item);
         const instructionData: Instruction = {
           id,
@@ -1249,7 +1276,7 @@ function EditInstructionForm({
   };
 
   const generateCode = () => {
-    // Remove internal _key property before generating code
+    // Remove internal _key property before generating code; preserve annotations
     const cleanExplanation: InstructionContent[] = explanation.map(({ _key, ...item }) => item);
 
     const instruction: Instruction = {
@@ -1624,6 +1651,7 @@ function EditInstructionForm({
                   onNavigationRequest={onNavigationRequest}
                   imageFile={explanationFiles[index] ?? null}
                   onImageFileChange={handleImageFileChange}
+                  onUpdateAnnotations={handleUpdateAnnotations}
                 />
               ))}
 

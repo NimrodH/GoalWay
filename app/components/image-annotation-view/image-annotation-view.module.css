@@ -1,0 +1,32 @@
+.wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  line-height: 0; /* eliminate inline-block gap under img */
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-3);
+  box-shadow: var(--shadow-1);
+  object-fit: cover;
+  max-height: 500px;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* border-radius matches the image so overlays don't bleed outside */
+  border-radius: var(--radius-3);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Enable pointer events on individual annotation groups */
+.overlay g {
+  pointer-events: all;
+}
