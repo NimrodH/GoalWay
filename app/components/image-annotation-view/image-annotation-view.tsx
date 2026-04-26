@@ -3,7 +3,7 @@ import type { Annotation, BadgeSide } from "~/services/instructions.server";
 import styles from "./image-annotation-view.module.css";
 
 /** Badge radius as a percentage of the image width */
-const BADGE_R_PCT = 3;
+const BADGE_R_PCT = 1.9;
 
 /**
  * Computes the badge center so it sits *outside* the chosen rectangle corner.
@@ -120,7 +120,7 @@ export function ImageAnnotationView({ src, alt = "", annotations = [], className
                   r={badgeR}
                   fill={color}
                   stroke="white"
-                  strokeWidth={0.35}
+                  strokeWidth={0.28}
                 />
                 <text
                   x={cx}
@@ -128,7 +128,7 @@ export function ImageAnnotationView({ src, alt = "", annotations = [], className
                   textAnchor="middle"
                   dominantBaseline="central"
                   fill="white"
-                  fontSize={2.8}
+                  fontSize={2}
                   fontWeight="bold"
                   style={{ fontFamily: "system-ui, sans-serif", userSelect: "none" }}
                 >
