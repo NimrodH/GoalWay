@@ -82,11 +82,21 @@ type EndIfEntry = {
   explanation: [];
 };
 
+type TempEntry = {
+  id: string;
+  title: string;
+  description: string;
+  status: "temp";
+  type: "temp";
+  explanation: [];
+};
+
 type MissionInstruction =
   | (typeof import("../services/instructions.server")["getInstructionsByIds"] extends (...args: any) => Promise<infer R> ? R : never)[number]
   | CommentEntry
   | IfEntry
-  | EndIfEntry;
+  | EndIfEntry
+  | TempEntry;
 
 export default function MissionPage({ loaderData }: Route.ComponentProps) {
   const { mission, instructions, allMissions, isPreview } = loaderData;
@@ -125,11 +135,22 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
           explanation: [] as [],
         };
       }
+      // Temp instruction (T1, T2, ...) — not yet saved to DB, show as empty instruction
+      if (/^T\d+$/.test(id)) {
+        return {
+          id,
+          title: customTitle || id,
+          description: "",
+          status: "temp" as const,
+          type: "temp" as const,
+          explanation: [] as [],
+        };
+      }
       const instruction = instructions.find((inst) => inst.id === id);
       if (!instruction) return null;
       return customTitle ? { ...instruction, title: customTitle } : instruction;
     })
-    .filter(Boolean) as (NonNullable<ReturnType<typeof instructions["find"]>> | CommentEntry | IfEntry | EndIfEntry)[];
+    .filter(Boolean) as (NonNullable<ReturnType<typeof instructions["find"]>> | CommentEntry | IfEntry | EndIfEntry | TempEntry)[];
 
   // Build map: ifId -> array of raw instruction IDs inside the block
   const ifBlockMap = (() => {
@@ -319,11 +340,11 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
 
   const selectedInstruction = missionInstructions.find((inst) => inst?.id === selectedInstructionId) || null;
 
-  // Don't pass comments or IF entries to ExplanationDisplay
+  // Don't pass comments, IF, or temp entries to ExplanationDisplay
   const instructionToDisplay =
     selectedInstruction &&
     "type" in selectedInstruction &&
-    (selectedInstruction.type === "comment" || selectedInstruction.type === "if")
+    (selectedInstruction.type === "comment" || selectedInstruction.type === "if" || selectedInstruction.type === "temp")
       ? null
       : selectedInstruction;
 
@@ -410,6 +431,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
               const isComment = "type" in instruction && instruction.type === "comment";
               const isIf = "type" in instruction && instruction.type === "if";
               const isEndIf = "type" in instruction && instruction.type === "end-if";
+              const isTemp = "type" in instruction && instruction.type === "temp";
               const isIfExpanded = isIf && expandedIfBlocks.has(instruction.id);
               const isLinkExpanded = expandedLinkInstructions.has(instruction.id);
               const isLoading = loadingLinkInstructions.has(instruction.id);
@@ -420,7 +442,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                 return null;
               }
 
-              // Order number (excluding comments, IF and END-IF entries)
+              // Order number (excluding comments, IF and END-IF entries; temp entries count)
               const orderNumber = missionInstructions
                 .slice(0, index + 1)
                 .filter(
@@ -486,7 +508,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                       description={viewMode === "cards" ? instruction.description : undefined}
                       selected={selectedInstructionId === instruction.id}
                       onClick={(event) => handleInstructionClick(instruction.id, event)}
-                      instructionType={"type" in instruction ? instruction.type : undefined}
+                      instructionType={"type" in instruction && instruction.type !== "temp" ? instruction.type : undefined}
                       explanation={"explanation" in instruction ? instruction.explanation : []}
                       className={`${styles.instructionListItem} ${viewMode === "list" ? styles.listModeItem : ""}`}
                       orderNumber={orderNumber}
@@ -507,7 +529,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                       </div>
                     )}
                     {selectedInstructionId === instruction.id &&
-                      ("type" in instruction ? instruction.type !== "link" : true) &&
+                      ("type" in instruction ? instruction.type !== "link" && instruction.type !== "temp" : true) &&
                       !isComment &&
                       "explanation" in instruction &&
                       Array.isArray(instruction.explanation) &&
