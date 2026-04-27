@@ -11,6 +11,7 @@ export interface Annotation {
   label: number;      // sequential number shown on the badge
   color?: string;     // hex color string, e.g. "#e5484d"
   badgeSide?: BadgeSide; // which corner of the rectangle the badge sits on (default top-left)
+  text?: string;      // optional markdown description shown below the image
 }
 
 export interface InstructionContent {

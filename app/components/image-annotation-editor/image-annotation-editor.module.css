@@ -288,6 +288,32 @@
   background: var(--color-error-3);
 }
 
+.annTextarea {
+  width: 100%;
+  resize: vertical;
+  font-size: 0.8125rem;
+  font-family: var(--font-body);
+  color: var(--color-neutral-12);
+  background: var(--color-neutral-1);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  padding: var(--space-2) var(--space-2);
+  line-height: 1.5;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.annTextarea:focus {
+  outline: none;
+  border-color: var(--color-accent-8);
+  box-shadow: 0 0 0 2px var(--color-accent-4);
+}
+
+.annTextarea::placeholder {
+  color: var(--color-neutral-8);
+  font-style: italic;
+}
+
 .editorFooter {
   display: flex;
   align-items: center;

@@ -119,6 +119,10 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
     onChange(annotations.map((a) => (a.id === id ? { ...a, badgeSide } : a)));
   };
 
+  const updateAnnotationText = (id: string, text: string) => {
+    onChange(annotations.map((a) => (a.id === id ? { ...a, text } : a)));
+  };
+
   // Ghost rect while drawing
   const ghostRect = draw && draw.active
     ? {
@@ -221,6 +225,16 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
                       ✕
                     </button>
                   </div>
+
+                  {/* Text field — always visible */}
+                  <textarea
+                    className={styles.annTextarea}
+                    placeholder="Description (supports Markdown)…"
+                    value={ann.text ?? ""}
+                    rows={2}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => updateAnnotationText(ann.id, e.target.value)}
+                  />
 
                   {/* Controls — only visible when this row is selected */}
                   {isSelected && (

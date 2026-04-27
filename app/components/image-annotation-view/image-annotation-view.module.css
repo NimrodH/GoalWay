@@ -1,3 +1,10 @@
+.outerWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
 .wrapper {
   position: relative;
   display: inline-block;
@@ -29,4 +36,64 @@
 /* Enable pointer events on individual annotation groups */
 .overlay g {
   pointer-events: all;
+}
+
+/* Caption list below the image */
+.captionList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-neutral-2);
+  border: 1px solid var(--color-neutral-5);
+  border-radius: var(--radius-3);
+}
+
+.captionRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.captionBadge {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: white;
+  margin-top: 2px; /* optical alignment with text */
+}
+
+.captionText {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--color-neutral-11);
+}
+
+/* Reset margins inside markdown output so they don’t add extra space */
+.captionText p {
+  margin: 0;
+}
+
+.captionText p + p {
+  margin-top: var(--space-1);
+}
+
+.captionText strong {
+  color: var(--color-neutral-12);
+}
+
+.captionText code {
+  font-family: var(--font-code);
+  font-size: 0.85em;
+  background: var(--color-neutral-4);
+  border-radius: var(--radius-1);
+  padding: 0.1em 0.35em;
 }

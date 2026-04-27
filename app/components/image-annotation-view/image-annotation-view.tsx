@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import type { Annotation, BadgeSide } from "~/services/instructions.server";
 import styles from "./image-annotation-view.module.css";
 
@@ -70,74 +72,99 @@ export function ImageAnnotationView({ src, alt = "", annotations = [], className
   // and % of height for y/height — we need to convert y/height to vbHeight space
   const scaleY = vbHeight / 100; // maps annotation % heights to viewBox units
 
+  // Only show caption list if at least one annotation has non-empty text
+  const captionAnnotations = annotations.filter((a) => a.text && a.text.trim().length > 0);
+
   return (
-    <div className={`${styles.wrapper} ${className ?? ""}`}>
-      <img ref={imgRef} src={src} alt={alt} className={styles.image} />
-      {annotations.length > 0 && (
-        <svg
-          className={styles.overlay}
-          viewBox={`0 0 100 ${vbHeight}`}
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          {annotations.map((ann) => {
-            const isHovered = hoveredId === ann.id;
-            const color = ann.color || "#e5484d";
-            const side: BadgeSide = ann.badgeSide ?? "top-left";
+    <div className={`${styles.outerWrapper} ${className ?? ""}`}>
+      <div className={styles.wrapper}>
+        <img ref={imgRef} src={src} alt={alt} className={styles.image} />
+        {annotations.length > 0 && (
+          <svg
+            className={styles.overlay}
+            viewBox={`0 0 100 ${vbHeight}`}
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            {annotations.map((ann) => {
+              const isHovered = hoveredId === ann.id;
+              const color = ann.color || "#e5484d";
+              const side: BadgeSide = ann.badgeSide ?? "top-left";
 
-            // Convert annotation coords: x/width stay as-is (% of width = vb units)
-            // y/height are % of image height → scale to vbHeight space
-            const ax = ann.x;
-            const ay = ann.y * scaleY;
-            const aw = ann.width;
-            const ah = ann.height * scaleY;
+              // Convert annotation coords: x/width stay as-is (% of width = vb units)
+              // y/height are % of image height → scale to vbHeight space
+              const ax = ann.x;
+              const ay = ann.y * scaleY;
+              const aw = ann.width;
+              const ah = ann.height * scaleY;
 
-            const scaledAnn = { ...ann, x: ax, y: ay, width: aw, height: ah };
-            const { cx, cy } = badgeCenter(scaledAnn, side, badgeR);
+              const scaledAnn = { ...ann, x: ax, y: ay, width: aw, height: ah };
+              const { cx, cy } = badgeCenter(scaledAnn, side, badgeR);
 
-            return (
-              <g
-                key={ann.id}
-                onMouseEnter={() => setHoveredId(ann.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                style={{ cursor: "default" }}
-              >
-                {/* Rectangle */}
-                <rect
-                  x={ax}
-                  y={ay}
-                  width={aw}
-                  height={ah}
-                  fill={isHovered ? `${color}33` : `${color}1a`}
-                  stroke={color}
-                  strokeWidth={isHovered ? 0.6 : 0.4}
-                  rx={0.4}
-                />
-                {/* Badge — true circle outside the rectangle corner */}
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={badgeR}
-                  fill={color}
-                  stroke="white"
-                  strokeWidth={0.28}
-                />
-                <text
-                  x={cx}
-                  y={cy}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fill="white"
-                  fontSize={2}
-                  fontWeight="bold"
-                  style={{ fontFamily: "system-ui, sans-serif", userSelect: "none" }}
+              return (
+                <g
+                  key={ann.id}
+                  onMouseEnter={() => setHoveredId(ann.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  style={{ cursor: "default" }}
                 >
-                  {ann.label}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
+                  {/* Rectangle */}
+                  <rect
+                    x={ax}
+                    y={ay}
+                    width={aw}
+                    height={ah}
+                    fill={isHovered ? `${color}33` : `${color}1a`}
+                    stroke={color}
+                    strokeWidth={isHovered ? 0.6 : 0.4}
+                    rx={0.4}
+                  />
+                  {/* Badge — true circle outside the rectangle corner */}
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={badgeR}
+                    fill={color}
+                    stroke="white"
+                    strokeWidth={0.28}
+                  />
+                  <text
+                    x={cx}
+                    y={cy}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill="white"
+                    fontSize={2}
+                    fontWeight="bold"
+                    style={{ fontFamily: "system-ui, sans-serif", userSelect: "none" }}
+                  >
+                    {ann.label}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        )}
+      </div>
+
+      {captionAnnotations.length > 0 && (
+        <div className={styles.captionList}>
+          {captionAnnotations.map((ann) => (
+            <div key={ann.id} className={styles.captionRow}>
+              <span
+                className={styles.captionBadge}
+                style={{ background: ann.color || "#e5484d" }}
+              >
+                {ann.label}
+              </span>
+              <div className={styles.captionText}>
+                <ReactMarkdown remarkPlugins={[remarkBreaks]}>
+                  {ann.text!}
+                </ReactMarkdown>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
