@@ -49,8 +49,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   }
 
   const allMissions = await getAllMissions();
-  const instructionIds = mission.instructions.map(([id]) => id);
-  const instructions = await getInstructionsByIds(instructionIds);
+  // Strip duplicate-occurrence suffixes (#2, #3, …) and de-duplicate before querying the DB.
+  // The "#N" suffix is a UI convention that allows the same instruction to appear multiple times
+  // in a mission with independent selection/completion state.
+  const rawIds = mission.instructions.map(([id]) => id);
+  const uniqueBaseIds = [...new Set(rawIds.map((id) => (id.includes("#") ? id.split("#")[0] : id)))];
+  const instructions = await getInstructionsByIds(uniqueBaseIds);
 
   return { mission, instructions, allMissions, isPreview };
 }
@@ -266,9 +270,14 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
           explanation: [] as [],
         };
       }
-      const instruction = instructions.find((inst) => inst.id === id);
+      // Strip the duplicate-occurrence suffix (#2, #3, …) to get the real instruction ID,
+      // but keep the full entry key as `id` so selection/completion state is independent.
+      const baseId = id.includes("#") ? id.split("#")[0] : id;
+      const instruction = instructions.find((inst) => inst.id === baseId);
       if (!instruction) return null;
-      return customTitle ? { ...instruction, title: customTitle } : instruction;
+      // Preserve the entry key (with suffix) as the id so duplicates track independently
+      const resolvedInstruction = customTitle ? { ...instruction, title: customTitle } : instruction;
+      return id !== baseId ? { ...resolvedInstruction, id } : resolvedInstruction;
     })
     .filter(Boolean) as (NonNullable<ReturnType<typeof instructions["find"]>> | CommentEntry | IfEntry | EndIfEntry | TempEntry)[];
 
@@ -667,14 +676,19 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                       <div className={styles.editInstructionRow}>
                         <button
                           className={styles.editInstructionButton}
-                          onClick={() => navigate(`/admin/instructions?instructionId=${instruction.id}`)}
+                          onClick={() => {
+                            // Strip the duplicate-occurrence suffix before navigating to admin
+                            const editId = instruction.id.includes("#") ? instruction.id.split("#")[0] : instruction.id;
+                            navigate(`/admin/instructions?instructionId=${editId}`);
+                          }}
                           title={`Edit instruction ${instruction.id}`}
                         >
                           ✏️ Edit ^
                         </button>
                         <instrStatusFetcher.Form method="post" className={styles.instrStatusForm}>
                           <input type="hidden" name="actionType" value="updateInstructionStatus" />
-                          <input type="hidden" name="instructionId" value={instruction.id} />
+                          {/* Strip the suffix — status is stored on the base instruction in the DB */}
+                          <input type="hidden" name="instructionId" value={instruction.id.includes("#") ? instruction.id.split("#")[0] : instruction.id} />
                           <label className={styles.instrStatusLabel} htmlFor={`instr-status-${instruction.id}`}>
                             Status:
                           </label>

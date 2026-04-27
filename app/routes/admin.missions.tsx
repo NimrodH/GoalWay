@@ -559,6 +559,8 @@ function EditMissionForm({
 
   const handleEditInstruction = (instructionId: string) => {
     const isTemp = /^T\d+$/.test(instructionId);
+    // Strip the duplicate suffix (#2, #3, …) to get the real instruction ID
+    const baseId = instructionId.includes("#") ? instructionId.split("#")[0] : instructionId;
 
     if (!isTemp) {
       // Existing instruction — navigate directly
@@ -566,7 +568,7 @@ function EditMissionForm({
         localStorage.setItem("lastSelectedMissionId", selectedMissionId);
       }
       onNavigationRequest(() => {
-        window.location.href = `/admin/instructions?lang=${language}&instructionId=${instructionId}`;
+        window.location.href = `/admin/instructions?lang=${language}&instructionId=${baseId}`;
       });
       return;
     }
@@ -712,10 +714,14 @@ function EditMissionForm({
       alert("JSON editing is only available for real saved instructions");
       return;
     }
+    // Strip the duplicate suffix (#2, #3, …) to get the real instruction ID
+    const baseId = selectedMissionInstruction.includes("#")
+      ? selectedMissionInstruction.split("#")[0]
+      : selectedMissionInstruction;
     const allInstructions = language === "he" ? instructionsHe : instructionsEn;
-    const instruction = allInstructions.find((i) => i.id === selectedMissionInstruction);
-    const jsonValue = instruction ? JSON.stringify(instruction, null, 2) : `{ "id": "${selectedMissionInstruction}" }`;
-    setJsonDialogInstructionId(selectedMissionInstruction);
+    const instruction = allInstructions.find((i) => i.id === baseId);
+    const jsonValue = instruction ? JSON.stringify(instruction, null, 2) : `{ "id": "${baseId}" }`;
+    setJsonDialogInstructionId(baseId);
     setJsonEditorValue(jsonValue);
     setJsonSaveError(null);
     setShowJsonDialog(true);
@@ -900,7 +906,6 @@ function EditMissionForm({
                   }}
                 >
                   {instructions
-                    .filter((instruction) => !selectedInstructions.some(([id]) => id === instruction.id))
                     .filter((instruction) => {
                       if (!instructionFilter.trim()) return true;
                       const searchTerm = instructionFilter.toLowerCase().trim();
@@ -908,48 +913,59 @@ function EditMissionForm({
                       const description = instruction.description?.toLowerCase() || "";
                       return title.includes(searchTerm) || description.includes(searchTerm);
                     })
-                    .map((instruction) => (
-                      <label
-                        key={instruction.id}
-                        className={styles.checkboxLabel}
-                        style={{
-                          padding: "var(--space-2)",
-                          borderBottom: "1px solid var(--color-neutral-4)",
-                          margin: 0,
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedAvailableInstructions.includes(instruction.id)}
-                          onChange={() => {
-                            if (selectedAvailableInstructions.includes(instruction.id)) {
-                              setSelectedAvailableInstructions(
-                                selectedAvailableInstructions.filter((id) => id !== instruction.id),
-                              );
-                            } else {
-                              setSelectedAvailableInstructions([...selectedAvailableInstructions, instruction.id]);
-                            }
+                    .map((instruction) => {
+                      const alreadyAdded = selectedInstructions.some(
+                        ([k]) => k === instruction.id || k.startsWith(`${instruction.id}#`),
+                      );
+                      return (
+                        <label
+                          key={instruction.id}
+                          className={styles.checkboxLabel}
+                          style={{
+                            padding: "var(--space-2)",
+                            borderBottom: "1px solid var(--color-neutral-4)",
+                            margin: 0,
+                            opacity: alreadyAdded ? 0.6 : 1,
                           }}
-                        />
-                        <span>
-                          <span
-                            style={{
-                              color:
-                                instruction.status === "full explanation"
-                                  ? "green"
-                                  : instruction.status === "only title"
-                                    ? "red"
-                                    : "inherit",
-                              fontWeight: 600,
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedAvailableInstructions.includes(instruction.id)}
+                            onChange={() => {
+                              if (selectedAvailableInstructions.includes(instruction.id)) {
+                                setSelectedAvailableInstructions(
+                                  selectedAvailableInstructions.filter((id) => id !== instruction.id),
+                                );
+                              } else {
+                                setSelectedAvailableInstructions([...selectedAvailableInstructions, instruction.id]);
+                              }
                             }}
-                          >
-                            {instruction.id}
+                          />
+                          <span>
+                            <span
+                              style={{
+                                color:
+                                  instruction.status === "full explanation"
+                                    ? "green"
+                                    : instruction.status === "only title"
+                                      ? "red"
+                                      : "inherit",
+                                fontWeight: 600,
+                              }}
+                            >
+                              {instruction.id}
+                            </span>
+                            {" - "}
+                            {instruction.title}
+                            {alreadyAdded && (
+                              <span style={{ marginLeft: "var(--space-2)", fontSize: "0.75rem", color: "var(--color-accent-10)" }}>
+                                (already in mission)
+                              </span>
+                            )}
                           </span>
-                          {" - "}
-                          {instruction.title}
-                        </span>
-                      </label>
-                    ))}
+                        </label>
+                      );
+                    })}
                 </div>
               </div>
 
@@ -958,7 +974,13 @@ function EditMissionForm({
                   type="button"
                   onClick={() => {
                     if (selectedMissionInstruction) {
-                      setSelectedInstructions(selectedInstructions.filter(([id]) => id !== selectedMissionInstruction));
+                      const idx = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
+                      if (idx !== -1) {
+                        setSelectedInstructions([
+                          ...selectedInstructions.slice(0, idx),
+                          ...selectedInstructions.slice(idx + 1),
+                        ]);
+                      }
                       setSelectedMissionInstruction(null);
                     }
                   }}
@@ -971,19 +993,31 @@ function EditMissionForm({
                 <button
                   type="button"
                   onClick={() => {
+                    // Generate unique entry keys when the same base ID is added more than once.
+                    // Duplicate entries get a "#N" suffix (e.g. "42#2", "42#3") so that each
+                    // occurrence has an independent key while the renderer strips the suffix to
+                    // resolve the underlying instruction from the database.
+                    const newEntries: Array<[string, string?]> = selectedAvailableInstructions.map((baseId) => {
+                      const existingKeys = selectedInstructions.map(([k]) => k);
+                      const alreadyPresent = existingKeys.some(
+                        (k) => k === baseId || k.startsWith(`${baseId}#`),
+                      );
+                      if (!alreadyPresent) return [baseId] as [string];
+                      let suffix = 2;
+                      while (existingKeys.includes(`${baseId}#${suffix}`)) suffix++;
+                      return [`${baseId}#${suffix}`] as [string];
+                    });
+
                     let newInstructions;
                     if (selectedMissionInstruction) {
                       const insertIndex = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
                       newInstructions = [
                         ...selectedInstructions.slice(0, insertIndex),
-                        ...selectedAvailableInstructions.map((id) => [id] as [string, string?]),
+                        ...newEntries,
                         ...selectedInstructions.slice(insertIndex),
                       ];
                     } else {
-                      newInstructions = [
-                        ...selectedInstructions,
-                        ...selectedAvailableInstructions.map((id) => [id] as [string, string?]),
-                      ];
+                      newInstructions = [...selectedInstructions, ...newEntries];
                     }
                     setSelectedInstructions(newInstructions);
                     setSelectedAvailableInstructions([]);
@@ -1181,11 +1215,14 @@ function EditMissionForm({
                     const isIf = instructionId.startsWith("if-");
                     const isEndIf = instructionId.startsWith("end-if-");
                     const isTemp = instructionId.startsWith("T") && /^T\d+$/.test(instructionId);
+                    // Strip the duplicate suffix (#2, #3, …) to get the real instruction ID for lookup
+                    const baseInstructionId = instructionId.includes("#") ? instructionId.split("#")[0] : instructionId;
                     const instruction =
                       !isComment && !isIf && !isEndIf && !isTemp
-                        ? instructions.find((i) => i.id === instructionId)
+                        ? instructions.find((i) => i.id === baseInstructionId)
                         : null;
 
+                    // Non-special entries must resolve to a real instruction (or be filtered out)
                     if (!isComment && !isIf && !isEndIf && !isTemp && !instruction) return null;
 
                     const displayTitle =
@@ -1241,7 +1278,12 @@ function EditMissionForm({
                                 fontWeight: 600,
                               }}
                             >
-                              {instructionId}
+                              {baseInstructionId}
+                              {instructionId.includes("#") && (
+                                <span style={{ color: "var(--color-accent-9)", fontSize: "0.8em", marginLeft: "2px" }}>
+                                  ×{instructionId.split("#")[1]}
+                                </span>
+                              )}
                             </span>
                           )}
                           {!isComment && !isEndIf && " "}

@@ -28,8 +28,10 @@ export async function loader({ params }: Route.LoaderArgs) {
     throw data("משימה לא נמצאה", { status: 404 });
   }
 
-  const instructionIds = mission.instructions.map(([id]) => id);
-  const instructions = await getInstructionsByIdsHe(instructionIds);
+  // Strip duplicate-occurrence suffixes (#2, #3, …) and de-duplicate before querying the DB.
+  const rawIds = mission.instructions.map(([id]) => id);
+  const uniqueBaseIds = [...new Set(rawIds.map((id) => (id.includes("#") ? id.split("#")[0] : id)))];
+  const instructions = await getInstructionsByIdsHe(uniqueBaseIds);
 
   return { mission, instructions, allMissions };
 }
@@ -47,9 +49,13 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
       return { id, title: customTitle || "IF", description: "", status: "if" as const, type: "if" as const, explanation: [] as [] };
     }
     if (id.startsWith("end-if-")) return null;
-    const instruction = instructions.find(inst => inst.id === id);
+    // Strip the duplicate-occurrence suffix (#2, #3, …) for DB lookup,
+    // but keep the full entry key as `id` for independent selection state.
+    const baseId = id.includes("#") ? id.split("#")[0] : id;
+    const instruction = instructions.find(inst => inst.id === baseId);
     if (!instruction) return null;
-    return customTitle ? { ...instruction, title: customTitle } : instruction;
+    const resolved = customTitle ? { ...instruction, title: customTitle } : instruction;
+    return id !== baseId ? { ...resolved, id } : resolved;
   }).filter(Boolean) as (typeof instructions[number] | { id: string; title: string; description: string; status: "comment"; type: "comment"; explanation: [] } | { id: string; title: string; description: string; status: "if"; type: "if"; explanation: [] })[];
 
   // Build map: ifId -> array of raw instruction IDs inside the block
