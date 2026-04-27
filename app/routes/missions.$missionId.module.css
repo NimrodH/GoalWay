@@ -164,36 +164,46 @@
   border-color: var(--color-accent-8);
 }
 
+.captionToggleGroup {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
 .captionToggleButton {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 28px;
-  height: 28px;
-  border: 1px solid var(--color-neutral-6);
-  border-radius: var(--radius-2);
-  background: var(--color-neutral-3);
-  color: var(--color-neutral-9);
+  height: 26px;
+  border: none;
+  background: var(--color-neutral-2);
+  color: var(--color-neutral-8);
   cursor: pointer;
   transition: all 0.15s var(--ease-out);
   flex-shrink: 0;
 }
 
+.captionToggleButton:not(:last-child) {
+  border-right: 1px solid var(--color-neutral-6);
+}
+
 .captionToggleButton:hover {
   color: var(--color-neutral-11);
-  background: var(--color-neutral-4);
-  border-color: var(--color-neutral-7);
+  background: var(--color-neutral-3);
 }
 
-.captionToggleButton[aria-pressed="true"] {
+.captionToggleActive {
   background: var(--color-accent-3);
   color: var(--color-accent-11);
-  border-color: var(--color-accent-7);
 }
 
-.captionToggleButton[aria-pressed="true"]:hover {
-  background: var(--color-accent-4);
-  border-color: var(--color-accent-8);
+.captionToggleActive:hover {
+  background: var(--color-accent-4) !important;
+  color: var(--color-accent-11);
 }
 
 .instructionList {

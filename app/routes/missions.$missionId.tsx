@@ -5,7 +5,7 @@ import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
-import { BookOpen, ArrowLeft, ChevronUp, ChevronDown, Eye, EyeOff, GitBranch } from "lucide-react";
+import { BookOpen, ArrowLeft, ChevronUp, ChevronDown, List, ListX, GitBranch } from "lucide-react";
 import styles from "./missions.$missionId.module.css";
 import { getMissionById, getAllMissions, checkMissionAccess } from "~/services/missions.server";
 import { getInstructionsByIds } from "~/services/instructions.server";
@@ -553,14 +553,24 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
               </button>
             )}
             <h1 className={styles.sectionHeader}>{mission.title}</h1>
-            <button
-              className={styles.captionToggleButton}
-              onClick={() => setCaptionVisible((v) => !v)}
-              title={captionVisible ? "Hide captions" : "Show captions"}
-              aria-pressed={captionVisible}
-            >
-              {captionVisible ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+            <div className={styles.captionToggleGroup}>
+              <button
+                className={`${styles.captionToggleButton} ${captionVisible ? styles.captionToggleActive : ""}`}
+                onClick={() => setCaptionVisible(true)}
+                title="Show captions"
+                aria-pressed={captionVisible}
+              >
+                <List size={16} />
+              </button>
+              <button
+                className={`${styles.captionToggleButton} ${!captionVisible ? styles.captionToggleActive : ""}`}
+                onClick={() => setCaptionVisible(false)}
+                title="Hide captions"
+                aria-pressed={!captionVisible}
+              >
+                <ListX size={16} />
+              </button>
+            </div>
           </div>
           <div className={styles.missionDescription}>
             <Markdown remarkPlugins={[remarkBreaks]}>{mission.description}</Markdown>
