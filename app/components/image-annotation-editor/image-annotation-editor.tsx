@@ -226,47 +226,47 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
                     </button>
                   </div>
 
-                  {/* Text field — always visible */}
-                  <textarea
-                    className={styles.annTextarea}
-                    placeholder="Description (supports Markdown)…"
-                    value={ann.text ?? ""}
-                    rows={2}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => updateAnnotationText(ann.id, e.target.value)}
-                  />
-
-                  {/* Controls — only visible when this row is selected */}
+                  {/* Controls + text field — only visible when this row is selected */}
                   {isSelected && (
                     <div className={styles.annControlsRow}>
-                      <div className={styles.controlGroup}>
-                        <span className={styles.controlLabel}>Color</span>
-                        <div className={styles.colorPicker} style={{ gap: "var(--space-1)" }}>
-                          {ANNOTATION_COLORS.map((c) => (
-                            <button
-                              key={c}
-                              className={`${styles.colorSwatch} ${styles.colorSwatchSm} ${ann.color === c ? styles.colorSwatchActive : ""}`}
-                              style={{ background: c }}
-                              onClick={(e) => { e.stopPropagation(); updateAnnotationColor(ann.id, c); }}
-                              title={c}
-                            />
-                          ))}
+                      <textarea
+                        className={styles.annTextarea}
+                        placeholder="Description (supports Markdown)…"
+                        value={ann.text ?? ""}
+                        rows={2}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => updateAnnotationText(ann.id, e.target.value)}
+                      />
+                      <div className={styles.annControlsInline}>
+                        <div className={styles.controlGroup}>
+                          <span className={styles.controlLabel}>Color</span>
+                          <div className={styles.colorPicker} style={{ gap: "var(--space-1)" }}>
+                            {ANNOTATION_COLORS.map((c) => (
+                              <button
+                                key={c}
+                                className={`${styles.colorSwatch} ${styles.colorSwatchSm} ${ann.color === c ? styles.colorSwatchActive : ""}`}
+                                style={{ background: c }}
+                                onClick={(e) => { e.stopPropagation(); updateAnnotationColor(ann.id, c); }}
+                                title={c}
+                              />
+                            ))}
+                          </div>
                         </div>
-                      </div>
 
-                      <div className={styles.controlGroup}>
-                        <span className={styles.controlLabel}>Badge position</span>
-                        <div className={styles.sidePicker}>
-                          {BADGE_SIDES.map(({ value, label }) => (
-                            <button
-                              key={value}
-                              className={`${styles.sideBtn} ${(ann.badgeSide ?? "top-left") === value ? styles.sideBtnActive : ""}`}
-                              onClick={(e) => { e.stopPropagation(); updateAnnotationBadgeSide(ann.id, value); }}
-                              title={value}
-                            >
-                              {label}
-                            </button>
-                          ))}
+                        <div className={styles.controlGroup}>
+                          <span className={styles.controlLabel}>Badge position</span>
+                          <div className={styles.sidePicker}>
+                            {BADGE_SIDES.map(({ value, label }) => (
+                              <button
+                                key={value}
+                                className={`${styles.sideBtn} ${(ann.badgeSide ?? "top-left") === value ? styles.sideBtnActive : ""}`}
+                                onClick={(e) => { e.stopPropagation(); updateAnnotationBadgeSide(ann.id, value); }}
+                                title={value}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>

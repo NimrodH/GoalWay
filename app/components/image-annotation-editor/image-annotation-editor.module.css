@@ -186,6 +186,12 @@
 
 .annControlsRow {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.annControlsInline {
+  display: flex;
   align-items: center;
   gap: var(--space-4);
   flex-wrap: wrap;
