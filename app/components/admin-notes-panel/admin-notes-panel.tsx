@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useFetcher } from "react-router";
 import { StickyNote, X, Pencil, Trash2, Check } from "lucide-react";
 import styles from "./admin-notes-panel.module.css";
@@ -11,21 +11,10 @@ interface AdminNotesPanelProps {
 
 export function AdminNotesPanel({ missionId, missionTitle, initialNotes }: AdminNotesPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
-  // `notes` is the single source of truth for what's displayed.
-  // We initialize from `initialNotes` and then manage it locally — never let
-  // the loader re-run clobber edits the user has already made in this session.
+  // `notes` is the single source of truth — initialized once from the loader,
+  // then managed entirely locally. We never reset from `initialNotes` again
+  // to avoid loader re-runs overwriting in-progress edits.
   const [notes, setNotes] = useState<string[]>(initialNotes);
-  // Track whether the user has made any local edits/saves in this session.
-  // Once they have, we never override `notes` from `initialNotes` again.
-  const hasLocalChanges = useRef(false);
-
-  // Only sync from the loader when there are NO local changes yet
-  // (i.e., the panel just opened fresh from a new navigation).
-  useEffect(() => {
-    if (!hasLocalChanges.current) {
-      setNotes(initialNotes);
-    }
-  }, [initialNotes]);
 
   const [newNote, setNewNote] = useState("");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -33,8 +22,6 @@ export function AdminNotesPanel({ missionId, missionTitle, initialNotes }: Admin
   const fetcher = useFetcher<{ success: boolean; error?: string }>();
 
   const saveNotes = useCallback((updatedNotes: string[]) => {
-    // Mark that local changes exist so loader re-runs won't clobber our state.
-    hasLocalChanges.current = true;
     const fd = new FormData();
     fd.set("actionType", "updateAdminNotes");
     fd.set("missionId", missionId);
