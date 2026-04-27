@@ -560,7 +560,11 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
       {isPreview && (
         <div className={styles.previewBar}>
           <button
-            onClick={() => navigate(`/admin/missions?missionId=${mission.id}`)}
+            onClick={() => {
+              // Use hard navigation so the admin loader always re-runs
+              // and picks up any notes saved in the preview panel.
+              window.location.href = `/admin/missions?missionId=${mission.id}`;
+            }}
             className={styles.menuLink}
           >
             <ArrowLeft size={18} />

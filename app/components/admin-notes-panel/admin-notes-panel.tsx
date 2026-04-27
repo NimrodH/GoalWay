@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useFetcher } from "react-router";
 import { StickyNote, X, Pencil, Trash2, Check } from "lucide-react";
 import styles from "./admin-notes-panel.module.css";
@@ -12,16 +12,30 @@ interface AdminNotesPanelProps {
 export function AdminNotesPanel({ missionId, missionTitle, initialNotes }: AdminNotesPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [notes, setNotes] = useState<string[]>(initialNotes);
+  // Track the last version saved so we don't clobber optimistic local state
+  const lastSavedRef = useRef<string>(JSON.stringify(initialNotes));
+
+  // When the loader provides fresh initialNotes (e.g. after navigation back to preview),
+  // sync local state IF the notes haven't been changed locally since last save.
+  useEffect(() => {
+    const incoming = JSON.stringify(initialNotes);
+    if (incoming !== lastSavedRef.current) {
+      lastSavedRef.current = incoming;
+      setNotes(initialNotes);
+    }
+  }, [initialNotes]);
   const [newNote, setNewNote] = useState("");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingText, setEditingText] = useState("");
   const fetcher = useFetcher<{ success: boolean; error?: string }>();
 
   const saveNotes = useCallback((updatedNotes: string[]) => {
+    const serialized = JSON.stringify(updatedNotes);
+    lastSavedRef.current = serialized;
     const fd = new FormData();
     fd.set("actionType", "updateAdminNotes");
     fd.set("missionId", missionId);
-    fd.set("notes", JSON.stringify(updatedNotes));
+    fd.set("notes", serialized);
     fetcher.submit(fd, { method: "post" });
   }, [fetcher, missionId]);
 
