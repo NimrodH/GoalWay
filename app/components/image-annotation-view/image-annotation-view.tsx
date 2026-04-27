@@ -37,6 +37,8 @@ interface ImageAnnotationViewProps {
   alt?: string;
   annotations?: Annotation[];
   className?: string;
+  /** When false, the caption list below the image is hidden. Defaults to true. */
+  captionVisible?: boolean;
 }
 
 /**
@@ -44,7 +46,7 @@ interface ImageAnnotationViewProps {
  * Annotations use percentage-based coordinates so they are fully responsive.
  * The numbered badge is placed *outside* the rectangle corner chosen by `badgeSide`.
  */
-export function ImageAnnotationView({ src, alt = "", annotations = [], className }: ImageAnnotationViewProps) {
+export function ImageAnnotationView({ src, alt = "", annotations = [], className, captionVisible = true }: ImageAnnotationViewProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [aspectRatio, setAspectRatio] = useState<number>(16 / 9); // default until loaded
@@ -147,7 +149,7 @@ export function ImageAnnotationView({ src, alt = "", annotations = [], className
         )}
       </div>
 
-      {captionAnnotations.length > 0 && (
+      {captionAnnotations.length > 0 && captionVisible && (
         <div className={styles.captionList}>
           {captionAnnotations.map((ann) => (
             <div key={ann.id} className={styles.captionRow}>

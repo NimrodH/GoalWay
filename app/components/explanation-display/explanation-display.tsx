@@ -18,9 +18,11 @@ interface ExplanationDisplayProps {
    */
   explanation?: InstructionContent[];
   className?: string;
+  /** Controls visibility of annotation caption lists in embedded images */
+  captionVisible?: boolean;
 }
 
-export function ExplanationDisplay({ instruction, title, explanation, className }: ExplanationDisplayProps) {
+export function ExplanationDisplay({ instruction, title, explanation, className, captionVisible = true }: ExplanationDisplayProps) {
   const displayTitle = title || instruction?.title;
   const displayExplanation = explanation || instruction?.explanation;
 
@@ -51,6 +53,7 @@ export function ExplanationDisplay({ instruction, title, explanation, className 
                 src={item.content}
                 alt={`Illustration for ${displayTitle}`}
                 annotations={item.annotations ?? []}
+                captionVisible={captionVisible}
               />
             );
           }

@@ -5,7 +5,7 @@ import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
-import { BookOpen, ArrowLeft, ChevronUp, ChevronDown, LayoutGrid, List, GitBranch } from "lucide-react";
+import { BookOpen, ArrowLeft, ChevronUp, ChevronDown, Eye, EyeOff, GitBranch } from "lucide-react";
 import styles from "./missions.$missionId.module.css";
 import { getMissionById, getAllMissions, checkMissionAccess } from "~/services/missions.server";
 import { getInstructionsByIds } from "~/services/instructions.server";
@@ -297,7 +297,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
     return map;
   })();
 
-  const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
+  const [captionVisible, setCaptionVisible] = useState(true);
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
   // Tracks selected instruction inside each expanded sub-mission, keyed by the parent link instruction id
   const [selectedLinkedInstructionId, setSelectedLinkedInstructionId] = useState<Map<string, string | null>>(new Map());
@@ -553,28 +553,18 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
               </button>
             )}
             <h1 className={styles.sectionHeader}>{mission.title}</h1>
-            <div className={styles.viewToggle}>
-              <button
-                className={`${styles.viewToggleButton} ${viewMode === "cards" ? styles.viewToggleActive : ""}`}
-                onClick={() => setViewMode("cards")}
-                title="Card view"
-              >
-                <LayoutGrid size={18} />
-              </button>
-              <button
-                className={`${styles.viewToggleButton} ${viewMode === "list" ? styles.viewToggleActive : ""}`}
-                onClick={() => setViewMode("list")}
-                title="List view"
-              >
-                <List size={18} />
-              </button>
-            </div>
+            <button
+              className={styles.captionToggleButton}
+              onClick={() => setCaptionVisible((v) => !v)}
+              title={captionVisible ? "Hide captions" : "Show captions"}
+              aria-pressed={captionVisible}
+            >
+              {captionVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
-          {viewMode === "cards" && (
-            <div className={styles.missionDescription}>
-              <Markdown remarkPlugins={[remarkBreaks]}>{mission.description}</Markdown>
-            </div>
-          )}
+          <div className={styles.missionDescription}>
+            <Markdown remarkPlugins={[remarkBreaks]}>{mission.description}</Markdown>
+          </div>
           <div className={styles.instructionList}>
             {missionInstructions.map((instruction, index) => {
               const isComment = "type" in instruction && instruction.type === "comment";
@@ -654,12 +644,12 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                   <div className={styles.instructionItem} data-instruction-id={instruction.id}>
                     <InstructionListItem
                       title={instruction.title}
-                      description={viewMode === "cards" ? instruction.description : undefined}
+                      description={instruction.description}
                       selected={selectedInstructionId === instruction.id}
                       onClick={(event) => handleInstructionClick(instruction.id, event)}
                       instructionType={"type" in instruction && instruction.type !== "temp" ? instruction.type : undefined}
                       explanation={"explanation" in instruction ? instruction.explanation : []}
-                      className={`${styles.instructionListItem} ${viewMode === "list" ? styles.listModeItem : ""}`}
+                      className={styles.instructionListItem}
                       orderNumber={orderNumber}
                       isCompleted={completedInstructions.has(instruction.id)}
                     />
@@ -713,7 +703,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                       Array.isArray(instruction.explanation) &&
                       instruction.explanation.length > 0 && (
                         <div className={styles.mobileExplanation}>
-                          <ExplanationDisplay instruction={instruction as Instruction} />
+                          <ExplanationDisplay instruction={instruction as Instruction} captionVisible={captionVisible} />
                         </div>
                       )}
                   </div>
@@ -742,7 +732,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                             />
                             {linkedSelected && linkedInstruction.type !== "link" && (
                               <div className={styles.mobileExplanation}>
-                                <ExplanationDisplay instruction={linkedInstruction} />
+                                <ExplanationDisplay instruction={linkedInstruction} captionVisible={captionVisible} />
                               </div>
                             )}
                           </div>
@@ -757,7 +747,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
         </section>
 
         <section className={styles.explanationSection}>
-          <ExplanationDisplay instruction={instructionToDisplay as Instruction | null} className={styles.explanationContainer} />
+          <ExplanationDisplay instruction={instructionToDisplay as Instruction | null} className={styles.explanationContainer} captionVisible={captionVisible} />
         </section>
       </div>
     </>
