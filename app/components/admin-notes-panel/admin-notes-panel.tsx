@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useFetcher } from "react-router";
 import { StickyNote, X, Pencil, Trash2, Check } from "lucide-react";
 import styles from "./admin-notes-panel.module.css";

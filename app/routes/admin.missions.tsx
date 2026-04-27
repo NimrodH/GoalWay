@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Form, useActionData, useFetcher, useLoaderData, useNavigate, useSearchParams } from "react-router";
+import { Form, useActionData, useFetcher, useLoaderData, useNavigate, useRevalidator, useSearchParams } from "react-router";
 import { AdminLayout } from "~/components/admin-layout/admin-layout";
 import { useAuth } from "~/hooks/use-auth";
 import classNames from "classnames";
@@ -110,6 +110,7 @@ function EditMissionForm({
   missionAdminNotesMap: Record<string, string[]>;
 }) {
   const navigate = useNavigate();
+  const revalidator = useRevalidator();
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -183,6 +184,26 @@ function EditMissionForm({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, allMissionIds]);
+
+  // When the admin tab regains visibility (e.g., returning from the preview
+  // window), revalidate the loader so missionAdminNotesMap is refreshed from DB.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && revalidator.state === "idle") {
+        revalidator.revalidate();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [revalidator]);
+
+  // Sync adminNotes from the freshly revalidated missionAdminNotesMap whenever
+  // it changes (this fires after the visibilitychange revalidation completes).
+  useEffect(() => {
+    if (selectedMissionId) {
+      setAdminNotes(missionAdminNotesMap[selectedMissionId] || []);
+    }
+  }, [missionAdminNotesMap, selectedMissionId]);
 
   useEffect(() => {
     const shouldScroll = localStorage.getItem("scrollToInstructions");
