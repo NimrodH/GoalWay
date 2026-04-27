@@ -5,6 +5,7 @@ import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
+import { AdminNotesPanel } from "~/components/admin-notes-panel/admin-notes-panel";
 import { BookOpen, ArrowLeft, ChevronUp, ChevronDown, List, ListX, GitBranch } from "lucide-react";
 import styles from "./missions.$missionId.module.css";
 import { getMissionById, getAllMissions, checkMissionAccess } from "~/services/missions.server";
@@ -56,7 +57,23 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const uniqueBaseIds = [...new Set(rawIds.map((id) => (id.includes("#") ? id.split("#")[0] : id)))];
   const instructions = await getInstructionsByIds(uniqueBaseIds);
 
-  return { mission, instructions, allMissions, isPreview };
+  // Fetch admin_notes for the mission (only meaningful in preview/admin context)
+  let adminNotes: string[] = [];
+  if (isPreview) {
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(
+      process.env.SUPABASE_PROJECT_URL!,
+      process.env.SUPABASE_API_KEY!,
+    );
+    const { data: row } = await supabase
+      .from("missions")
+      .select("admin_notes")
+      .eq("id", params.missionId)
+      .single();
+    adminNotes = Array.isArray(row?.admin_notes) ? row.admin_notes : [];
+  }
+
+  return { mission, instructions, allMissions, isPreview, adminNotes };
 }
 
 type MissionStatus = "Hide" | "For all" | "Only Adama" | "Only Bazn";
@@ -65,6 +82,33 @@ type InstructionStatus = "only title" | "partial explanation" | "full explanatio
 export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const actionType = formData.get("actionType");
+
+  if (actionType === "updateAdminNotes") {
+    const missionId = formData.get("missionId") as string;
+    const notesRaw = formData.get("notes") as string;
+    if (!missionId) return { success: false, error: "Missing missionId" };
+    let notes: string[];
+    try {
+      notes = JSON.parse(notesRaw);
+    } catch {
+      return { success: false, error: "Invalid notes format" };
+    }
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(
+        process.env.SUPABASE_PROJECT_URL!,
+        process.env.SUPABASE_API_KEY!,
+      );
+      const { error } = await supabase
+        .from("missions")
+        .update({ admin_notes: notes })
+        .eq("id", missionId);
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
+    }
+  }
 
   if (actionType === "updateStatus") {
     const newStatus = formData.get("status") as MissionStatus;
@@ -194,7 +238,7 @@ type MissionInstruction =
   | TempEntry;
 
 export default function MissionPage({ loaderData }: Route.ComponentProps) {
-  const { mission, instructions, allMissions, isPreview } = loaderData;
+  const { mission, instructions, allMissions, isPreview, adminNotes } = loaderData;
   const statusFetcher = useFetcher();
   // Optimistic status — show the pending value immediately while saving
   const currentStatus = (statusFetcher.formData?.get("status") as MissionStatus | undefined) ?? mission.status ?? "For all";
@@ -506,6 +550,13 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <>
+      {isPreview && (
+        <AdminNotesPanel
+          missionId={mission.id}
+          missionTitle={mission.title}
+          initialNotes={adminNotes}
+        />
+      )}
       {isPreview && (
         <div className={styles.previewBar}>
           <button
