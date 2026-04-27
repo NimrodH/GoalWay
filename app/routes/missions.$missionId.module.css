@@ -82,19 +82,29 @@
 }
 
 .headerWrapper {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-3);
   flex-wrap: wrap;
-  gap: var(--space-3);
-  padding: 0 var(--space-2);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin: 0 calc(-1 * var(--space-4)) var(--space-3);
+  background: light-dark(rgba(255,255,255,0.88), rgba(18,18,18,0.88));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-neutral-4);
 }
 
 .sectionHeader {
-  font: var(--font-heading);
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--color-neutral-12);
   margin: 0;
+  line-height: 1.2;
 }
 
 .missionDescription {
@@ -136,14 +146,14 @@
 .menuLink {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
   background: var(--color-accent-3);
   color: var(--color-accent-11);
   text-decoration: none;
   border-radius: var(--radius-2);
   font-family: var(--font-body);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 500;
   transition: all 0.2s var(--ease-out);
   border: 1px solid var(--color-accent-7);
@@ -158,8 +168,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border: 1px solid var(--color-neutral-6);
   border-radius: var(--radius-2);
   background: var(--color-neutral-3);
