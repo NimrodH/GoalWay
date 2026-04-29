@@ -77,9 +77,13 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
     setDraw((d) => d ? { ...d, currentX: x, currentY: y } : null);
   };
 
-  const handleMouseUp = (e: React.MouseEvent) => {
+  const handleMouseUp = (_e: React.MouseEvent) => {
     if (!draw?.active) return;
-    const { x, y } = toPercent(e);
+    // Use the last tracked position from mouseMove to avoid a positional jump
+    // that occurs when mouseUp/mouseLeave fires at a slightly different coordinate
+    // than the final mouseMove (especially in production vs. dev iframe environments).
+    const x = draw.currentX;
+    const y = draw.currentY;
     const x1 = Math.min(draw.startX, x);
     const y1 = Math.min(draw.startY, y);
     const w = Math.abs(x - draw.startX);
