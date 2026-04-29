@@ -51,38 +51,32 @@ interface ImageAnnotationEditorProps {
 function GhostRect({
   rect,
   color,
-  imgRef,
   className,
   isRedact = false,
 }: {
   rect: { x: number; y: number; width: number; height: number };
   color: string;
-  imgRef: React.RefObject<HTMLImageElement | null>;
+  imgRef?: React.RefObject<HTMLImageElement | null>;
   className?: string;
   isRedact?: boolean;
 }) {
-  // Mirror exactly what ImageAnnotationView does:
-  // viewBox = "0 0 100 vbHeight" where vbHeight = 100 / (renderedW / renderedH)
-  const img = imgRef.current;
-  const w = img?.clientWidth ?? 0;
-  const h = img?.clientHeight ?? 1;
-  const aspectRatio = w && h ? w / h : 16 / 9;
-  const vbHeight = 100 / aspectRatio;
-  const scaleY = vbHeight / 100;
-
+  // The ghost SVG is sized to cover the image element exactly (absolute inset:0).
+  // toPercent() already returns values as % of the image's pixel dimensions,
+  // so we use a simple 100×100 viewBox — no scaleY transform needed here.
+  // (scaleY in ImageAnnotationView exists because the stored coordinate system
+  //  uses "% of image height" mapped into a viewBox whose height != 100.)
   return (
     <svg
       className={className}
-      viewBox={`0 0 100 ${vbHeight}`}
+      viewBox="0 0 100 100"
       preserveAspectRatio="none"
     >
       {isRedact ? (
-        // Redaction preview: solid fill with 70% opacity so you can see what you're covering
         <rect
           x={rect.x}
-          y={rect.y * scaleY}
+          y={rect.y}
           width={rect.width}
-          height={rect.height * scaleY}
+          height={rect.height}
           fill={color}
           fillOpacity={0.7}
           stroke={color === "#d4d4d4" ? "#888" : color}
@@ -92,9 +86,9 @@ function GhostRect({
       ) : (
         <rect
           x={rect.x}
-          y={rect.y * scaleY}
+          y={rect.y}
           width={rect.width}
-          height={rect.height * scaleY}
+          height={rect.height}
           fill={`${color}22`}
           stroke={color}
           strokeWidth={0.5}
@@ -295,18 +289,17 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
               captionVisible={false}
               wrapperRef={imageWrapperRef}
               imgRef={imgRef}
+              ghostOverlay={
+                ghostRect && ghostRect.width > 0 && ghostRect.height > 0 ? (
+                  <GhostRect
+                    rect={ghostRect}
+                    color={selectedColor}
+                    className={styles.ghostOverlay}
+                    isRedact={drawMode === "redact"}
+                  />
+                ) : null
+              }
             />
-
-            {/* Ghost rect while drawing — uses same viewBox as the view SVG */}
-            {ghostRect && ghostRect.width > 0 && ghostRect.height > 0 && (
-              <GhostRect
-                rect={ghostRect}
-                color={selectedColor}
-                imgRef={imgRef}
-                className={styles.ghostOverlay}
-                isRedact={drawMode === "redact"}
-              />
-            )}
           </div>
 
           {/* Annotation list */}

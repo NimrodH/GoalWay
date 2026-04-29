@@ -43,6 +43,8 @@ interface ImageAnnotationViewProps {
   wrapperRef?: React.RefObject<HTMLDivElement | null>;
   /** Optional ref forwarded to the <img> element itself. */
   imgRef?: React.RefObject<HTMLImageElement | null>;
+  /** Optional overlay element rendered inside the image wrapper (e.g. ghost drag rect). */
+  ghostOverlay?: React.ReactNode;
 }
 
 /**
@@ -64,6 +66,7 @@ export function ImageAnnotationView({
   captionVisible = true,
   wrapperRef,
   imgRef: externalImgRef,
+  ghostOverlay,
 }: ImageAnnotationViewProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const internalImgRef = useRef<HTMLImageElement>(null);
@@ -120,6 +123,7 @@ export function ImageAnnotationView({
     <div className={`${styles.outerWrapper} ${className ?? ""}`}>
       <div className={styles.wrapper} ref={wrapperRef}>
         <img ref={imgRef} src={src} alt={alt} className={styles.image} />
+        {ghostOverlay}
         {annotations.length > 0 && (
           <svg
             className={styles.overlay}
