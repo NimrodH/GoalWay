@@ -3,6 +3,11 @@
   flex-direction: column;
   gap: var(--space-3);
   width: 100%;
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-3);
+  padding: var(--space-3);
+  background: var(--color-neutral-2);
+  box-shadow: var(--shadow-1);
 }
 
 .wrapper {
