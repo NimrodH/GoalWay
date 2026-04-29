@@ -41,25 +41,41 @@ interface ImageAnnotationViewProps {
   captionVisible?: boolean;
   /** Optional ref forwarded to the image wrapper div (excludes caption list). */
   wrapperRef?: React.RefObject<HTMLDivElement | null>;
+  /** Optional ref forwarded to the <img> element itself. */
+  imgRef?: React.RefObject<HTMLImageElement | null>;
 }
 
 /**
  * Renders an image with SVG annotation overlays (rectangles + numbered labels).
- * Annotations use percentage-based coordinates so they are fully responsive.
- * The numbered badge is placed *outside* the rectangle corner chosen by `badgeSide`.
+ *
+ * Coordinate system:
+ *   x, width  — stored as % of rendered image width  (= SVG viewBox x units, 0–100)
+ *   y, height — stored as % of rendered image height (scaled by scaleY into viewBox)
+ *
+ * The SVG viewBox is "0 0 100 vbHeight" where vbHeight = 100 / aspectRatio.
+ * scaleY = vbHeight / 100 converts y/height from "% of image height" → viewBox units.
+ * This means annotations look correct on any screen size without any letterboxing math.
  */
-export function ImageAnnotationView({ src, alt = "", annotations = [], className, captionVisible = true, wrapperRef }: ImageAnnotationViewProps) {
+export function ImageAnnotationView({
+  src,
+  alt = "",
+  annotations = [],
+  className,
+  captionVisible = true,
+  wrapperRef,
+  imgRef: externalImgRef,
+}: ImageAnnotationViewProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const internalImgRef = useRef<HTMLImageElement>(null);
+  const imgRef = externalImgRef ?? internalImgRef;
   const [aspectRatio, setAspectRatio] = useState<number>(16 / 9); // default until loaded
 
   useEffect(() => {
     const img = imgRef.current;
     if (!img) return;
 
-    // Use the *rendered* dimensions (clientWidth/clientHeight) rather than the
-    // natural image dimensions so that the SVG viewBox matches exactly what the
-    // user sees — even when CSS clamps the image (e.g. max-height).
+    // Use the *rendered* dimensions (clientWidth/clientHeight) so the SVG
+    // viewBox matches exactly what the user sees on any screen size.
     const update = () => {
       const w = img.clientWidth;
       const h = img.clientHeight;
@@ -77,24 +93,23 @@ export function ImageAnnotationView({ src, alt = "", annotations = [], className
       img.addEventListener("load", update);
     }
 
-    // Also re-measure if the container resizes (e.g. window resize)
+    // Re-measure on container resize (window resize, panel open/close, etc.)
     const ro = new ResizeObserver(update);
     ro.observe(img);
     return () => {
       img.removeEventListener("load", update);
       ro.disconnect();
     };
-  }, [src]);
+  }, [src, imgRef]);
 
   if (!src) return null;
 
-  // viewBox: width = 100, height = 100 / aspectRatio → uniform units in both axes
-  // so r=BADGE_R_PCT renders as a true circle regardless of image shape.
+  // viewBox: width = 100, height = 100 / aspectRatio
+  // x/width annotation values are used directly (% of width = viewBox x units)
+  // y/height annotation values need scaleY applied (% of height → viewBox y units)
   const vbHeight = 100 / aspectRatio;
-  const badgeR = BADGE_R_PCT; // same units as annotation coords (% of width)
-  // annotation coords are stored as % of width for x/width,
-  // and % of height for y/height — we need to convert y/height to vbHeight space
-  const scaleY = vbHeight / 100; // maps annotation % heights to viewBox units
+  const badgeR = BADGE_R_PCT;
+  const scaleY = vbHeight / 100;
 
   // Only show caption list if at least one annotation has non-empty text
   const captionAnnotations = annotations.filter((a) => a.text && a.text.trim().length > 0);
@@ -115,8 +130,8 @@ export function ImageAnnotationView({ src, alt = "", annotations = [], className
               const color = ann.color || "#e5484d";
               const side: BadgeSide = ann.badgeSide ?? "top-left";
 
-              // Convert annotation coords: x/width stay as-is (% of width = vb units)
-              // y/height are % of image height → scale to vbHeight space
+              // x/width: stored as % of image width → use directly as viewBox x units
+              // y/height: stored as % of image height → multiply by scaleY for viewBox y units
               const ax = ann.x;
               const ay = ann.y * scaleY;
               const aw = ann.width;

@@ -42,23 +42,76 @@ interface ImageAnnotationEditorProps {
 }
 
 /**
+ * Ghost SVG overlay that uses the same viewBox as ImageAnnotationView
+ * so the drawn rectangle lines up perfectly with the saved annotation.
+ */
+function GhostRect({
+  rect,
+  color,
+  imgRef,
+  className,
+}: {
+  rect: { x: number; y: number; width: number; height: number };
+  color: string;
+  imgRef: React.RefObject<HTMLImageElement | null>;
+  className?: string;
+}) {
+  // Mirror exactly what ImageAnnotationView does:
+  // viewBox = "0 0 100 vbHeight" where vbHeight = 100 / (renderedW / renderedH)
+  const img = imgRef.current;
+  const w = img?.clientWidth ?? 0;
+  const h = img?.clientHeight ?? 1;
+  const aspectRatio = w && h ? w / h : 16 / 9;
+  const vbHeight = 100 / aspectRatio;
+  const scaleY = vbHeight / 100;
+
+  return (
+    <svg
+      className={className}
+      viewBox={`0 0 100 ${vbHeight}`}
+      preserveAspectRatio="none"
+    >
+      <rect
+        x={rect.x}
+        y={rect.y * scaleY}
+        width={rect.width}
+        height={rect.height * scaleY}
+        fill={`${color}22`}
+        stroke={color}
+        strokeWidth={0.5}
+        strokeDasharray="2 1"
+      />
+    </svg>
+  );
+}
+
+/**
  * Admin-only drag-to-draw annotation editor.
  * Click-drag on the image to draw a rectangle.
- * All coordinates are stored as percentages (0–100) of the image dimensions.
- * The numbered badge can be placed on any of the 4 outside corners of the rectangle.
+ *
+ * Coordinate system: x, width are % of rendered image width;
+ * y, height are % of rendered image height.
+ * This matches exactly how ImageAnnotationView interprets stored annotations
+ * (it applies scaleY = vbHeight/100 to y/height values).
  */
 export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: ImageAnnotationEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageWrapperRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const [draw, setDraw] = useState<DrawState | null>(null);
   const [selectedColor, setSelectedColor] = useState(ANNOTATION_COLORS[0]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  /** Convert mouse event coords to percentage values relative to the rendered image */
+  /**
+   * Convert a mouse event position to percentage coordinates relative to
+   * the rendered <img> element. We measure against the img element itself
+   * (not the wrapper div) so that x% is truly "% of image width" and y%
+   * is truly "% of image height" — matching how the view SVG interprets them.
+   */
   const toPercent = useCallback((e: React.MouseEvent | MouseEvent): { x: number; y: number } => {
-    // Use imageWrapperRef (just the image element area) so percentages are
-    // computed against the exact same dimensions the view SVG uses.
-    const el = imageWrapperRef.current ?? containerRef.current;
+    const img = imgRef.current;
+    const fallback = imageWrapperRef.current ?? containerRef.current;
+    const el: Element | null = img ?? fallback;
     if (!el) return { x: 0, y: 0 };
     const rect = el.getBoundingClientRect();
     const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
@@ -175,26 +228,22 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
             onMouseLeave={handleMouseUp}
             style={{ cursor: "crosshair" }}
           >
-            <ImageAnnotationView src={src} annotations={annotations} captionVisible={false} wrapperRef={imageWrapperRef} />
+            <ImageAnnotationView
+              src={src}
+              annotations={annotations}
+              captionVisible={false}
+              wrapperRef={imageWrapperRef}
+              imgRef={imgRef}
+            />
 
-            {/* Ghost rect while drawing */}
+            {/* Ghost rect while drawing — uses same viewBox as the view SVG */}
             {ghostRect && ghostRect.width > 0 && ghostRect.height > 0 && (
-              <svg
+              <GhostRect
+                rect={ghostRect}
+                color={selectedColor}
+                imgRef={imgRef}
                 className={styles.ghostOverlay}
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-              >
-                <rect
-                  x={ghostRect.x}
-                  y={ghostRect.y}
-                  width={ghostRect.width}
-                  height={ghostRect.height}
-                  fill={`${selectedColor}22`}
-                  stroke={selectedColor}
-                  strokeWidth={0.5}
-                  strokeDasharray="2 1"
-                />
-              </svg>
+              />
             )}
           </div>
 
