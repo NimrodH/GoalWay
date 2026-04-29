@@ -39,6 +39,8 @@ interface ImageAnnotationViewProps {
   className?: string;
   /** When false, the caption list below the image is hidden. Defaults to true. */
   captionVisible?: boolean;
+  /** Optional ref forwarded to the image wrapper div (excludes caption list). */
+  wrapperRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 /**
@@ -46,7 +48,7 @@ interface ImageAnnotationViewProps {
  * Annotations use percentage-based coordinates so they are fully responsive.
  * The numbered badge is placed *outside* the rectangle corner chosen by `badgeSide`.
  */
-export function ImageAnnotationView({ src, alt = "", annotations = [], className, captionVisible = true }: ImageAnnotationViewProps) {
+export function ImageAnnotationView({ src, alt = "", annotations = [], className, captionVisible = true, wrapperRef }: ImageAnnotationViewProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [aspectRatio, setAspectRatio] = useState<number>(16 / 9); // default until loaded
@@ -54,14 +56,34 @@ export function ImageAnnotationView({ src, alt = "", annotations = [], className
   useEffect(() => {
     const img = imgRef.current;
     if (!img) return;
+
+    // Use the *rendered* dimensions (clientWidth/clientHeight) rather than the
+    // natural image dimensions so that the SVG viewBox matches exactly what the
+    // user sees — even when CSS clamps the image (e.g. max-height).
     const update = () => {
-      if (img.naturalWidth && img.naturalHeight) {
+      const w = img.clientWidth;
+      const h = img.clientHeight;
+      if (w && h) {
+        setAspectRatio(w / h);
+      } else if (img.naturalWidth && img.naturalHeight) {
+        // Fallback before layout is complete
         setAspectRatio(img.naturalWidth / img.naturalHeight);
       }
     };
-    if (img.complete) update();
-    else img.addEventListener("load", update);
-    return () => img.removeEventListener("load", update);
+
+    if (img.complete && img.clientWidth) {
+      update();
+    } else {
+      img.addEventListener("load", update);
+    }
+
+    // Also re-measure if the container resizes (e.g. window resize)
+    const ro = new ResizeObserver(update);
+    ro.observe(img);
+    return () => {
+      img.removeEventListener("load", update);
+      ro.disconnect();
+    };
   }, [src]);
 
   if (!src) return null;
@@ -79,7 +101,7 @@ export function ImageAnnotationView({ src, alt = "", annotations = [], className
 
   return (
     <div className={`${styles.outerWrapper} ${className ?? ""}`}>
-      <div className={styles.wrapper}>
+      <div className={styles.wrapper} ref={wrapperRef}>
         <img ref={imgRef} src={src} alt={alt} className={styles.image} />
         {annotations.length > 0 && (
           <svg

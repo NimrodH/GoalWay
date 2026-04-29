@@ -49,13 +49,16 @@ interface ImageAnnotationEditorProps {
  */
 export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: ImageAnnotationEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const imageWrapperRef = useRef<HTMLDivElement>(null);
   const [draw, setDraw] = useState<DrawState | null>(null);
   const [selectedColor, setSelectedColor] = useState(ANNOTATION_COLORS[0]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  /** Convert mouse event coords to percentage values relative to the image container */
+  /** Convert mouse event coords to percentage values relative to the rendered image */
   const toPercent = useCallback((e: React.MouseEvent | MouseEvent): { x: number; y: number } => {
-    const el = containerRef.current;
+    // Use imageWrapperRef (just the image element area) so percentages are
+    // computed against the exact same dimensions the view SVG uses.
+    const el = imageWrapperRef.current ?? containerRef.current;
     if (!el) return { x: 0, y: 0 };
     const rect = el.getBoundingClientRect();
     const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
@@ -172,7 +175,7 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
             onMouseLeave={handleMouseUp}
             style={{ cursor: "crosshair" }}
           >
-            <ImageAnnotationView src={src} annotations={annotations} />
+            <ImageAnnotationView src={src} annotations={annotations} captionVisible={false} wrapperRef={imageWrapperRef} />
 
             {/* Ghost rect while drawing */}
             {ghostRect && ghostRect.width > 0 && ghostRect.height > 0 && (
