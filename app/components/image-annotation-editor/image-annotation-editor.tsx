@@ -256,17 +256,37 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
           </div>
 
           {/* Color picker — always visible */}
-          <span className={styles.toolbarLabel}>Color:</span>
-          <div className={styles.colorPicker}>
-            {ANNOTATION_COLORS.map((c) => (
-              <button
-                key={c}
-                className={`${styles.colorSwatch} ${selectedColor === c ? styles.colorSwatchActive : ""}`}
-                style={{ background: c }}
-                onClick={() => setSelectedColor(c)}
-                title={c}
-              />
-            ))}
+          <div className={styles.colorPickerGroup}>
+            <span className={styles.toolbarLabel}>Color:</span>
+            <div className={styles.colorPicker}>
+              {ANNOTATION_COLORS.map((c) => (
+                <button
+                  key={c}
+                  className={`${styles.colorSwatch} ${selectedColor === c ? styles.colorSwatchActive : ""}`}
+                  style={{ background: c }}
+                  onClick={() => setSelectedColor(c)}
+                  title={c}
+                />
+              ))}
+            </div>
+            <div className={styles.colorLegend}>
+              <span className={styles.legendItem}>
+                <span className={styles.legendDot} style={{ background: "#e5484d" }} />
+                Click
+              </span>
+              <span className={styles.legendItem}>
+                <span className={styles.legendDot} style={{ background: "#f76b15" }} />
+                Double-click
+              </span>
+              <span className={styles.legendItem}>
+                <span className={styles.legendDot} style={{ background: "#0090ff" }} />
+                Write
+              </span>
+              <span className={styles.legendItem}>
+                <span className={styles.legendDot} style={{ background: "#30a46c" }} />
+                Optional
+              </span>
+            </div>
           </div>
 
           <span className={styles.toolbarHint}>Click &amp; drag on the image to draw</span>
