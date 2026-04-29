@@ -23,6 +23,16 @@ const ANNOTATION_COLORS = [
   "#d4d4d4", // light gray (for redaction)
 ];
 
+const COLOR_LABELS: Record<string, string> = {
+  "#e5484d": "Red — Click",
+  "#f76b15": "Orange — Double-click",
+  "#0090ff": "Blue — Write",
+  "#30a46c": "Green — Optional",
+  "#8e4ec6": "Purple",
+  "#00a2c7": "Cyan",
+  "#d4d4d4": "Gray — Redaction",
+};
+
 /** Badge side options with their display labels */
 const BADGE_SIDES: { value: BadgeSide; label: string }[] = [
   { value: "top-left",     label: "↖" },
@@ -256,37 +266,17 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
           </div>
 
           {/* Color picker — always visible */}
-          <div className={styles.colorPickerGroup}>
-            <span className={styles.toolbarLabel}>Color:</span>
-            <div className={styles.colorPicker}>
-              {ANNOTATION_COLORS.map((c) => (
-                <button
-                  key={c}
-                  className={`${styles.colorSwatch} ${selectedColor === c ? styles.colorSwatchActive : ""}`}
-                  style={{ background: c }}
-                  onClick={() => setSelectedColor(c)}
-                  title={c}
-                />
-              ))}
-            </div>
-            <div className={styles.colorLegend}>
-              <span className={styles.legendItem}>
-                <span className={styles.legendDot} style={{ background: "#e5484d" }} />
-                Click
-              </span>
-              <span className={styles.legendItem}>
-                <span className={styles.legendDot} style={{ background: "#f76b15" }} />
-                Double-click
-              </span>
-              <span className={styles.legendItem}>
-                <span className={styles.legendDot} style={{ background: "#0090ff" }} />
-                Write
-              </span>
-              <span className={styles.legendItem}>
-                <span className={styles.legendDot} style={{ background: "#30a46c" }} />
-                Optional
-              </span>
-            </div>
+          <span className={styles.toolbarLabel}>Color:</span>
+          <div className={styles.colorPicker}>
+            {ANNOTATION_COLORS.map((c) => (
+              <button
+                key={c}
+                className={`${styles.colorSwatch} ${selectedColor === c ? styles.colorSwatchActive : ""}`}
+                style={{ background: c }}
+                onClick={() => setSelectedColor(c)}
+                title={COLOR_LABELS[c] ?? c}
+              />
+            ))}
           </div>
 
           <span className={styles.toolbarHint}>Click &amp; drag on the image to draw</span>
