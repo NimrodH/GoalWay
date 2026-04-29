@@ -111,8 +111,10 @@ export function ImageAnnotationView({
   const badgeR = BADGE_R_PCT;
   const scaleY = vbHeight / 100;
 
-  // Only show caption list if at least one annotation has non-empty text
-  const captionAnnotations = annotations.filter((a) => a.text && a.text.trim().length > 0);
+  // Redaction blocks and regular annotations are rendered separately
+  const regularAnnotations = annotations.filter((a) => !a.isRedaction);
+  // Only show caption list if at least one non-redaction annotation has non-empty text
+  const captionAnnotations = regularAnnotations.filter((a) => a.text && a.text.trim().length > 0);
 
   return (
     <div className={`${styles.outerWrapper} ${className ?? ""}`}>
@@ -126,16 +128,31 @@ export function ImageAnnotationView({
             aria-hidden="true"
           >
             {annotations.map((ann) => {
-              const isHovered = hoveredId === ann.id;
-              const color = ann.color || "#e5484d";
-              const side: BadgeSide = ann.badgeSide ?? "top-left";
-
               // x/width: stored as % of image width → use directly as viewBox x units
               // y/height: stored as % of image height → multiply by scaleY for viewBox y units
               const ax = ann.x;
               const ay = ann.y * scaleY;
               const aw = ann.width;
               const ah = ann.height * scaleY;
+
+              // Redaction: opaque light-gray block, no border, no badge
+              if (ann.isRedaction) {
+                return (
+                  <rect
+                    key={ann.id}
+                    x={ax}
+                    y={ay}
+                    width={aw}
+                    height={ah}
+                    fill="#d4d4d4"
+                    stroke="none"
+                  />
+                );
+              }
+
+              const isHovered = hoveredId === ann.id;
+              const color = ann.color || "#e5484d";
+              const side: BadgeSide = ann.badgeSide ?? "top-left";
 
               const scaledAnn = { ...ann, x: ax, y: ay, width: aw, height: ah };
               const { cx, cy } = badgeCenter(scaledAnn, side, badgeR);

@@ -3,6 +3,8 @@ import type { Annotation, BadgeSide } from "~/services/instructions.server";
 import { ImageAnnotationView } from "~/components/image-annotation-view/image-annotation-view";
 import styles from "./image-annotation-editor.module.css";
 
+type DrawMode = "annotate" | "redact";
+
 interface DrawState {
   startX: number;
   startY: number;
@@ -50,11 +52,13 @@ function GhostRect({
   color,
   imgRef,
   className,
+  isRedact = false,
 }: {
   rect: { x: number; y: number; width: number; height: number };
   color: string;
   imgRef: React.RefObject<HTMLImageElement | null>;
   className?: string;
+  isRedact?: boolean;
 }) {
   // Mirror exactly what ImageAnnotationView does:
   // viewBox = "0 0 100 vbHeight" where vbHeight = 100 / (renderedW / renderedH)
@@ -71,16 +75,31 @@ function GhostRect({
       viewBox={`0 0 100 ${vbHeight}`}
       preserveAspectRatio="none"
     >
-      <rect
-        x={rect.x}
-        y={rect.y * scaleY}
-        width={rect.width}
-        height={rect.height * scaleY}
-        fill={`${color}22`}
-        stroke={color}
-        strokeWidth={0.5}
-        strokeDasharray="2 1"
-      />
+      {isRedact ? (
+        // Redaction preview: solid fill with 70% opacity so you can see what you're covering
+        <rect
+          x={rect.x}
+          y={rect.y * scaleY}
+          width={rect.width}
+          height={rect.height * scaleY}
+          fill="#d4d4d4"
+          fillOpacity={0.7}
+          stroke="#888"
+          strokeWidth={0.4}
+          strokeDasharray="2 1"
+        />
+      ) : (
+        <rect
+          x={rect.x}
+          y={rect.y * scaleY}
+          width={rect.width}
+          height={rect.height * scaleY}
+          fill={`${color}22`}
+          stroke={color}
+          strokeWidth={0.5}
+          strokeDasharray="2 1"
+        />
+      )}
     </svg>
   );
 }
@@ -101,6 +120,7 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
   const [draw, setDraw] = useState<DrawState | null>(null);
   const [selectedColor, setSelectedColor] = useState(ANNOTATION_COLORS[0]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [drawMode, setDrawMode] = useState<DrawMode>("annotate");
 
   /**
    * Convert a mouse event position to percentage coordinates relative to
@@ -146,27 +166,46 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
     const h = Math.abs(y - draw.startY);
 
     if (w >= MIN_SIZE_PCT && h >= MIN_SIZE_PCT) {
-      const nextLabel = annotations.length + 1;
-      const newAnn: Annotation = {
-        id: generateId(),
-        x: parseFloat(x1.toFixed(2)),
-        y: parseFloat(y1.toFixed(2)),
-        width: parseFloat(w.toFixed(2)),
-        height: parseFloat(h.toFixed(2)),
-        label: nextLabel,
-        color: selectedColor,
-        badgeSide: "top-left",
-      };
-      onChange([...annotations, newAnn]);
-      setSelectedId(newAnn.id);
+      if (drawMode === "redact") {
+        // Redaction blocks don't count toward annotation numbering
+        const newAnn: Annotation = {
+          id: generateId(),
+          x: parseFloat(x1.toFixed(2)),
+          y: parseFloat(y1.toFixed(2)),
+          width: parseFloat(w.toFixed(2)),
+          height: parseFloat(h.toFixed(2)),
+          label: 0,       // unused for redactions
+          isRedaction: true,
+        };
+        onChange([...annotations, newAnn]);
+        setSelectedId(newAnn.id);
+      } else {
+        // Count only non-redaction annotations for the next label
+        const nextLabel = annotations.filter((a) => !a.isRedaction).length + 1;
+        const newAnn: Annotation = {
+          id: generateId(),
+          x: parseFloat(x1.toFixed(2)),
+          y: parseFloat(y1.toFixed(2)),
+          width: parseFloat(w.toFixed(2)),
+          height: parseFloat(h.toFixed(2)),
+          label: nextLabel,
+          color: selectedColor,
+          badgeSide: "top-left",
+        };
+        onChange([...annotations, newAnn]);
+        setSelectedId(newAnn.id);
+      }
     }
     setDraw(null);
   };
 
   const deleteAnnotation = (id: string) => {
     const remaining = annotations.filter((a) => a.id !== id);
-    // Re-number labels to keep them sequential
-    const renumbered = remaining.map((a, i) => ({ ...a, label: i + 1 }));
+    // Re-number only the regular (non-redaction) annotations to keep labels sequential
+    let labelCounter = 1;
+    const renumbered = remaining.map((a) =>
+      a.isRedaction ? a : { ...a, label: labelCounter++ }
+    );
     onChange(renumbered);
     if (selectedId === id) setSelectedId(null);
   };
@@ -202,19 +241,49 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
         </div>
 
         <div className={styles.toolbar}>
-          <span className={styles.toolbarLabel}>Rectangle color:</span>
-          <div className={styles.colorPicker}>
-            {ANNOTATION_COLORS.map((c) => (
-              <button
-                key={c}
-                className={`${styles.colorSwatch} ${selectedColor === c ? styles.colorSwatchActive : ""}`}
-                style={{ background: c }}
-                onClick={() => setSelectedColor(c)}
-                title={c}
-              />
-            ))}
+          {/* Mode toggle */}
+          <div className={styles.modeToggle}>
+            <button
+              className={`${styles.modeBtn} ${drawMode === "annotate" ? styles.modeBtnActive : ""}`}
+              onClick={() => setDrawMode("annotate")}
+              title="Draw numbered annotation rectangles"
+            >
+              ✏️ Annotate
+            </button>
+            <button
+              className={`${styles.modeBtn} ${drawMode === "redact" ? styles.modeBtnRedactActive : ""}`}
+              onClick={() => setDrawMode("redact")}
+              title="Draw opaque gray redaction blocks (hides content, no badge/number)"
+            >
+              ▬ Redact
+            </button>
           </div>
-          <span className={styles.toolbarHint}>Click &amp; drag on the image to draw a rectangle</span>
+
+          {/* Color picker — only shown in annotate mode */}
+          {drawMode === "annotate" && (
+            <>
+              <span className={styles.toolbarLabel}>Color:</span>
+              <div className={styles.colorPicker}>
+                {ANNOTATION_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    className={`${styles.colorSwatch} ${selectedColor === c ? styles.colorSwatchActive : ""}`}
+                    style={{ background: c }}
+                    onClick={() => setSelectedColor(c)}
+                    title={c}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {drawMode === "redact" && (
+            <span className={styles.redactHint}>
+              Draws an opaque light-gray block — hides content, no number
+            </span>
+          )}
+
+          <span className={styles.toolbarHint}>Click &amp; drag on the image to draw</span>
         </div>
 
         <div className={styles.canvasArea}>
@@ -240,21 +309,57 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
             {ghostRect && ghostRect.width > 0 && ghostRect.height > 0 && (
               <GhostRect
                 rect={ghostRect}
-                color={selectedColor}
+                color={drawMode === "redact" ? "#a0a0a0" : selectedColor}
                 imgRef={imgRef}
                 className={styles.ghostOverlay}
+                isRedact={drawMode === "redact"}
               />
             )}
           </div>
 
           {/* Annotation list */}
           <div className={styles.annotationList}>
-            <h3 className={styles.listTitle}>Annotations ({annotations.length})</h3>
+            <h3 className={styles.listTitle}>
+              Annotations ({annotations.filter((a) => !a.isRedaction).length})
+              {annotations.some((a) => a.isRedaction) && (
+                <span className={styles.redactionCount}>
+                  &nbsp;· {annotations.filter((a) => a.isRedaction).length} redaction{annotations.filter((a) => a.isRedaction).length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </h3>
             {annotations.length === 0 && (
               <p className={styles.listEmpty}>No annotations yet. Drag on the image to add one.</p>
             )}
             {annotations.map((ann) => {
               const isSelected = selectedId === ann.id;
+
+              // ── Redaction row ────────────────────────────────────────────
+              if (ann.isRedaction) {
+                return (
+                  <div
+                    key={ann.id}
+                    className={`${styles.annotationRow} ${styles.redactionRow} ${isSelected ? styles.annotationRowSelected : ""}`}
+                    onClick={() => setSelectedId(isSelected ? null : ann.id)}
+                  >
+                    <div className={styles.annTopRow}>
+                      <div className={styles.redactionBadge}>▬</div>
+                      <div className={styles.annCoords}>
+                        x:{ann.x.toFixed(1)}% y:{ann.y.toFixed(1)}%
+                        &nbsp;{ann.width.toFixed(1)}×{ann.height.toFixed(1)}%
+                      </div>
+                      <button
+                        className={styles.deleteBtn}
+                        onClick={(e) => { e.stopPropagation(); deleteAnnotation(ann.id); }}
+                        title="Delete redaction block"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              // ── Regular annotation row ───────────────────────────────────
               return (
                 <div
                   key={ann.id}

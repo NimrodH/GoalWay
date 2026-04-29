@@ -12,6 +12,8 @@ export interface Annotation {
   color?: string;     // hex color string, e.g. "#e5484d"
   badgeSide?: BadgeSide; // which corner of the rectangle the badge sits on (default top-left)
   text?: string;      // optional markdown description shown below the image
+  /** When true, renders as an opaque light-gray redaction block with no badge/number */
+  isRedaction?: boolean;
 }
 
 export interface InstructionContent {

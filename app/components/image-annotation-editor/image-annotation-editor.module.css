@@ -79,6 +79,64 @@
   margin-left: auto;
 }
 
+/* Mode toggle (Annotate / Redact) */
+.modeToggle {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.modeBtn {
+  background: var(--color-neutral-1);
+  border: none;
+  color: var(--color-neutral-10);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.modeBtn:not(:last-child) {
+  border-right: 1px solid var(--color-neutral-6);
+}
+
+.modeBtn:hover {
+  background: var(--color-neutral-3);
+  color: var(--color-neutral-12);
+}
+
+.modeBtnActive {
+  background: var(--color-accent-9);
+  color: var(--color-accent-contrast);
+  font-weight: 600;
+}
+
+.modeBtnActive:hover {
+  background: var(--color-accent-10);
+}
+
+.modeBtnRedactActive {
+  background: #6b6b6b;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.modeBtnRedactActive:hover {
+  background: #555;
+}
+
+.redactHint {
+  font-size: 0.8125rem;
+  color: #6b6b6b;
+  font-style: italic;
+}
+
 .colorPicker {
   display: flex;
   gap: var(--space-2);
@@ -267,6 +325,36 @@
   font-weight: 700;
   color: white;
   flex-shrink: 0;
+}
+
+/* Redaction row in annotation list */
+.redactionRow {
+  border-color: #c0c0c0 !important;
+  background: #f5f5f5 !important;
+}
+
+.redactionRow:hover {
+  background: #ebebeb !important;
+  border-color: #aaa !important;
+}
+
+.redactionBadge {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-1);
+  background: #c0c0c0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: #555;
+  flex-shrink: 0;
+}
+
+.redactionCount {
+  font-weight: 400;
+  color: var(--color-neutral-9);
+  font-size: 0.8125rem;
 }
 
 .annCoords {
