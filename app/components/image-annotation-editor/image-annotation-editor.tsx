@@ -20,6 +20,7 @@ const ANNOTATION_COLORS = [
   "#f76b15", // orange
   "#8e4ec6", // purple
   "#00a2c7", // cyan
+  "#d4d4d4", // light gray (for redaction)
 ];
 
 /** Badge side options with their display labels */
@@ -82,9 +83,9 @@ function GhostRect({
           y={rect.y * scaleY}
           width={rect.width}
           height={rect.height * scaleY}
-          fill="#d4d4d4"
+          fill={color}
           fillOpacity={0.7}
-          stroke="#888"
+          stroke={color === "#d4d4d4" ? "#888" : color}
           strokeWidth={0.4}
           strokeDasharray="2 1"
         />
@@ -175,6 +176,7 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
           width: parseFloat(w.toFixed(2)),
           height: parseFloat(h.toFixed(2)),
           label: 0,       // unused for redactions
+          color: selectedColor,
           isRedaction: true,
         };
         onChange([...annotations, newAnn]);
@@ -259,29 +261,19 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
             </button>
           </div>
 
-          {/* Color picker — only shown in annotate mode */}
-          {drawMode === "annotate" && (
-            <>
-              <span className={styles.toolbarLabel}>Color:</span>
-              <div className={styles.colorPicker}>
-                {ANNOTATION_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    className={`${styles.colorSwatch} ${selectedColor === c ? styles.colorSwatchActive : ""}`}
-                    style={{ background: c }}
-                    onClick={() => setSelectedColor(c)}
-                    title={c}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-
-          {drawMode === "redact" && (
-            <span className={styles.redactHint}>
-              Draws an opaque light-gray block — hides content, no number
-            </span>
-          )}
+          {/* Color picker — always visible */}
+          <span className={styles.toolbarLabel}>Color:</span>
+          <div className={styles.colorPicker}>
+            {ANNOTATION_COLORS.map((c) => (
+              <button
+                key={c}
+                className={`${styles.colorSwatch} ${selectedColor === c ? styles.colorSwatchActive : ""}`}
+                style={{ background: c }}
+                onClick={() => setSelectedColor(c)}
+                title={c}
+              />
+            ))}
+          </div>
 
           <span className={styles.toolbarHint}>Click &amp; drag on the image to draw</span>
         </div>
@@ -309,7 +301,7 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
             {ghostRect && ghostRect.width > 0 && ghostRect.height > 0 && (
               <GhostRect
                 rect={ghostRect}
-                color={drawMode === "redact" ? "#a0a0a0" : selectedColor}
+                color={selectedColor}
                 imgRef={imgRef}
                 className={styles.ghostOverlay}
                 isRedact={drawMode === "redact"}
@@ -342,7 +334,11 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
                     onClick={() => setSelectedId(isSelected ? null : ann.id)}
                   >
                     <div className={styles.annTopRow}>
-                      <div className={styles.redactionBadge}>▬</div>
+                      <div
+                        className={styles.redactionBadge}
+                        style={{ background: ann.color || "#d4d4d4" }}
+                        title={ann.color || "#d4d4d4"}
+                      />
                       <div className={styles.annCoords}>
                         x:{ann.x.toFixed(1)}% y:{ann.y.toFixed(1)}%
                         &nbsp;{ann.width.toFixed(1)}×{ann.height.toFixed(1)}%

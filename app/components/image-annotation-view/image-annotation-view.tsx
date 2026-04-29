@@ -135,7 +135,7 @@ export function ImageAnnotationView({
               const aw = ann.width;
               const ah = ann.height * scaleY;
 
-              // Redaction: opaque light-gray block, no border, no badge
+              // Redaction: opaque solid block, no border, no badge
               if (ann.isRedaction) {
                 return (
                   <rect
@@ -144,7 +144,7 @@ export function ImageAnnotationView({
                     y={ay}
                     width={aw}
                     height={ah}
-                    fill="#d4d4d4"
+                    fill={ann.color || "#d4d4d4"}
                     stroke="none"
                   />
                 );
