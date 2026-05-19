@@ -382,9 +382,9 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
     const fd = new FormData();
     fd.set("actionType", "saveMissionAdminNote");
     fd.set("notes", JSON.stringify(notes));
-    // Explicitly target the mission route action (without ?preview=true so the
-    // URL remains clean, but the route's action handler doesn't care about search params)
-    adminNotesFetcher.submit(fd, { method: "post", action: `/missions/${mission.id}` });
+    // Always use params.missionId (the actual DB row ID) — mission.id from the JSON
+    // data may differ and would cause a silent no-op update to the wrong row.
+    adminNotesFetcher.submit(fd, { method: "post", action: `/missions/${params.missionId}` });
   };
 
   const handleAddNote = () => {
