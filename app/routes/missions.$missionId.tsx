@@ -10,6 +10,7 @@ import styles from "./missions.$missionId.module.css";
 import { getMissionById, getAllMissions, checkMissionAccess } from "~/services/missions.server";
 import { getInstructionsByIds } from "~/services/instructions.server";
 import { getUserProfile, isAdmin } from "~/lib/auth.server";
+import { useAuth } from "~/hooks/use-auth";
 import type { Instruction } from "~/data/instructions";
 
 export function meta({ data }: Route.MetaArgs) {
@@ -83,6 +84,11 @@ export async function action({ request, params }: Route.ActionArgs) {
     // Always use params.missionId (the actual DB row ID) — the mission.id inside
     // data_en JSON may differ from the DB row id and would cause a silent no-op update.
     const notesJson = formData.get("notes") as string;
+    const accessToken = formData.get("accessToken") as string | null;
+
+    if (!accessToken) {
+      return { success: false, error: "Unauthorized: Authentication required" };
+    }
 
     let notes: string[];
     try {
@@ -95,15 +101,28 @@ export async function action({ request, params }: Route.ActionArgs) {
 
     try {
       const { createClient } = await import("@supabase/supabase-js");
+      // Use an authenticated client so RLS UPDATE policies allow the write.
+      // The anon client is silently blocked by RLS on the `missions` table.
       const supabase = createClient(
         process.env.SUPABASE_PROJECT_URL!,
         process.env.SUPABASE_API_KEY!,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          },
+        },
       );
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("missions")
         .update({ admin_notes: notes })
-        .eq("id", params.missionId);
+        .eq("id", params.missionId)
+        .select("id");
       if (error) return { success: false, error: error.message };
+      if (!updated || updated.length === 0) {
+        return { success: false, error: `No mission row matched id=${params.missionId}` };
+      }
       return { success: true };
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
@@ -239,6 +258,7 @@ type MissionInstruction =
 
 export default function MissionPage({ loaderData, params }: Route.ComponentProps) {
   const { mission, instructions, allMissions, isPreview, adminNotes: initialAdminNotes } = loaderData;
+  const { session } = useAuth();
   const statusFetcher = useFetcher();
   // Optimistic status — show the pending value immediately while saving
   const currentStatus = (statusFetcher.formData?.get("status") as MissionStatus | undefined) ?? mission.status ?? "For all";
@@ -382,6 +402,9 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
     const fd = new FormData();
     fd.set("actionType", "saveMissionAdminNote");
     fd.set("notes", JSON.stringify(notes));
+    // Include the admin's access token so the server action can authenticate the
+    // Supabase write — RLS UPDATE policies block the anon client silently.
+    fd.set("accessToken", session?.access_token || "");
     // Always use params.missionId (the actual DB row ID) — mission.id from the JSON
     // data may differ and would cause a silent no-op update to the wrong row.
     adminNotesFetcher.submit(fd, { method: "post", action: `/missions/${params.missionId}` });
@@ -697,6 +720,11 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                 )}
                 {adminNotesFetcher.state === "idle" && adminNotesFetcher.data?.success === true && (
                   <span className={styles.statusSaved}>✓ Saved</span>
+                )}
+                {adminNotesFetcher.state === "idle" && adminNotesFetcher.data?.success === false && (
+                  <span className={styles.statusSaving} style={{ color: "var(--color-error-11)" }}>
+                    ⚠ {adminNotesFetcher.data.error || "Save failed"}
+                  </span>
                 )}
               </div>
 
