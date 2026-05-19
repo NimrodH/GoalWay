@@ -358,12 +358,33 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   const [editingNoteText, setEditingNoteText] = useState("");
   const adminNotesFetcher = useFetcher<{ success: boolean; error?: string }>();
   const newNoteInputRef = useRef<HTMLTextAreaElement>(null);
+  // Track pending save to avoid overwriting optimistic state on revalidation
+  const pendingSaveRef = useRef<string[] | null>(null);
+
+  // Sync local adminNotes from loader data after each route revalidation,
+  // but only when there is no in-flight save (to avoid overwriting optimistic state).
+  useEffect(() => {
+    if (adminNotesFetcher.state === "idle" && pendingSaveRef.current === null) {
+      setAdminNotes(initialAdminNotes ?? []);
+    }
+  }, [initialAdminNotes]);
+
+  // Once the fetcher goes idle after a save, clear the pending ref so
+  // the next revalidation can sync again normally.
+  useEffect(() => {
+    if (adminNotesFetcher.state === "idle" && pendingSaveRef.current !== null) {
+      pendingSaveRef.current = null;
+    }
+  }, [adminNotesFetcher.state]);
 
   const saveAdminNotes = (notes: string[]) => {
+    pendingSaveRef.current = notes;
     const fd = new FormData();
     fd.set("actionType", "saveMissionAdminNote");
     fd.set("notes", JSON.stringify(notes));
-    adminNotesFetcher.submit(fd, { method: "post" });
+    // Explicitly target the mission route action (without ?preview=true so the
+    // URL remains clean, but the route's action handler doesn't care about search params)
+    adminNotesFetcher.submit(fd, { method: "post", action: `/missions/${mission.id}` });
   };
 
   const handleAddNote = () => {
@@ -763,7 +784,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
                 <button
                   className={styles.notesAddBtn}
                   onClick={handleAddNote}
-                  disabled={!newNoteText.trim() || adminNotesFetcher.state !== "idle"}
+                  disabled={!newNoteText.trim()}
                   title="Add note"
                 >
                   <Plus size={16} />
