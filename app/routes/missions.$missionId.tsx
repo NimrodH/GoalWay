@@ -237,7 +237,7 @@ type MissionInstruction =
   | EndIfEntry
   | TempEntry;
 
-export default function MissionPage({ loaderData }: Route.ComponentProps) {
+export default function MissionPage({ loaderData, params }: Route.ComponentProps) {
   const { mission, instructions, allMissions, isPreview, adminNotes: initialAdminNotes } = loaderData;
   const statusFetcher = useFetcher();
   // Optimistic status — show the pending value immediately while saving
@@ -627,7 +627,7 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
         <>
           <div className={styles.previewBar}>
             <button
-              onClick={() => navigate(`/admin/missions?missionId=${mission.id}`)}
+              onClick={() => navigate(`/admin/missions?missionId=${params.missionId}`)}
               className={styles.menuLink}
             >
               <ArrowLeft size={18} />
