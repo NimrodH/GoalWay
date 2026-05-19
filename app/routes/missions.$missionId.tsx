@@ -5,7 +5,7 @@ import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
-import { BookOpen, ArrowLeft, ChevronUp, ChevronDown, List, ListX, GitBranch, StickyNote, Plus, Pencil, Trash2, Check, X } from "lucide-react";
+import { BookOpen, ArrowLeft, ChevronUp, ChevronDown, List, ListX, GitBranch, StickyNote, Plus, Pencil, Trash2, Check, X, BookMarked } from "lucide-react";
 import styles from "./missions.$missionId.module.css";
 import { getMissionById, getAllMissions, checkMissionAccess } from "~/services/missions.server";
 import { getInstructionsByIds } from "~/services/instructions.server";
@@ -60,18 +60,23 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   // Load admin notes and all instruction IDs only in preview mode (admin context)
   let adminNotes: string[] = [];
   let allInstructionIds: string[] = [];
+  let allInstructionsList: { id: string; title: string }[] = [];
   if (isPreview) {
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
-    const [notesResult, instrIdsResult] = await Promise.all([
+    const [notesResult, instrResult] = await Promise.all([
       supabase.from("missions").select("admin_notes").eq("id", params.missionId).single(),
-      supabase.from("instructions").select("id").order("created_at", { ascending: true }),
+      supabase.from("instructions").select("id, data_en").order("created_at", { ascending: true }),
     ]);
     adminNotes = Array.isArray(notesResult.data?.admin_notes) ? notesResult.data.admin_notes : [];
-    allInstructionIds = (instrIdsResult.data || []).map((r: { id: string }) => r.id);
+    allInstructionIds = (instrResult.data || []).map((r: { id: string }) => r.id);
+    allInstructionsList = (instrResult.data || []).map((r: { id: string; data_en?: { title?: string } }) => ({
+      id: r.id,
+      title: r.data_en?.title || r.id,
+    }));
   }
 
-  return { mission, instructions, allMissions, isPreview, adminNotes, allInstructionIds };
+  return { mission, instructions, allMissions, isPreview, adminNotes, allInstructionIds, allInstructionsList };
 }
 
 type MissionStatus = "Hide" | "For all" | "Only Adama" | "Only Bazn";
@@ -258,7 +263,7 @@ type MissionInstruction =
   | TempEntry;
 
 export default function MissionPage({ loaderData, params }: Route.ComponentProps) {
-  const { mission, instructions, allMissions, isPreview, adminNotes: initialAdminNotes, allInstructionIds } = loaderData;
+  const { mission, instructions, allMissions, isPreview, adminNotes: initialAdminNotes, allInstructionIds, allInstructionsList } = loaderData;
   const { session } = useAuth();
   const statusFetcher = useFetcher();
   // Fetchers for converting temp instructions to real ones (preview mode)
@@ -453,6 +458,10 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
     }
     return map;
   })();
+
+  // Instructions panel state (preview mode only)
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
+  const [instructionSearch, setInstructionSearch] = useState("");
 
   // Admin notes panel state (preview mode only)
   const [notesOpen, setNotesOpen] = useState(false);
@@ -741,11 +750,29 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
               Back to Admin
             </button>
 
+            {/* Instructions toggle button */}
+            <button
+              className={`${styles.menuLink} ${instructionsOpen ? styles.menuLinkActive : ""}`}
+              onClick={() => {
+                setInstructionsOpen((v) => !v);
+                if (notesOpen) setNotesOpen(false);
+              }}
+              aria-pressed={instructionsOpen}
+              title="Show / hide all available instructions"
+            >
+              <BookMarked size={15} />
+              Instructions
+              {allInstructionsList && allInstructionsList.length > 0 && (
+                <span className={styles.notesBadge}>{allInstructionsList.length}</span>
+              )}
+            </button>
+
             {/* Notes toggle button */}
             <button
               className={`${styles.menuLink} ${notesOpen ? styles.menuLinkActive : ""}`}
               onClick={() => {
                 setNotesOpen((v) => !v);
+                if (instructionsOpen) setInstructionsOpen(false);
                 if (!notesOpen) {
                   setTimeout(() => newNoteInputRef.current?.focus(), 80);
                 }
@@ -790,6 +817,51 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
               )}
             </statusFetcher.Form>
           </div>
+
+          {/* Instructions panel — shown below the preview bar */}
+          {instructionsOpen && (
+            <div className={styles.notesPanel}>
+              <div className={styles.notesPanelHeader}>
+                <span className={styles.notesPanelTitle}>
+                  <BookMarked size={14} /> All Instructions
+                  {allInstructionsList && allInstructionsList.length > 0 && ` (${allInstructionsList.length})`}
+                </span>
+              </div>
+              <input
+                className={styles.instructionsSearchInput}
+                type="text"
+                placeholder="Search by ID or title…"
+                value={instructionSearch}
+                onChange={(e) => setInstructionSearch(e.target.value)}
+                autoFocus
+              />
+              <ul className={styles.instructionsList}>
+                {(allInstructionsList ?? [])
+                  .filter((instr) => {
+                    const q = instructionSearch.toLowerCase();
+                    return !q || instr.id.toLowerCase().includes(q) || instr.title.toLowerCase().includes(q);
+                  })
+                  .map((instr) => (
+                    <li key={instr.id} className={styles.instructionsListItem}>
+                      <span className={styles.instructionIdBadge}>{instr.id}</span>
+                      <button
+                        className={styles.instructionsListTitle}
+                        onClick={() => navigate(`/admin/instructions?instructionId=${instr.id}`)}
+                        title={`Open instruction ${instr.id} in admin`}
+                      >
+                        {instr.title}
+                      </button>
+                    </li>
+                  ))}
+                {(allInstructionsList ?? []).filter((instr) => {
+                  const q = instructionSearch.toLowerCase();
+                  return !q || instr.id.toLowerCase().includes(q) || instr.title.toLowerCase().includes(q);
+                }).length === 0 && (
+                  <li className={styles.notesEmpty}>No instructions match your search.</li>
+                )}
+              </ul>
+            </div>
+          )}
 
           {/* Admin notes panel — shown below the preview bar */}
           {notesOpen && (
