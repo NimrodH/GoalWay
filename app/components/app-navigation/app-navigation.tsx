@@ -4,7 +4,6 @@ import styles from "./app-navigation.module.css";
 
 interface AppNavigationProps {
   onNavigate?: (path: string) => boolean;
-  onPreview?: (missionId: string) => void;
   adminTab?: string;
   pendingUsersCount?: number;
 }
@@ -15,7 +14,7 @@ const ADMIN_PAGES = [
   { value: "users", legacyValue: "users", label: "Users", path: "/admin/users" },
 ] as const;
 
-export function AppNavigation({ onNavigate, onPreview, adminTab, pendingUsersCount = 0 }: AppNavigationProps = {}) {
+export function AppNavigation({ onNavigate, adminTab, pendingUsersCount = 0 }: AppNavigationProps = {}) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const isOnAdmin = location.pathname.startsWith("/admin");
@@ -38,10 +37,8 @@ export function AppNavigation({ onNavigate, onPreview, adminTab, pendingUsersCou
 
   const handlePreview = () => {
     if (!previewMissionId) return;
-    if (onPreview) {
-      onPreview(previewMissionId);
-    } else {
-      // Fallback: open in new tab if no panel handler provided
+    const shouldProceed = onNavigate ? onNavigate(`/missions/${previewMissionId}?preview=true`) : true;
+    if (shouldProceed) {
       window.open(`/missions/${previewMissionId}?preview=true`, "_blank");
     }
   };
