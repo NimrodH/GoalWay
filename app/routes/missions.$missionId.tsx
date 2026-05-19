@@ -57,20 +57,21 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const uniqueBaseIds = [...new Set(rawIds.map((id) => (id.includes("#") ? id.split("#")[0] : id)))];
   const instructions = await getInstructionsByIds(uniqueBaseIds);
 
-  // Load admin notes only in preview mode (admin context)
+  // Load admin notes and all instruction IDs only in preview mode (admin context)
   let adminNotes: string[] = [];
+  let allInstructionIds: string[] = [];
   if (isPreview) {
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
-    const { data: row } = await supabase
-      .from("missions")
-      .select("admin_notes")
-      .eq("id", params.missionId)
-      .single();
-    adminNotes = Array.isArray(row?.admin_notes) ? row.admin_notes : [];
+    const [notesResult, instrIdsResult] = await Promise.all([
+      supabase.from("missions").select("admin_notes").eq("id", params.missionId).single(),
+      supabase.from("instructions").select("id").order("created_at", { ascending: true }),
+    ]);
+    adminNotes = Array.isArray(notesResult.data?.admin_notes) ? notesResult.data.admin_notes : [];
+    allInstructionIds = (instrIdsResult.data || []).map((r: { id: string }) => r.id);
   }
 
-  return { mission, instructions, allMissions, isPreview, adminNotes };
+  return { mission, instructions, allMissions, isPreview, adminNotes, allInstructionIds };
 }
 
 type MissionStatus = "Hide" | "For all" | "Only Adama" | "Only Bazn";
@@ -257,11 +258,94 @@ type MissionInstruction =
   | TempEntry;
 
 export default function MissionPage({ loaderData, params }: Route.ComponentProps) {
-  const { mission, instructions, allMissions, isPreview, adminNotes: initialAdminNotes } = loaderData;
+  const { mission, instructions, allMissions, isPreview, adminNotes: initialAdminNotes, allInstructionIds } = loaderData;
   const { session } = useAuth();
   const statusFetcher = useFetcher();
+  // Fetchers for converting temp instructions to real ones (preview mode)
+  const createAndEditFetcher = useFetcher<{ success: boolean; error?: string; newInstructionId?: string }>();
+  const saveMissionAfterCreateFetcher = useFetcher<{ success: boolean; error?: string }>();
+  const [pendingTempEdit, setPendingTempEdit] = useState<{ tempId: string; title: string } | null>(null);
+  const [pendingNavigateToInstructionId, setPendingNavigateToInstructionId] = useState<string | null>(null);
+  // Optimistic: track which temp IDs have been converted (so the edit row can show "Creating...")
+  const convertingTempId = pendingTempEdit?.tempId ?? null;
   // Optimistic status — show the pending value immediately while saving
   const currentStatus = (statusFetcher.formData?.get("status") as MissionStatus | undefined) ?? mission.status ?? "For all";
+
+  // Watch for createAndEditFetcher completion — replace temp ID in mission + save
+  useEffect(() => {
+    if (createAndEditFetcher.data && createAndEditFetcher.state === "idle" && pendingTempEdit) {
+      const result = createAndEditFetcher.data;
+      if (result.success && result.newInstructionId) {
+        const newId = result.newInstructionId;
+        const { tempId } = pendingTempEdit;
+        setPendingTempEdit(null);
+        setPendingNavigateToInstructionId(newId);
+
+        if (session) {
+          // Rebuild the mission instructions with the temp ID replaced by the real new ID
+          const updatedInstructions = mission.instructions.map(([id, title]) =>
+            id === tempId ? ([newId, title] as [string, string?]) : ([id, title] as [string, string?])
+          );
+          const updatedMission = {
+            id: mission.id,
+            title: mission.title,
+            description: mission.description,
+            instructions: updatedInstructions,
+            status: mission.status,
+          };
+          const fd = new FormData();
+          fd.append("actionType", "saveMission");
+          fd.append("id", mission.id);
+          fd.append("dataEn", JSON.stringify(updatedMission));
+          fd.append("language", "en");
+          fd.append("accessToken", session.access_token || "");
+          saveMissionAfterCreateFetcher.submit(fd, { method: "post", action: "/admin" });
+        } else {
+          // No session — navigate directly without saving
+          window.location.href = `/admin/instructions?instructionId=${newId}`;
+        }
+      } else if (result.error) {
+        alert(`Failed to create instruction: ${result.error}`);
+        setPendingTempEdit(null);
+      }
+    }
+  }, [createAndEditFetcher.data, createAndEditFetcher.state, pendingTempEdit]);
+
+  // Watch for saveMissionAfterCreateFetcher completion — navigate to admin/instructions
+  useEffect(() => {
+    if (
+      saveMissionAfterCreateFetcher.data &&
+      saveMissionAfterCreateFetcher.state === "idle" &&
+      pendingNavigateToInstructionId
+    ) {
+      const instructionId = pendingNavigateToInstructionId;
+      setPendingNavigateToInstructionId(null);
+      if (!saveMissionAfterCreateFetcher.data.success) {
+        console.warn("Mission save after temp create had an error:", saveMissionAfterCreateFetcher.data.error);
+      }
+      window.location.href = `/admin/instructions?instructionId=${instructionId}`;
+    }
+  }, [saveMissionAfterCreateFetcher.data, saveMissionAfterCreateFetcher.state, pendingNavigateToInstructionId]);
+
+  /** Convert a temporary instruction entry (T1, T2…) to a real instruction and open it for editing */
+  const handleEditTempInstruction = (tempId: string, tempTitle: string) => {
+    if (!session) {
+      alert("You must be signed in to create instructions");
+      return;
+    }
+    const numericIds = (allInstructionIds ?? []).map((id: string) => parseInt(id, 10)).filter((n: number) => !isNaN(n));
+    const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+    const newInstructionId = String(maxId + 1);
+
+    setPendingTempEdit({ tempId, title: tempTitle });
+
+    const fd = new FormData();
+    fd.append("actionType", "createInstruction");
+    fd.append("newId", newInstructionId);
+    fd.append("language", "en");
+    fd.append("accessToken", session.access_token || "");
+    createAndEditFetcher.submit(fd, { method: "post", action: "/admin" });
+  };
 
   // Single shared fetcher for all instruction status updates
   const instrStatusFetcher = useFetcher<{ success: boolean; instructionId?: string; error?: string }>();
@@ -949,50 +1033,60 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                       orderNumber={orderNumber}
                       isCompleted={completedInstructions.has(instruction.id)}
                     />
-                    {isPreview && !isTemp && (
+                    {isPreview && (
                       <div className={styles.editInstructionRow}>
                         <span className={styles.instructionIdBadge} title="Instruction ID" style={{ marginRight: "auto" }}>
                           ID: {instruction.id}
                         </span>
                         <button
                           className={styles.editInstructionButton}
+                          disabled={isTemp && convertingTempId === instruction.id}
                           onClick={() => {
-                            // Strip the duplicate-occurrence suffix before navigating to admin
-                            const editId = instruction.id.includes("#") ? instruction.id.split("#")[0] : instruction.id;
-                            navigate(`/admin/instructions?instructionId=${editId}`);
+                            if (isTemp) {
+                              handleEditTempInstruction(
+                                instruction.id,
+                                ("title" in instruction ? instruction.title : "") || "",
+                              );
+                            } else {
+                              // Strip the duplicate-occurrence suffix before navigating to admin
+                              const editId = instruction.id.includes("#") ? instruction.id.split("#")[0] : instruction.id;
+                              navigate(`/admin/instructions?instructionId=${editId}`);
+                            }
                           }}
-                          title={`Edit instruction ${instruction.id}`}
+                          title={isTemp ? `Create real instruction from ${instruction.id} and edit it` : `Edit instruction ${instruction.id}`}
                         >
-                          ✏️ Edit ^
+                          {isTemp && convertingTempId === instruction.id ? "Creating…" : "✏️ Edit ^"}
                         </button>
-                        <instrStatusFetcher.Form method="post" className={styles.instrStatusForm}>
-                          <input type="hidden" name="actionType" value="updateInstructionStatus" />
-                          {/* Strip the suffix — status is stored on the base instruction in the DB */}
-                          <input type="hidden" name="instructionId" value={instruction.id.includes("#") ? instruction.id.split("#")[0] : instruction.id} />
-                          <label className={styles.instrStatusLabel} htmlFor={`instr-status-${instruction.id}`}>
-                            Status:
-                          </label>
-                          <select
-                            id={`instr-status-${instruction.id}`}
-                            name="status"
-                            className={styles.instrStatusSelect}
-                            value={getInstrStatus(instruction as { id: string; status?: string })}
-                            onChange={(e) => submitInstrStatus(instruction.id, e.target.value as InstructionStatus)}
-                          >
-                            <option value="only title">only title</option>
-                            <option value="partial explanation">partial explanation</option>
-                            <option value="full explanation">full explanation</option>
-                          </select>
-                          {instrStatusFetcher.state !== "idle" &&
-                            instrStatusFetcher.formData?.get("instructionId") === instruction.id && (
-                              <span className={styles.statusSaving}>Saving…</span>
-                            )}
-                          {instrStatusFetcher.state === "idle" &&
-                            instrStatusFetcher.data?.success === true &&
-                            instrStatusFetcher.data.instructionId === instruction.id && (
-                              <span className={styles.statusSaved}>✓</span>
-                            )}
-                        </instrStatusFetcher.Form>
+                        {!isTemp && (
+                          <instrStatusFetcher.Form method="post" className={styles.instrStatusForm}>
+                            <input type="hidden" name="actionType" value="updateInstructionStatus" />
+                            {/* Strip the suffix — status is stored on the base instruction in the DB */}
+                            <input type="hidden" name="instructionId" value={instruction.id.includes("#") ? instruction.id.split("#")[0] : instruction.id} />
+                            <label className={styles.instrStatusLabel} htmlFor={`instr-status-${instruction.id}`}>
+                              Status:
+                            </label>
+                            <select
+                              id={`instr-status-${instruction.id}`}
+                              name="status"
+                              className={styles.instrStatusSelect}
+                              value={getInstrStatus(instruction as { id: string; status?: string })}
+                              onChange={(e) => submitInstrStatus(instruction.id, e.target.value as InstructionStatus)}
+                            >
+                              <option value="only title">only title</option>
+                              <option value="partial explanation">partial explanation</option>
+                              <option value="full explanation">full explanation</option>
+                            </select>
+                            {instrStatusFetcher.state !== "idle" &&
+                              instrStatusFetcher.formData?.get("instructionId") === instruction.id && (
+                                <span className={styles.statusSaving}>Saving…</span>
+                              )}
+                            {instrStatusFetcher.state === "idle" &&
+                              instrStatusFetcher.data?.success === true &&
+                              instrStatusFetcher.data.instructionId === instruction.id && (
+                                <span className={styles.statusSaved}>✓</span>
+                              )}
+                          </instrStatusFetcher.Form>
+                        )}
                       </div>
                     )}
                     {"type" in instruction && instruction.type === "link" && "missionId" in instruction && (
