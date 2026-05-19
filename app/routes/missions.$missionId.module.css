@@ -157,11 +157,217 @@
   font-weight: 500;
   transition: all 0.2s var(--ease-out);
   border: 1px solid var(--color-accent-7);
+  cursor: pointer;
 }
 
 .menuLink:hover {
   background: var(--color-accent-4);
   border-color: var(--color-accent-8);
+}
+
+.menuLinkActive {
+  background: var(--color-accent-5);
+  border-color: var(--color-accent-9);
+  color: var(--color-accent-12);
+}
+
+.menuLinkActive:hover {
+  background: var(--color-accent-5);
+  border-color: var(--color-accent-10);
+}
+
+/* Notes badge */
+.notesBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  background: var(--color-accent-9);
+  color: var(--color-accent-contrast);
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Notes panel — below previewBar, sticky with bar */
+.notesPanel {
+  position: sticky;
+  top: 44px; /* approx previewBar height */
+  z-index: 99;
+  background: var(--color-neutral-2);
+  border-bottom: 1px solid var(--color-neutral-6);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-shadow: var(--shadow-1);
+}
+
+.notesPanelHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.notesPanelTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-subheading);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-neutral-11);
+}
+
+.notesList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.noteItem {
+  background: var(--color-neutral-3);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.noteViewRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.noteText {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--color-neutral-12);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.noteViewActions {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.noteEditRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.noteEditActions {
+  display: flex;
+  gap: var(--space-1);
+  justify-content: flex-end;
+}
+
+.noteActionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  background: var(--color-neutral-2);
+  color: var(--color-neutral-10);
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out);
+  flex-shrink: 0;
+}
+
+.noteActionBtn:hover {
+  background: var(--color-accent-3);
+  color: var(--color-accent-11);
+  border-color: var(--color-accent-7);
+}
+
+.noteActionBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.noteDeleteBtn:hover {
+  background: var(--color-error-3);
+  color: var(--color-error-11);
+  border-color: var(--color-error-7);
+}
+
+.noteTextarea {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--color-neutral-12);
+  background: var(--color-neutral-1);
+  border: 1px solid var(--color-neutral-7);
+  border-radius: var(--radius-2);
+  padding: var(--space-2) var(--space-3);
+  resize: vertical;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.noteTextarea:focus {
+  outline: none;
+  border-color: var(--color-accent-8);
+  background: var(--color-neutral-2);
+}
+
+.notesAddRow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+}
+
+.notesAddRow .noteTextarea {
+  flex: 1;
+}
+
+.notesAddBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-accent-9);
+  color: var(--color-accent-contrast);
+  border: none;
+  border-radius: var(--radius-2);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s var(--ease-out);
+  flex-shrink: 0;
+  height: fit-content;
+}
+
+.notesAddBtn:hover {
+  background: var(--color-accent-10);
+}
+
+.notesAddBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.notesEmpty {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--color-neutral-9);
+  font-style: italic;
+  margin: 0;
 }
 
 .captionToggleGroup {

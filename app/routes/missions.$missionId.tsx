@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { data, redirect, Link, useNavigate, useLocation, useSearchParams, useFetcher } from "react-router";
 import Markdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
-import { BookOpen, ArrowLeft, ChevronUp, ChevronDown, List, ListX, GitBranch } from "lucide-react";
+import { BookOpen, ArrowLeft, ChevronUp, ChevronDown, List, ListX, GitBranch, StickyNote, Plus, Pencil, Trash2, Check, X } from "lucide-react";
 import styles from "./missions.$missionId.module.css";
 import { getMissionById, getAllMissions, checkMissionAccess } from "~/services/missions.server";
 import { getInstructionsByIds } from "~/services/instructions.server";
@@ -56,7 +56,20 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const uniqueBaseIds = [...new Set(rawIds.map((id) => (id.includes("#") ? id.split("#")[0] : id)))];
   const instructions = await getInstructionsByIds(uniqueBaseIds);
 
-  return { mission, instructions, allMissions, isPreview };
+  // Load admin notes only in preview mode (admin context)
+  let adminNotes: string[] = [];
+  if (isPreview) {
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
+    const { data: row } = await supabase
+      .from("missions")
+      .select("admin_notes")
+      .eq("id", params.missionId)
+      .single();
+    adminNotes = Array.isArray(row?.admin_notes) ? row.admin_notes : [];
+  }
+
+  return { mission, instructions, allMissions, isPreview, adminNotes };
 }
 
 type MissionStatus = "Hide" | "For all" | "Only Adama" | "Only Bazn";
@@ -65,6 +78,38 @@ type InstructionStatus = "only title" | "partial explanation" | "full explanatio
 export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const actionType = formData.get("actionType");
+
+  if (actionType === "saveMissionAdminNote") {
+    const missionId = formData.get("missionId") as string;
+    const notesJson = formData.get("notes") as string;
+
+    if (!missionId) {
+      return { success: false, error: "Mission ID is required" };
+    }
+
+    let notes: string[];
+    try {
+      notes = JSON.parse(notesJson);
+    } catch {
+      return { success: false, error: "Invalid notes format" };
+    }
+
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(
+        process.env.SUPABASE_PROJECT_URL!,
+        process.env.SUPABASE_API_KEY!,
+      );
+      const { error } = await supabase
+        .from("missions")
+        .update({ admin_notes: notes })
+        .eq("id", missionId);
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
+    }
+  }
 
   if (actionType === "updateStatus") {
     const newStatus = formData.get("status") as MissionStatus;
@@ -194,7 +239,7 @@ type MissionInstruction =
   | TempEntry;
 
 export default function MissionPage({ loaderData }: Route.ComponentProps) {
-  const { mission, instructions, allMissions, isPreview } = loaderData;
+  const { mission, instructions, allMissions, isPreview, adminNotes: initialAdminNotes } = loaderData;
   const statusFetcher = useFetcher();
   // Optimistic status — show the pending value immediately while saving
   const currentStatus = (statusFetcher.formData?.get("status") as MissionStatus | undefined) ?? mission.status ?? "For all";
@@ -305,6 +350,59 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
     }
     return map;
   })();
+
+  // Admin notes panel state (preview mode only)
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [adminNotes, setAdminNotes] = useState<string[]>(initialAdminNotes ?? []);
+  const [newNoteText, setNewNoteText] = useState("");
+  const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState("");
+  const adminNotesFetcher = useFetcher<{ success: boolean; error?: string }>();
+  const newNoteInputRef = useRef<HTMLTextAreaElement>(null);
+
+  const saveAdminNotes = (notes: string[]) => {
+    const fd = new FormData();
+    fd.set("actionType", "saveMissionAdminNote");
+    fd.set("missionId", mission.id);
+    fd.set("notes", JSON.stringify(notes));
+    adminNotesFetcher.submit(fd, { method: "post" });
+  };
+
+  const handleAddNote = () => {
+    const trimmed = newNoteText.trim();
+    if (!trimmed) return;
+    const updated = [...adminNotes, trimmed];
+    setAdminNotes(updated);
+    setNewNoteText("");
+    saveAdminNotes(updated);
+  };
+
+  const handleRemoveNote = (idx: number) => {
+    const updated = adminNotes.filter((_, i) => i !== idx);
+    setAdminNotes(updated);
+    saveAdminNotes(updated);
+  };
+
+  const handleStartEdit = (idx: number) => {
+    setEditingNoteIndex(idx);
+    setEditingNoteText(adminNotes[idx]);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingNoteIndex === null) return;
+    const trimmed = editingNoteText.trim();
+    if (!trimmed) return;
+    const updated = adminNotes.map((n, i) => (i === editingNoteIndex ? trimmed : n));
+    setAdminNotes(updated);
+    setEditingNoteIndex(null);
+    setEditingNoteText("");
+    saveAdminNotes(updated);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingNoteIndex(null);
+    setEditingNoteText("");
+  };
 
   const [captionVisible, setCaptionVisible] = useState(true);
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
@@ -507,44 +605,176 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   return (
     <>
       {isPreview && (
-        <div className={styles.previewBar}>
-          <button
-            onClick={() => navigate(`/admin/missions?missionId=${mission.id}`)}
-            className={styles.menuLink}
-          >
-            <ArrowLeft size={18} />
-            Back to Admin
-          </button>
-          <statusFetcher.Form method="post" className={styles.statusForm}>
-            <input type="hidden" name="actionType" value="updateStatus" />
-            <label className={styles.statusLabel} htmlFor="mission-status-select">
-              Status:
-            </label>
-            <select
-              id="mission-status-select"
-              name="status"
-              className={styles.statusSelect}
-              value={currentStatus}
-              onChange={(e) => {
-                const fd = new FormData();
-                fd.set("actionType", "updateStatus");
-                fd.set("status", e.target.value);
-                statusFetcher.submit(fd, { method: "post" });
-              }}
+        <>
+          <div className={styles.previewBar}>
+            <button
+              onClick={() => navigate(`/admin/missions?missionId=${mission.id}`)}
+              className={styles.menuLink}
             >
-              <option value="Hide">Hide</option>
-              <option value="For all">For all</option>
-              <option value="Only Adama">Only Adama</option>
-              <option value="Only Bazn">Only Bazn</option>
-            </select>
-            {statusFetcher.state !== "idle" && (
-              <span className={styles.statusSaving}>Saving…</span>
-            )}
-            {statusFetcher.state === "idle" && statusFetcher.data?.success === true && (
-              <span className={styles.statusSaved}>✓ Saved</span>
-            )}
-          </statusFetcher.Form>
-        </div>
+              <ArrowLeft size={18} />
+              Back to Admin
+            </button>
+
+            {/* Notes toggle button */}
+            <button
+              className={`${styles.menuLink} ${notesOpen ? styles.menuLinkActive : ""}`}
+              onClick={() => {
+                setNotesOpen((v) => !v);
+                if (!notesOpen) {
+                  setTimeout(() => newNoteInputRef.current?.focus(), 80);
+                }
+              }}
+              aria-pressed={notesOpen}
+              title="Show / hide author notes for this mission"
+            >
+              <StickyNote size={15} />
+              Notes
+              {adminNotes.length > 0 && (
+                <span className={styles.notesBadge}>{adminNotes.length}</span>
+              )}
+            </button>
+
+            <statusFetcher.Form method="post" className={styles.statusForm}>
+              <input type="hidden" name="actionType" value="updateStatus" />
+              <label className={styles.statusLabel} htmlFor="mission-status-select">
+                Status:
+              </label>
+              <select
+                id="mission-status-select"
+                name="status"
+                className={styles.statusSelect}
+                value={currentStatus}
+                onChange={(e) => {
+                  const fd = new FormData();
+                  fd.set("actionType", "updateStatus");
+                  fd.set("status", e.target.value);
+                  statusFetcher.submit(fd, { method: "post" });
+                }}
+              >
+                <option value="Hide">Hide</option>
+                <option value="For all">For all</option>
+                <option value="Only Adama">Only Adama</option>
+                <option value="Only Bazn">Only Bazn</option>
+              </select>
+              {statusFetcher.state !== "idle" && (
+                <span className={styles.statusSaving}>Saving…</span>
+              )}
+              {statusFetcher.state === "idle" && statusFetcher.data?.success === true && (
+                <span className={styles.statusSaved}>✓ Saved</span>
+              )}
+            </statusFetcher.Form>
+          </div>
+
+          {/* Admin notes panel — shown below the preview bar */}
+          {notesOpen && (
+            <div className={styles.notesPanel}>
+              <div className={styles.notesPanelHeader}>
+                <span className={styles.notesPanelTitle}>
+                  <StickyNote size={14} /> Author Notes
+                  {adminNotes.length > 0 && ` (${adminNotes.length})`}
+                </span>
+                {adminNotesFetcher.state !== "idle" && (
+                  <span className={styles.statusSaving}>Saving…</span>
+                )}
+                {adminNotesFetcher.state === "idle" && adminNotesFetcher.data?.success === true && (
+                  <span className={styles.statusSaved}>✓ Saved</span>
+                )}
+              </div>
+
+              {/* Existing notes */}
+              {adminNotes.length > 0 && (
+                <ul className={styles.notesList}>
+                  {adminNotes.map((note, idx) => (
+                    <li key={idx} className={styles.noteItem}>
+                      {editingNoteIndex === idx ? (
+                        <div className={styles.noteEditRow}>
+                          <textarea
+                            className={styles.noteTextarea}
+                            value={editingNoteText}
+                            onChange={(e) => setEditingNoteText(e.target.value)}
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleSaveEdit();
+                              if (e.key === "Escape") handleCancelEdit();
+                            }}
+                          />
+                          <div className={styles.noteEditActions}>
+                            <button
+                              className={styles.noteActionBtn}
+                              onClick={handleSaveEdit}
+                              disabled={!editingNoteText.trim()}
+                              title="Save"
+                            >
+                              <Check size={14} />
+                            </button>
+                            <button
+                              className={styles.noteActionBtn}
+                              onClick={handleCancelEdit}
+                              title="Cancel"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={styles.noteViewRow}>
+                          <span className={styles.noteText}>{note}</span>
+                          <div className={styles.noteViewActions}>
+                            <button
+                              className={styles.noteActionBtn}
+                              onClick={() => handleStartEdit(idx)}
+                              title="Edit note"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              className={`${styles.noteActionBtn} ${styles.noteDeleteBtn}`}
+                              onClick={() => handleRemoveNote(idx)}
+                              title="Delete note"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {adminNotes.length === 0 && (
+                <p className={styles.notesEmpty}>No notes yet. Add the first one below.</p>
+              )}
+
+              {/* New note input */}
+              <div className={styles.notesAddRow}>
+                <textarea
+                  ref={newNoteInputRef}
+                  className={styles.noteTextarea}
+                  value={newNoteText}
+                  onChange={(e) => setNewNoteText(e.target.value)}
+                  placeholder="Add a note… (Ctrl+Enter to save)"
+                  rows={2}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                      e.preventDefault();
+                      handleAddNote();
+                    }
+                  }}
+                />
+                <button
+                  className={styles.notesAddBtn}
+                  onClick={handleAddNote}
+                  disabled={!newNoteText.trim() || adminNotesFetcher.state !== "idle"}
+                  title="Add note"
+                >
+                  <Plus size={16} />
+                  Add
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
       <div className={styles.container}>
         <section className={styles.instructionListSection}>
