@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "~/hooks/use-auth";
 import { initSupabase } from "~/lib/supabase";
 import { AppNavigation } from "~/components/app-navigation/app-navigation";
 import styles from "~/routes/admin.module.css";
+import layoutStyles from "./admin-layout.module.css";
 
 export type AdminSection = "instructions" | "missions" | "users";
 
@@ -27,6 +28,8 @@ const SECTION_PATHS: Record<AdminSection, string> = {
   users: "/admin/users",
 };
 
+const PREVIEW_PANEL_WIDTH = 480;
+
 export function AdminLayout<TLoaderData extends AdminLayoutLoaderData>({
   loaderData,
   activeSection,
@@ -45,6 +48,10 @@ export function AdminLayout<TLoaderData extends AdminLayoutLoaderData>({
   const [error, setError] = useState("");
   const [isSigningIn, setIsSigningIn] = useState(false);
 
+  // Preview panel state
+  const [previewMissionId, setPreviewMissionId] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
   const currentPath = SECTION_PATHS[activeSection];
 
   useEffect(() => {
@@ -59,6 +66,11 @@ export function AdminLayout<TLoaderData extends AdminLayoutLoaderData>({
         if (saveButton && !saveButton.disabled) {
           saveButton.click();
         }
+      }
+
+      // Close preview panel on Escape
+      if (e.key === "Escape") {
+        setPreviewOpen(false);
       }
     };
 
@@ -89,6 +101,15 @@ export function AdminLayout<TLoaderData extends AdminLayoutLoaderData>({
     }
     return true;
   };
+
+  const handlePreview = useCallback((missionId: string) => {
+    setPreviewMissionId(missionId);
+    setPreviewOpen((prev) => {
+      // Toggle off if same mission is already showing
+      if (prev && previewMissionId === missionId) return false;
+      return true;
+    });
+  }, [previewMissionId]);
 
   const saveAndNavigate = () => {
     const primarySaveButton = document.querySelector('[data-admin-primary-save="true"]') as HTMLButtonElement | null;
@@ -201,60 +222,106 @@ export function AdminLayout<TLoaderData extends AdminLayoutLoaderData>({
     );
   }
 
+  const previewUrl = previewMissionId ? `/missions/${previewMissionId}?preview=true` : null;
+
   return (
-    <div className={styles.container}>
+    <div
+      className={layoutStyles.adminWrapper}
+      style={previewOpen ? { paddingRight: `${PREVIEW_PANEL_WIDTH}px` } : undefined}
+    >
       <AppNavigation
         onNavigate={handleMenuNavigation}
+        onPreview={handlePreview}
         adminTab={activeSection}
         pendingUsersCount={loaderData.users.filter((u) => !u.organization_id && u.role !== "admin").length}
       />
 
-      <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <div>
-            <h1 className={styles.title}>Developer Admin Panel</h1>
-            <p className={styles.subtitle}>Create and manage instructions and missions</p>
-          </div>
-          <div className={styles.userInfo}>
-            <button
-              onClick={() => onNavigationRequest(() => navigate("/"))}
-              className={styles.homeButton}
-              style={{ cursor: "pointer" }}
-            >
-              Go to Home
-            </button>
-            <div className={styles.languageToggle}>
+      <div className={styles.container}>
+        <header className={styles.header}>
+          <div className={styles.headerContent}>
+            <div>
+              <h1 className={styles.title}>Developer Admin Panel</h1>
+              <p className={styles.subtitle}>Create and manage instructions and missions</p>
+            </div>
+            <div className={styles.userInfo}>
               <button
-                type="button"
-                onClick={() => switchLanguage("en")}
-                className={loaderData.language === "en" ? styles.languageActive : styles.languageInactive}
+                onClick={() => onNavigationRequest(() => navigate("/"))}
+                className={styles.homeButton}
+                style={{ cursor: "pointer" }}
               >
-                English
+                Go to Home
               </button>
-              <span className={styles.languageSeparator}>|</span>
-              <button
-                type="button"
-                onClick={() => switchLanguage("he")}
-                className={loaderData.language === "he" ? styles.languageActive : styles.languageInactive}
-              >
-                Hebrew
+              <div className={styles.languageToggle}>
+                <button
+                  type="button"
+                  onClick={() => switchLanguage("en")}
+                  className={loaderData.language === "en" ? styles.languageActive : styles.languageInactive}
+                >
+                  English
+                </button>
+                <span className={styles.languageSeparator}>|</span>
+                <button
+                  type="button"
+                  onClick={() => switchLanguage("he")}
+                  className={loaderData.language === "he" ? styles.languageActive : styles.languageInactive}
+                >
+                  Hebrew
+                </button>
+              </div>
+              {user.email}
+              <span className={styles.userEmail}></span>
+              <button onClick={handleSignOut} className={styles.signOutButton}>
+                Sign Out
               </button>
             </div>
-            {user.email}
-            <span className={styles.userEmail}></span>
-            <button onClick={handleSignOut} className={styles.signOutButton}>
-              Sign Out
-            </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {children({
-        onChangesDetected: setHasUnsavedChanges,
-        onNavigationRequest,
-        clearActionData,
-        sessionAccessToken: session?.access_token ?? null,
-      })}
+        {children({
+          onChangesDetected: setHasUnsavedChanges,
+          onNavigationRequest,
+          clearActionData,
+          sessionAccessToken: session?.access_token ?? null,
+        })}
+      </div>
+
+      {/* Preview panel */}
+      {previewOpen && previewUrl && (
+        <div
+          className={layoutStyles.previewPanel}
+          style={{ width: `${PREVIEW_PANEL_WIDTH}px` }}
+        >
+          <div className={layoutStyles.previewPanelHeader}>
+            <span className={layoutStyles.previewPanelTitle}>
+              👁 Preview — Mission {previewMissionId}
+            </span>
+            <div className={layoutStyles.previewPanelActions}>
+              <a
+                href={previewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={layoutStyles.previewOpenNewTab}
+                title="Open in new tab"
+              >
+                ↗
+              </a>
+              <button
+                className={layoutStyles.previewPanelClose}
+                onClick={() => setPreviewOpen(false)}
+                title="Close preview (Esc)"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+          <iframe
+            key={previewUrl}
+            src={previewUrl}
+            className={layoutStyles.previewIframe}
+            title={`Preview mission ${previewMissionId}`}
+          />
+        </div>
+      )}
 
       {pendingNavigation && (
         <div className={styles.dialogOverlay}>
