@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { NavLink, useLocation, useSearchParams } from "react-router";
+import { NavLink, useLocation, useNavigate, useSearchParams } from "react-router";
 import styles from "./app-navigation.module.css";
 
 interface AppNavigationProps {
@@ -35,12 +35,19 @@ export function AppNavigation({ onNavigate, adminTab, pendingUsersCount = 0 }: A
 
   const previewMissionId = lastMissionId;
 
+  const navigate = useNavigate();
+
   const handlePreview = () => {
     if (!previewMissionId) return;
     const shouldProceed = onNavigate ? onNavigate(`/missions/${previewMissionId}?preview=true`) : true;
     if (shouldProceed) {
       window.open(`/missions/${previewMissionId}?preview=true`, "_blank");
     }
+  };
+
+  const handlePreviewInApp = () => {
+    if (!previewMissionId) return;
+    navigate(`/missions/${previewMissionId}?preview=true`);
   };
 
   const handleNavigation = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
@@ -80,13 +87,22 @@ export function AppNavigation({ onNavigate, adminTab, pendingUsersCount = 0 }: A
       {isOnAdmin && (
         <div className={styles.adminTabLinks}>
           {previewMissionId && (
-            <button
-              className={styles.previewButton}
-              onClick={handlePreview}
-              title={`Preview mission ${previewMissionId}`}
-            >
-              👁 Preview
-            </button>
+            <>
+              <button
+                className={styles.previewButton}
+                onClick={handlePreview}
+                title={`Preview mission ${previewMissionId} in a new tab`}
+              >
+                👁 Preview
+              </button>
+              <button
+                className={styles.previewInAppButton}
+                onClick={handlePreviewInApp}
+                title={`Preview mission ${previewMissionId} in this window`}
+              >
+                🖥 Preview in window
+              </button>
+            </>
           )}
           {ADMIN_PAGES.map((tab) => {
             const path = tab.path;
