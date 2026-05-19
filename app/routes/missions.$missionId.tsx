@@ -938,6 +938,11 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
               return (
                 <div key={instruction.id}>
                   <div className={styles.instructionItem} data-instruction-id={instruction.id}>
+                    {isPreview && !isTemp && (
+                      <div className={styles.instructionIdBadge} title="Instruction ID">
+                        ID: {instruction.id}
+                      </div>
+                    )}
                     <InstructionListItem
                       title={instruction.title}
                       description={instruction.description}
