@@ -80,16 +80,15 @@ export async function action({ request, params }: Route.ActionArgs) {
   const actionType = formData.get("actionType");
 
   if (actionType === "saveMissionAdminNote") {
-    const missionId = formData.get("missionId") as string;
+    // Always use params.missionId (the actual DB row ID) — the mission.id inside
+    // data_en JSON may differ from the DB row id and would cause a silent no-op update.
     const notesJson = formData.get("notes") as string;
-
-    if (!missionId) {
-      return { success: false, error: "Mission ID is required" };
-    }
 
     let notes: string[];
     try {
-      notes = JSON.parse(notesJson);
+      const parsed = JSON.parse(notesJson);
+      if (!Array.isArray(parsed)) throw new Error("Not an array");
+      notes = parsed;
     } catch {
       return { success: false, error: "Invalid notes format" };
     }
@@ -103,7 +102,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       const { error } = await supabase
         .from("missions")
         .update({ admin_notes: notes })
-        .eq("id", missionId);
+        .eq("id", params.missionId);
       if (error) return { success: false, error: error.message };
       return { success: true };
     } catch (err) {
@@ -363,7 +362,6 @@ export default function MissionPage({ loaderData }: Route.ComponentProps) {
   const saveAdminNotes = (notes: string[]) => {
     const fd = new FormData();
     fd.set("actionType", "saveMissionAdminNote");
-    fd.set("missionId", mission.id);
     fd.set("notes", JSON.stringify(notes));
     adminNotesFetcher.submit(fd, { method: "post" });
   };
