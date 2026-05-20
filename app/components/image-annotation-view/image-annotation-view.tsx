@@ -42,10 +42,15 @@ function badgeRadii(renderedW: number, renderedH: number): { rx: number; ry: num
 }
 
 /**
- * Badge font size in SVG x-units so the number fits inside the ellipse.
+ * Badge font size in SVG y-units so the number is correctly proportioned
+ * inside the ellipse on screen. Using ry (y-units) avoids distortion from
+ * the non-uniform SVG scaling (preserveAspectRatio="none").
+ *
+ * @param ry badge ellipse y-radius in SVG y-units
  */
-function badgeFontSize(rx: number): number {
-  return rx * 1.1;
+function badgeFontSize(ry: number): number {
+  // 1.4× ry gives a comfortably readable number that fills the circle nicely
+  return ry * 1.4;
 }
 
 /**
@@ -136,7 +141,7 @@ export function ImageAnnotationView({
   const renderedW = renderedSize?.w ?? 200;
   const renderedH = renderedSize?.h ?? 200;
   const { rx: badgeRx, ry: badgeRy } = badgeRadii(renderedW, renderedH);
-  const fontSize = badgeFontSize(badgeRx);
+  const fontSize = badgeFontSize(badgeRy);
 
   const regularAnnotations = annotations.filter((a) => !a.isRedaction);
   const captionAnnotations = regularAnnotations.filter((a) => a.text && a.text.trim().length > 0);
