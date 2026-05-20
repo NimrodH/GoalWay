@@ -4,31 +4,34 @@ import remarkBreaks from "remark-breaks";
 import type { Annotation, BadgeSide } from "~/services/instructions.server";
 import styles from "./image-annotation-view.module.css";
 
-/** Badge radius as a percentage of the image width */
-const BADGE_R_PCT = 2.8;
+/**
+ * Badge radius as a percentage of the image width (x-axis units).
+ * The y-axis radius is scaled by (1/aspectRatio) so that the badge
+ * renders as a true circle even though the SVG uses preserveAspectRatio="none".
+ */
+const BADGE_R_X = 2.8;
 
 /**
  * Computes the badge center so it sits *outside* the chosen rectangle corner.
- * `badgeR` is expressed in the same % units as the annotation coordinates.
- * We use separate x/y radii to keep the badge a true circle despite the
- * image's aspect ratio (handled by the SVG viewBox in ImageAnnotationView).
+ * All values are in SVG viewBox units (x: 0-100, y: 0-vbHeight).
  */
 function badgeCenter(
-  ann: Annotation,
+  ann: { x: number; y: number; width: number; height: number },
   side: BadgeSide,
-  badgeR: number
+  badgeRx: number,
+  badgeRy: number
 ): { cx: number; cy: number } {
   const { x, y, width, height } = ann;
   switch (side) {
     case "top-right":
-      return { cx: x + width + badgeR, cy: y - badgeR };
+      return { cx: x + width + badgeRx, cy: y - badgeRy };
     case "bottom-left":
-      return { cx: x - badgeR, cy: y + height + badgeR };
+      return { cx: x - badgeRx, cy: y + height + badgeRy };
     case "bottom-right":
-      return { cx: x + width + badgeR, cy: y + height + badgeR };
+      return { cx: x + width + badgeRx, cy: y + height + badgeRy };
     case "top-left":
     default:
-      return { cx: x - badgeR, cy: y - badgeR };
+      return { cx: x - badgeRx, cy: y - badgeRy };
   }
 }
 
@@ -111,8 +114,17 @@ export function ImageAnnotationView({
   // x/width annotation values are used directly (% of width = viewBox x units)
   // y/height annotation values need scaleY applied (% of height → viewBox y units)
   const vbHeight = 100 / aspectRatio;
-  const badgeR = BADGE_R_PCT;
   const scaleY = vbHeight / 100;
+  // Badge x-radius is in x-axis units (% of width).
+  // Badge y-radius must be scaled so the badge looks like a circle on screen:
+  // since the SVG is non-uniformly scaled (preserveAspectRatio=none), 1 x-unit
+  // covers (renderedWidth / 100) pixels and 1 y-unit covers (renderedHeight / vbHeight)
+  // pixels. To make rx pixels == ry pixels: ry = rx * (renderedWidth / renderedHeight) / (100 / vbHeight)
+  // = rx * aspectRatio * (vbHeight / 100) = rx * aspectRatio * scaleY = rx / aspectRatio * aspectRatio^2 * scaleY
+  // Simplified: badgeRy = BADGE_R_X * scaleY (because scaleY = 1/aspectRatio when vbHeight=100/aspectRatio)
+  // In x-units: BADGE_R_X. In y-units (same pixel size): BADGE_R_X * scaleY.
+  const badgeRx = BADGE_R_X;
+  const badgeRy = BADGE_R_X * scaleY;
 
   // Redaction blocks and regular annotations are rendered separately
   const regularAnnotations = annotations.filter((a) => !a.isRedaction);
@@ -158,8 +170,8 @@ export function ImageAnnotationView({
               const color = ann.color || "#e5484d";
               const side: BadgeSide = ann.badgeSide ?? "top-left";
 
-              const scaledAnn = { ...ann, x: ax, y: ay, width: aw, height: ah };
-              const { cx, cy } = badgeCenter(scaledAnn, side, badgeR);
+              const scaledAnn = { x: ax, y: ay, width: aw, height: ah };
+              const { cx, cy } = badgeCenter(scaledAnn, side, badgeRx, badgeRy);
 
               return (
                 <g
@@ -179,11 +191,13 @@ export function ImageAnnotationView({
                     strokeWidth={isHovered ? 0.6 : 0.4}
                     rx={0.4}
                   />
-                  {/* Badge — true circle outside the rectangle corner */}
-                  <circle
+                  {/* Badge — ellipse with separate rx/ry so it renders as a true
+                      circle despite the SVG using preserveAspectRatio="none" */}
+                  <ellipse
                     cx={cx}
                     cy={cy}
-                    r={badgeR}
+                    rx={badgeRx}
+                    ry={badgeRy}
                     fill={color}
                     stroke="white"
                     strokeWidth={0.35}

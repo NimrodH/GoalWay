@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import type { Annotation, BadgeSide } from "~/services/instructions.server";
 import { ImageAnnotationView } from "~/components/image-annotation-view/image-annotation-view";
 import styles from "./image-annotation-editor.module.css";
@@ -55,38 +55,44 @@ interface ImageAnnotationEditorProps {
 }
 
 /**
- * Ghost SVG overlay that uses the same viewBox as ImageAnnotationView
- * so the drawn rectangle lines up perfectly with the saved annotation.
+ * Ghost SVG overlay that uses the SAME viewBox as ImageAnnotationView
+ * ("0 0 100 vbHeight" with preserveAspectRatio="none") so the drawn rectangle
+ * lines up perfectly with the saved annotation.
+ *
+ * aspectRatio is the rendered image width / height, used to compute vbHeight.
  */
 function GhostRect({
   rect,
   color,
   className,
   isRedact = false,
+  aspectRatio,
 }: {
   rect: { x: number; y: number; width: number; height: number };
   color: string;
-  imgRef?: React.RefObject<HTMLImageElement | null>;
   className?: string;
   isRedact?: boolean;
+  aspectRatio: number;
 }) {
-  // The ghost SVG is sized to cover the image element exactly (absolute inset:0).
-  // toPercent() already returns values as % of the image's pixel dimensions,
-  // so we use a simple 100×100 viewBox — no scaleY transform needed here.
-  // (scaleY in ImageAnnotationView exists because the stored coordinate system
-  //  uses "% of image height" mapped into a viewBox whose height != 100.)
+  const vbHeight = 100 / aspectRatio;
+  const scaleY = vbHeight / 100;
+  const rx = rect.x;
+  const ry = rect.y * scaleY;
+  const rw = rect.width;
+  const rh = rect.height * scaleY;
+
   return (
     <svg
       className={className}
-      viewBox="0 0 100 100"
+      viewBox={`0 0 100 ${vbHeight}`}
       preserveAspectRatio="none"
     >
       {isRedact ? (
         <rect
-          x={rect.x}
-          y={rect.y}
-          width={rect.width}
-          height={rect.height}
+          x={rx}
+          y={ry}
+          width={rw}
+          height={rh}
           fill={color}
           fillOpacity={0.7}
           stroke={color === "#d4d4d4" ? "#888" : color}
@@ -95,10 +101,10 @@ function GhostRect({
         />
       ) : (
         <rect
-          x={rect.x}
-          y={rect.y}
-          width={rect.width}
-          height={rect.height}
+          x={rx}
+          y={ry}
+          width={rw}
+          height={rh}
           fill={`${color}22`}
           stroke={color}
           strokeWidth={0.5}
@@ -126,19 +132,37 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
   const [selectedColor, setSelectedColor] = useState(ANNOTATION_COLORS[0]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawMode, setDrawMode] = useState<DrawMode>("annotate");
+  // Track the rendered aspect ratio of the image so the ghost viewBox matches the view SVG
+  const [aspectRatio, setAspectRatio] = useState(16 / 9);
+
+  // Measure aspect ratio from the <img> element (rendered dimensions, not natural)
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img) return;
+    const update = () => {
+      if (img.clientWidth && img.clientHeight) {
+        setAspectRatio(img.clientWidth / img.clientHeight);
+      } else if (img.naturalWidth && img.naturalHeight) {
+        setAspectRatio(img.naturalWidth / img.naturalHeight);
+      }
+    };
+    if (img.complete && img.clientWidth) update();
+    else img.addEventListener("load", update);
+    const ro = new ResizeObserver(update);
+    ro.observe(img);
+    return () => { img.removeEventListener("load", update); ro.disconnect(); };
+  }, [src]);
 
   /**
    * Convert a mouse event position to percentage coordinates relative to
-   * the rendered <img> element. We measure against the img element itself
-   * (not the wrapper div) so that x% is truly "% of image width" and y%
-   * is truly "% of image height" — matching how the view SVG interprets them.
+   * the rendered <img> element. We always measure against imgRef so that
+   * x% = "% of image width" and y% = "% of image height", matching the
+   * coordinate system used by ImageAnnotationView.
    */
   const toPercent = useCallback((e: React.MouseEvent | MouseEvent): { x: number; y: number } => {
     const img = imgRef.current;
-    const fallback = imageWrapperRef.current ?? containerRef.current;
-    const el: Element | null = img ?? fallback;
-    if (!el) return { x: 0, y: 0 };
-    const rect = el.getBoundingClientRect();
+    if (!img) return { x: 0, y: 0 };
+    const rect = img.getBoundingClientRect();
     const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
     const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
     return { x, y };
@@ -306,6 +330,7 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
                     color={selectedColor}
                     className={styles.ghostOverlay}
                     isRedact={drawMode === "redact"}
+                    aspectRatio={aspectRatio}
                   />
                 ) : null
               }
