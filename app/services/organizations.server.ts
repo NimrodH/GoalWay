@@ -36,8 +36,16 @@ export async function getOrganizations(): Promise<Organization[]> {
   return (data || []) as Organization[];
 }
 
+/** Returns a privileged server-side client that bypasses RLS (service key). */
+function getAdminSupabase() {
+  return createClient(
+    process.env.SUPABASE_PROJECT_URL!,
+    process.env.SUPABASE_API_KEY!
+  );
+}
+
 export async function createOrganization(name: string, slug: string): Promise<{ success: boolean; error?: string }> {
-  const supabase = getSupabase();
+  const supabase = getAdminSupabase();
   const { error } = await supabase.from("organizations").insert({ name, slug });
 
   if (error) {
@@ -47,7 +55,7 @@ export async function createOrganization(name: string, slug: string): Promise<{ 
 }
 
 export async function deleteOrganization(id: string): Promise<{ success: boolean; error?: string }> {
-  const supabase = getSupabase();
+  const supabase = getAdminSupabase();
   const { error } = await supabase.from("organizations").delete().eq("id", id);
 
   if (error) {
