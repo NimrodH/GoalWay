@@ -55,29 +55,20 @@ function OrganizationsManager({
   const fetcher = useFetcher<{ success: boolean; error?: string }>();
   const [newName, setNewName] = useState("");
   const [newSlug, setNewSlug] = useState("");
-  const [localOrgs, setLocalOrgs] = useState<Organization[]>(organizations);
-  const pendingAction = useRef<{ type: "add" | "delete"; id?: string; org?: Organization } | null>(null);
+  const lastAction = useRef<"add" | "delete" | null>(null);
 
-  // Sync when parent reloads
+  // Clear inputs after a successful add; show error on failure
   useEffect(() => {
-    setLocalOrgs(organizations);
-  }, [organizations]);
-
-  useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data && pendingAction.current) {
-      const action = pendingAction.current;
-      pendingAction.current = null;
+    if (fetcher.state === "idle" && fetcher.data) {
       if (fetcher.data.success) {
-        if (action.type === "add" && action.org) {
-          setLocalOrgs((prev) => [...prev, action.org!].sort((a, b) => a.name.localeCompare(b.name)));
+        if (lastAction.current === "add") {
           setNewName("");
           setNewSlug("");
-        } else if (action.type === "delete" && action.id) {
-          setLocalOrgs((prev) => prev.filter((o) => o.id !== action.id));
         }
       } else {
         alert(`Failed: ${fetcher.data.error}`);
       }
+      lastAction.current = null;
     }
   }, [fetcher.state, fetcher.data]);
 
@@ -86,9 +77,7 @@ function OrganizationsManager({
     const slug = newSlug.trim() || name.toLowerCase().replace(/\s+/g, "-");
     if (!name || !accessToken) return;
 
-    const tempOrg: Organization = { id: `temp-${Date.now()}`, name, slug, created_at: new Date().toISOString() };
-    pendingAction.current = { type: "add", org: tempOrg };
-
+    lastAction.current = "add";
     const fd = new FormData();
     fd.append("actionType", "createOrganization");
     fd.append("name", name);
@@ -101,8 +90,7 @@ function OrganizationsManager({
     if (!confirm(`Delete organization "${org.name}"? This cannot be undone.`)) return;
     if (!accessToken) return;
 
-    pendingAction.current = { type: "delete", id: org.id };
-
+    lastAction.current = "delete";
     const fd = new FormData();
     fd.append("actionType", "deleteOrganization");
     fd.append("organizationId", org.id);
@@ -120,7 +108,7 @@ function OrganizationsManager({
       </h2>
 
       <div className={styles.orgList}>
-        {localOrgs.map((org) => (
+        {organizations.map((org) => (
           <div key={org.id} className={styles.orgRow}>
             <span className={styles.orgName}>{org.name}</span>
             <span className={styles.orgSlug}>{org.slug}</span>
