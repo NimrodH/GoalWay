@@ -49,8 +49,8 @@ function badgeRadii(renderedW: number, renderedH: number): { rx: number; ry: num
  * @param ry badge ellipse y-radius in SVG y-units
  */
 function badgeFontSize(ry: number): number {
-  // 1.4× ry gives a comfortably readable number that fills the circle nicely
-  return ry * 1.4;
+  // 1.1× ry gives a comfortably readable number that fills the circle nicely
+  return ry * 1.1;
 }
 
 /**
