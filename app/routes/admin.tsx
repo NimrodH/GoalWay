@@ -565,7 +565,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     const slug = formData.get("slug") as string | null;
     if (!accessToken) return { success: false, error: "Unauthorized" };
     if (!name) return { success: false, error: "Name is required" };
-    const result = await createOrganization(name, slug || name.toLowerCase().replace(/\s+/g, "-"));
+    const result = await createOrganization(name, slug || name.toLowerCase().replace(/\s+/g, "-"), accessToken);
     return result;
   }
 
@@ -573,7 +573,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     const organizationId = formData.get("organizationId") as string | null;
     if (!accessToken) return { success: false, error: "Unauthorized" };
     if (!organizationId) return { success: false, error: "Organization ID is required" };
-    const result = await deleteOrganization(organizationId);
+    const result = await deleteOrganization(organizationId, accessToken);
     return result;
   }
 
