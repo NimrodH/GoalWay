@@ -8,6 +8,9 @@
   font-size: 1.125rem;
   color: var(--color-neutral-12);
   margin: 0 0 var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .pendingBadge {
@@ -137,7 +140,114 @@
   margin: var(--space-6) 0;
 }
 
-/* Mission access matrix */
+/* ── Organizations Manager ───────────────────────────────── */
+
+.orgList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.orgRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-neutral-2);
+  border: 1px solid var(--color-neutral-5);
+  border-radius: var(--radius-2);
+}
+
+.orgName {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-neutral-12);
+  flex: 1;
+}
+
+.orgSlug {
+  font-size: 0.8rem;
+  color: var(--color-neutral-9);
+  font-family: monospace;
+}
+
+.deleteOrgButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-1);
+  color: var(--color-neutral-9);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.deleteOrgButton:hover:not(:disabled) {
+  color: var(--color-error-11);
+  background: var(--color-error-3);
+  border-color: var(--color-error-6);
+}
+
+.deleteOrgButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.addOrgRow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.orgInput {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  background: var(--color-neutral-1);
+  color: var(--color-neutral-12);
+  font: var(--font-body);
+  font-size: 0.875rem;
+  min-width: 180px;
+  flex: 1;
+}
+
+.orgInput:focus {
+  outline: 2px solid var(--color-accent-8);
+  outline-offset: -1px;
+}
+
+.addOrgButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-accent-9);
+  color: var(--color-accent-contrast);
+  border: none;
+  border-radius: var(--radius-2);
+  font: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+
+.addOrgButton:hover:not(:disabled) {
+  background: var(--color-accent-10);
+}
+
+.addOrgButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Mission access matrix ───────────────────────────────── */
+
 .matrixTable {
   width: 100%;
   border-collapse: collapse;
@@ -154,19 +264,11 @@
   border-bottom: 1px solid var(--color-neutral-6);
 }
 
-.matrixTable th:not(:first-child) {
-  text-align: center;
-}
-
 .matrixTable td {
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-neutral-5);
   color: var(--color-neutral-12);
   vertical-align: middle;
-}
-
-.matrixTable td:not(:first-child) {
-  text-align: center;
 }
 
 .matrixTable tr:last-child td {
@@ -197,4 +299,93 @@
 .saveRowButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ── Org Multi-Select ────────────────────────────────────── */
+
+.multiSelectWrapper {
+  position: relative;
+  display: inline-block;
+  min-width: 180px;
+}
+
+.multiSelectTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-neutral-1);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  font: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--color-neutral-12);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+  text-align: left;
+}
+
+.multiSelectTrigger:hover {
+  border-color: var(--color-neutral-8);
+}
+
+.multiSelectLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.multiSelectDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  background: var(--color-neutral-1);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-3);
+  box-shadow: var(--shadow-3);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.multiSelectOption {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  color: var(--color-neutral-12);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s ease;
+}
+
+.multiSelectOption:hover {
+  background: var(--color-neutral-3);
+}
+
+.multiSelectCheckbox {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--color-neutral-7);
+  border-radius: var(--radius-1);
+  background: var(--color-neutral-1);
+  color: var(--color-accent-9);
+  transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+.multiSelectOption:has(input:checked) .multiSelectCheckbox {
+  background: var(--color-accent-3);
+  border-color: var(--color-accent-8);
 }

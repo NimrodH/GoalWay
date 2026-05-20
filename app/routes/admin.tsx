@@ -9,6 +9,8 @@ import {
   setMissionOrganizations,
   setMissionExample,
   assignUserOrganization,
+  createOrganization,
+  deleteOrganization,
 } from "~/services/organizations.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -556,6 +558,23 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
       message: `New instruction ${newId} created successfully!`,
       newInstructionId: newId,
     };
+  }
+
+  if (actionType === "createOrganization") {
+    const name = formData.get("name") as string | null;
+    const slug = formData.get("slug") as string | null;
+    if (!accessToken) return { success: false, error: "Unauthorized" };
+    if (!name) return { success: false, error: "Name is required" };
+    const result = await createOrganization(name, slug || name.toLowerCase().replace(/\s+/g, "-"));
+    return result;
+  }
+
+  if (actionType === "deleteOrganization") {
+    const organizationId = formData.get("organizationId") as string | null;
+    if (!accessToken) return { success: false, error: "Unauthorized" };
+    if (!organizationId) return { success: false, error: "Organization ID is required" };
+    const result = await deleteOrganization(organizationId);
+    return result;
   }
 
   if (actionType === "assignUserOrg") {

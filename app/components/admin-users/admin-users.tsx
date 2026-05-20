@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useFetcher } from "react-router";
+import { Trash2, Plus, Building2, ChevronDown, Check } from "lucide-react";
 import type { Organization, PendingUser } from "~/services/organizations.server";
 import type { Mission } from "~/services/missions.server";
 import styles from "./admin-users.module.css";
@@ -21,6 +22,10 @@ export function AdminUsers({ users, organizations, missions, accessToken }: Admi
 
   return (
     <div className={styles.section}>
+      <OrganizationsManager organizations={organizations} accessToken={accessToken} />
+
+      <hr className={styles.divider} />
+
       <PendingUsersSection
         pendingUsers={pendingUsers}
         organizations={organizations}
@@ -38,6 +43,129 @@ export function AdminUsers({ users, organizations, missions, accessToken }: Admi
   );
 }
 
+// ─── Organizations Manager ────────────────────────────────────────────────────
+
+function OrganizationsManager({
+  organizations,
+  accessToken,
+}: {
+  organizations: Organization[];
+  accessToken: string | null;
+}) {
+  const fetcher = useFetcher<{ success: boolean; error?: string }>();
+  const [newName, setNewName] = useState("");
+  const [newSlug, setNewSlug] = useState("");
+  const [localOrgs, setLocalOrgs] = useState<Organization[]>(organizations);
+  const pendingAction = useRef<{ type: "add" | "delete"; id?: string; org?: Organization } | null>(null);
+
+  // Sync when parent reloads
+  useEffect(() => {
+    setLocalOrgs(organizations);
+  }, [organizations]);
+
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data && pendingAction.current) {
+      const action = pendingAction.current;
+      pendingAction.current = null;
+      if (fetcher.data.success) {
+        if (action.type === "add" && action.org) {
+          setLocalOrgs((prev) => [...prev, action.org!].sort((a, b) => a.name.localeCompare(b.name)));
+          setNewName("");
+          setNewSlug("");
+        } else if (action.type === "delete" && action.id) {
+          setLocalOrgs((prev) => prev.filter((o) => o.id !== action.id));
+        }
+      } else {
+        alert(`Failed: ${fetcher.data.error}`);
+      }
+    }
+  }, [fetcher.state, fetcher.data]);
+
+  const handleAdd = () => {
+    const name = newName.trim();
+    const slug = newSlug.trim() || name.toLowerCase().replace(/\s+/g, "-");
+    if (!name || !accessToken) return;
+
+    const tempOrg: Organization = { id: `temp-${Date.now()}`, name, slug, created_at: new Date().toISOString() };
+    pendingAction.current = { type: "add", org: tempOrg };
+
+    const fd = new FormData();
+    fd.append("actionType", "createOrganization");
+    fd.append("name", name);
+    fd.append("slug", slug);
+    fd.append("accessToken", accessToken);
+    fetcher.submit(fd, { method: "POST", action: "/admin" });
+  };
+
+  const handleDelete = (org: Organization) => {
+    if (!confirm(`Delete organization "${org.name}"? This cannot be undone.`)) return;
+    if (!accessToken) return;
+
+    pendingAction.current = { type: "delete", id: org.id };
+
+    const fd = new FormData();
+    fd.append("actionType", "deleteOrganization");
+    fd.append("organizationId", org.id);
+    fd.append("accessToken", accessToken);
+    fetcher.submit(fd, { method: "POST", action: "/admin" });
+  };
+
+  const isSubmitting = fetcher.state !== "idle";
+
+  return (
+    <div>
+      <h2 className={styles.sectionTitle}>
+        <Building2 size={18} style={{ verticalAlign: "middle", marginRight: "var(--space-2)" }} />
+        Organizations
+      </h2>
+
+      <div className={styles.orgList}>
+        {localOrgs.map((org) => (
+          <div key={org.id} className={styles.orgRow}>
+            <span className={styles.orgName}>{org.name}</span>
+            <span className={styles.orgSlug}>{org.slug}</span>
+            <button
+              className={styles.deleteOrgButton}
+              onClick={() => handleDelete(org)}
+              disabled={isSubmitting || !accessToken}
+              title="Delete organization"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className={styles.addOrgRow}>
+        <input
+          className={styles.orgInput}
+          placeholder="Organization name"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+        />
+        <input
+          className={styles.orgInput}
+          placeholder="Slug (auto-generated if empty)"
+          value={newSlug}
+          onChange={(e) => setNewSlug(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+        />
+        <button
+          className={styles.addOrgButton}
+          onClick={handleAdd}
+          disabled={!newName.trim() || isSubmitting || !accessToken}
+        >
+          <Plus size={14} />
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Pending Users ────────────────────────────────────────────────────────────
+
 function PendingUsersSection({
   pendingUsers,
   organizations,
@@ -52,7 +180,6 @@ function PendingUsersSection({
   const fetcher = useFetcher<{ success: boolean; error?: string }>();
   const pendingUserId = useRef<string | null>(null);
 
-  // Watch fetcher completion to mark user as saved or show error
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data && pendingUserId.current) {
       if (fetcher.data.success) {
@@ -138,6 +265,77 @@ function PendingUsersSection({
   );
 }
 
+// ─── Org Multi-Select Popover ─────────────────────────────────────────────────
+
+function OrgMultiSelect({
+  organizations,
+  selectedIds,
+  onChange,
+}: {
+  organizations: Organization[];
+  selectedIds: Set<string>;
+  onChange: (orgId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  const selectedCount = selectedIds.size;
+  const label =
+    selectedCount === 0
+      ? "None"
+      : selectedCount === organizations.length
+        ? "All"
+        : organizations
+            .filter((o) => selectedIds.has(o.id))
+            .map((o) => o.name)
+            .join(", ");
+
+  return (
+    <div className={styles.multiSelectWrapper} ref={ref}>
+      <button
+        className={styles.multiSelectTrigger}
+        onClick={() => setOpen((v) => !v)}
+        type="button"
+      >
+        <span className={styles.multiSelectLabel}>{label}</span>
+        <ChevronDown size={14} className={open ? styles.chevronOpen : undefined} />
+      </button>
+
+      {open && (
+        <div className={styles.multiSelectDropdown}>
+          {organizations.map((org) => (
+            <label key={org.id} className={styles.multiSelectOption}>
+              <span className={styles.multiSelectCheckbox}>
+                {selectedIds.has(org.id) && <Check size={11} />}
+              </span>
+              <input
+                type="checkbox"
+                checked={selectedIds.has(org.id)}
+                onChange={() => onChange(org.id)}
+                style={{ display: "none" }}
+              />
+              {org.name}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Mission Access Matrix ────────────────────────────────────────────────────
+
 function MissionAccessMatrix({
   missions,
   organizations,
@@ -165,7 +363,6 @@ function MissionAccessMatrix({
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
-  // Watch fetcher for completion
   useEffect(() => {
     if (fetcher.state === "idle" && savingMissionId.current) {
       const missionId = savingMissionId.current;
@@ -176,7 +373,6 @@ function MissionAccessMatrix({
       });
       if (fetcher.data?.success) {
         setSavedIds((prev) => new Set([...prev, missionId]));
-        // Clear "saved" indicator after 2 seconds
         setTimeout(() => {
           setSavedIds((prev) => {
             const next = new Set(prev);
@@ -240,9 +436,7 @@ function MissionAccessMatrix({
           <tr>
             <th>Mission</th>
             <th>Example (Public)</th>
-            {organizations.map((org) => (
-              <th key={org.id}>{org.name}</th>
-            ))}
+            <th>Organizations</th>
             <th>Save</th>
           </tr>
         </thead>
@@ -259,7 +453,7 @@ function MissionAccessMatrix({
                     ID: {mission.id}
                   </div>
                 </td>
-                <td>
+                <td style={{ textAlign: "center" }}>
                   <input
                     type="checkbox"
                     checked={row.isExample}
@@ -267,16 +461,13 @@ function MissionAccessMatrix({
                     style={{ cursor: "pointer", width: 16, height: 16 }}
                   />
                 </td>
-                {organizations.map((org) => (
-                  <td key={org.id}>
-                    <input
-                      type="checkbox"
-                      checked={row.orgIds.has(org.id)}
-                      onChange={() => toggleOrg(mission.id, org.id)}
-                      style={{ cursor: "pointer", width: 16, height: 16 }}
-                    />
-                  </td>
-                ))}
+                <td>
+                  <OrgMultiSelect
+                    organizations={organizations}
+                    selectedIds={row.orgIds}
+                    onChange={(orgId) => toggleOrg(mission.id, orgId)}
+                  />
+                </td>
                 <td>
                   <button
                     className={styles.saveRowButton}
