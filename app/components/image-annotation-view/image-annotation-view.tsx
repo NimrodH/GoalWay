@@ -109,13 +109,11 @@ export function ImageAnnotationView({
   const internalImgRef = useRef<HTMLImageElement>(null);
   const imgRef = externalImgRef ?? internalImgRef;
 
-  // We use a ref-based approach for badge sizing so we don't need to re-render
-  // on every resize. The SVG viewBox is always 0 0 100 100, and badge radii
-  // are computed from the natural aspect ratio (naturalWidth/naturalHeight).
-  // For the badge to look circular, rx and ry compensate for the stretch.
-  // We read naturalWidth/naturalHeight once the image loads — these are stable.
   // Track rendered image dimensions via ResizeObserver so badge size is always
   // BADGE_PX_RADIUS screen-pixels regardless of the source image resolution.
+  // We also use the aspect ratio to un-stretch the badge text — since
+  // preserveAspectRatio="none" warps text horizontally, we apply a scaleX
+  // correction: scaleX = (svgUnitX / svgUnitY) = (H/W) so text renders square.
   const [renderedSize, setRenderedSize] = useState<{ w: number; h: number } | null>(null);
 
   useEffect(() => {
@@ -142,6 +140,10 @@ export function ImageAnnotationView({
   const renderedH = renderedSize?.h ?? 200;
   const { rx: badgeRx, ry: badgeRy } = badgeRadii(renderedW, renderedH);
   const fontSize = badgeFontSize(badgeRy);
+  // Correct horizontal text distortion from preserveAspectRatio="none":
+  // 1 x-unit = renderedW/100 px, 1 y-unit = renderedH/100 px.
+  // To make text square we scale x by (y-unit-px / x-unit-px) = renderedH/renderedW.
+  const textScaleX = renderedH / renderedW;
 
   const regularAnnotations = annotations.filter((a) => !a.isRedaction);
   const captionAnnotations = regularAnnotations.filter((a) => a.text && a.text.trim().length > 0);
@@ -231,6 +233,7 @@ export function ImageAnnotationView({
                     fill="white"
                     fontSize={fontSize}
                     fontWeight="bold"
+                    transform={`translate(${cx},${cy}) scale(${textScaleX},1) translate(${-cx},${-cy})`}
                     style={{ fontFamily: "system-ui, sans-serif", userSelect: "none" }}
                   >
                     {ann.label}
