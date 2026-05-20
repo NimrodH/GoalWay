@@ -192,10 +192,6 @@
   display: block;
   width: 100%;
   height: auto;
-  /* Constrain portrait images so they fit within the editor panel */
-  max-height: calc(92vh - 220px);
-  object-fit: contain;
-  object-position: top left;
 }
 
 .ghostOverlay {

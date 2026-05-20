@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { Annotation, BadgeSide } from "~/services/instructions.server";
 import { ImageAnnotationView } from "~/components/image-annotation-view/image-annotation-view";
 import styles from "./image-annotation-editor.module.css";
@@ -55,44 +55,33 @@ interface ImageAnnotationEditorProps {
 }
 
 /**
- * Ghost SVG overlay that uses the SAME viewBox as ImageAnnotationView
- * ("0 0 100 vbHeight" with preserveAspectRatio="none") so the drawn rectangle
- * lines up perfectly with the saved annotation.
- *
- * aspectRatio is the rendered image width / height, used to compute vbHeight.
+ * Ghost SVG overlay that uses the same viewBox as ImageAnnotationView
+ * ("0 0 100 100" with preserveAspectRatio="none").
+ * Coordinates are in %-of-image units — no scaling needed.
  */
 function GhostRect({
   rect,
   color,
   className,
   isRedact = false,
-  aspectRatio,
 }: {
   rect: { x: number; y: number; width: number; height: number };
   color: string;
   className?: string;
   isRedact?: boolean;
-  aspectRatio: number;
 }) {
-  const vbHeight = 100 / aspectRatio;
-  const scaleY = vbHeight / 100;
-  const rx = rect.x;
-  const ry = rect.y * scaleY;
-  const rw = rect.width;
-  const rh = rect.height * scaleY;
-
   return (
     <svg
       className={className}
-      viewBox={`0 0 100 ${vbHeight}`}
+      viewBox="0 0 100 100"
       preserveAspectRatio="none"
     >
       {isRedact ? (
         <rect
-          x={rx}
-          y={ry}
-          width={rw}
-          height={rh}
+          x={rect.x}
+          y={rect.y}
+          width={rect.width}
+          height={rect.height}
           fill={color}
           fillOpacity={0.7}
           stroke={color === "#d4d4d4" ? "#888" : color}
@@ -101,10 +90,10 @@ function GhostRect({
         />
       ) : (
         <rect
-          x={rx}
-          y={ry}
-          width={rw}
-          height={rh}
+          x={rect.x}
+          y={rect.y}
+          width={rect.width}
+          height={rect.height}
           fill={`${color}22`}
           stroke={color}
           strokeWidth={0.5}
@@ -121,8 +110,7 @@ function GhostRect({
  *
  * Coordinate system: x, width are % of rendered image width;
  * y, height are % of rendered image height.
- * This matches exactly how ImageAnnotationView interprets stored annotations
- * (it applies scaleY = vbHeight/100 to y/height values).
+ * Matches the coordinate system used by ImageAnnotationView (viewBox 0 0 100 100).
  */
 export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: ImageAnnotationEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -132,26 +120,6 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
   const [selectedColor, setSelectedColor] = useState(ANNOTATION_COLORS[0]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawMode, setDrawMode] = useState<DrawMode>("annotate");
-  // Track the rendered aspect ratio of the image so the ghost viewBox matches the view SVG
-  const [aspectRatio, setAspectRatio] = useState(16 / 9);
-
-  // Measure aspect ratio from the <img> element (rendered dimensions, not natural)
-  useEffect(() => {
-    const img = imgRef.current;
-    if (!img) return;
-    const update = () => {
-      if (img.clientWidth && img.clientHeight) {
-        setAspectRatio(img.clientWidth / img.clientHeight);
-      } else if (img.naturalWidth && img.naturalHeight) {
-        setAspectRatio(img.naturalWidth / img.naturalHeight);
-      }
-    };
-    if (img.complete && img.clientWidth) update();
-    else img.addEventListener("load", update);
-    const ro = new ResizeObserver(update);
-    ro.observe(img);
-    return () => { img.removeEventListener("load", update); ro.disconnect(); };
-  }, [src]);
 
   /**
    * Convert a mouse event position to percentage coordinates relative to
@@ -330,7 +298,6 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
                     color={selectedColor}
                     className={styles.ghostOverlay}
                     isRedact={drawMode === "redact"}
-                    aspectRatio={aspectRatio}
                   />
                 ) : null
               }

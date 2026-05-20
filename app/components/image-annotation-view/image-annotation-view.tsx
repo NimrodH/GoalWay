@@ -1,37 +1,69 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import type { Annotation, BadgeSide } from "~/services/instructions.server";
 import styles from "./image-annotation-view.module.css";
 
 /**
- * Badge radius as a percentage of the image width (x-axis units).
- * The y-axis radius is scaled by (1/aspectRatio) so that the badge
- * renders as a true circle even though the SVG uses preserveAspectRatio="none".
+ * Coordinate system (simple & unified):
+ *   x, width  — stored as % of rendered image width  (SVG viewBox x: 0–100)
+ *   y, height — stored as % of rendered image height (SVG viewBox y: 0–100)
+ *
+ * The SVG uses viewBox="0 0 100 100" with preserveAspectRatio="none" so it
+ * stretches to cover the image exactly.  1 SVG unit in x = 1% of image width;
+ * 1 SVG unit in y = 1% of image height.  Coordinates map directly — no scaleY
+ * conversion needed.
+ *
+ * The badge uses <ellipse rx ry> so it looks like a circle on screen despite
+ * the non-uniform SVG scaling.  rx and ry are computed from the image's
+ * rendered aspect ratio so the badge has equal pixel dimensions on both axes.
  */
-const BADGE_R_X = 2.8;
+
+const BADGE_PX_RADIUS = 10; // desired on-screen badge radius in pixels
+
+/**
+ * Computes badge ellipse radii (in SVG units = % of image dimension) so the
+ * badge appears as a circle of BADGE_PX_RADIUS pixels on screen.
+ *
+ * @param imgW rendered image width in px
+ * @param imgH rendered image height in px
+ */
+function badgeRadii(imgW: number, imgH: number): { rx: number; ry: number } {
+  // 1 SVG x-unit = imgW/100 px  →  rx (svg) = BADGE_PX_RADIUS / (imgW/100)
+  // 1 SVG y-unit = imgH/100 px  →  ry (svg) = BADGE_PX_RADIUS / (imgH/100)
+  const rx = (BADGE_PX_RADIUS / imgW) * 100;
+  const ry = (BADGE_PX_RADIUS / imgH) * 100;
+  return { rx, ry };
+}
+
+/**
+ * Badge font size in SVG x-units so the number fits inside the ellipse.
+ */
+function badgeFontSize(rx: number): number {
+  return rx * 1.1;
+}
 
 /**
  * Computes the badge center so it sits *outside* the chosen rectangle corner.
- * All values are in SVG viewBox units (x: 0-100, y: 0-vbHeight).
+ * All values are in SVG viewBox units (x: 0-100, y: 0-100).
  */
 function badgeCenter(
   ann: { x: number; y: number; width: number; height: number },
   side: BadgeSide,
-  badgeRx: number,
-  badgeRy: number
+  rx: number,
+  ry: number
 ): { cx: number; cy: number } {
   const { x, y, width, height } = ann;
   switch (side) {
     case "top-right":
-      return { cx: x + width + badgeRx, cy: y - badgeRy };
+      return { cx: x + width + rx, cy: y - ry };
     case "bottom-left":
-      return { cx: x - badgeRx, cy: y + height + badgeRy };
+      return { cx: x - rx, cy: y + height + ry };
     case "bottom-right":
-      return { cx: x + width + badgeRx, cy: y + height + badgeRy };
+      return { cx: x + width + rx, cy: y + height + ry };
     case "top-left":
     default:
-      return { cx: x - badgeRx, cy: y - badgeRy };
+      return { cx: x - rx, cy: y - ry };
   }
 }
 
@@ -52,14 +84,6 @@ interface ImageAnnotationViewProps {
 
 /**
  * Renders an image with SVG annotation overlays (rectangles + numbered labels).
- *
- * Coordinate system:
- *   x, width  — stored as % of rendered image width  (= SVG viewBox x units, 0–100)
- *   y, height — stored as % of rendered image height (scaled by scaleY into viewBox)
- *
- * The SVG viewBox is "0 0 100 vbHeight" where vbHeight = 100 / aspectRatio.
- * scaleY = vbHeight / 100 converts y/height from "% of image height" → viewBox units.
- * This means annotations look correct on any screen size without any letterboxing math.
  */
 export function ImageAnnotationView({
   src,
@@ -74,84 +98,58 @@ export function ImageAnnotationView({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const internalImgRef = useRef<HTMLImageElement>(null);
   const imgRef = externalImgRef ?? internalImgRef;
-  const [aspectRatio, setAspectRatio] = useState<number>(16 / 9); // default until loaded
 
-  useEffect(() => {
-    const img = imgRef.current;
-    if (!img) return;
+  // We use a ref-based approach for badge sizing so we don't need to re-render
+  // on every resize. The SVG viewBox is always 0 0 100 100, and badge radii
+  // are computed from the natural aspect ratio (naturalWidth/naturalHeight).
+  // For the badge to look circular, rx and ry compensate for the stretch.
+  // We read naturalWidth/naturalHeight once the image loads — these are stable.
+  const [imgNaturalSize, setImgNaturalSize] = useState<{ w: number; h: number } | null>(null);
 
-    // Use the *rendered* dimensions (clientWidth/clientHeight) so the SVG
-    // viewBox matches exactly what the user sees on any screen size.
-    const update = () => {
-      const w = img.clientWidth;
-      const h = img.clientHeight;
-      if (w && h) {
-        setAspectRatio(w / h);
-      } else if (img.naturalWidth && img.naturalHeight) {
-        // Fallback before layout is complete
-        setAspectRatio(img.naturalWidth / img.naturalHeight);
-      }
-    };
-
-    if (img.complete && img.clientWidth) {
-      update();
-    } else {
-      img.addEventListener("load", update);
+  const handleImgLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (img.naturalWidth && img.naturalHeight) {
+      setImgNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
     }
-
-    // Re-measure on container resize (window resize, panel open/close, etc.)
-    const ro = new ResizeObserver(update);
-    ro.observe(img);
-    return () => {
-      img.removeEventListener("load", update);
-      ro.disconnect();
-    };
-  }, [src, imgRef]);
+  };
 
   if (!src) return null;
 
-  // viewBox: width = 100, height = 100 / aspectRatio
-  // x/width annotation values are used directly (% of width = viewBox x units)
-  // y/height annotation values need scaleY applied (% of height → viewBox y units)
-  const vbHeight = 100 / aspectRatio;
-  const scaleY = vbHeight / 100;
-  // Badge x-radius is in x-axis units (% of width).
-  // Badge y-radius must be scaled so the badge looks like a circle on screen:
-  // since the SVG is non-uniformly scaled (preserveAspectRatio=none), 1 x-unit
-  // covers (renderedWidth / 100) pixels and 1 y-unit covers (renderedHeight / vbHeight)
-  // pixels. To make rx pixels == ry pixels: ry = rx * (renderedWidth / renderedHeight) / (100 / vbHeight)
-  // = rx * aspectRatio * (vbHeight / 100) = rx * aspectRatio * scaleY = rx / aspectRatio * aspectRatio^2 * scaleY
-  // Simplified: badgeRy = BADGE_R_X * scaleY (because scaleY = 1/aspectRatio when vbHeight=100/aspectRatio)
-  // In x-units: BADGE_R_X. In y-units (same pixel size): BADGE_R_X * scaleY.
-  const badgeRx = BADGE_R_X;
-  const badgeRy = BADGE_R_X * scaleY;
+  // Use natural image dimensions for badge sizing so the badge looks circular.
+  // If image hasn't loaded yet, use a square assumption (radii will be equal).
+  const naturalW = imgNaturalSize?.w ?? 1;
+  const naturalH = imgNaturalSize?.h ?? 1;
+  const { rx: badgeRx, ry: badgeRy } = badgeRadii(naturalW, naturalH);
+  const fontSize = badgeFontSize(badgeRx);
 
-  // Redaction blocks and regular annotations are rendered separately
   const regularAnnotations = annotations.filter((a) => !a.isRedaction);
-  // Only show caption list if at least one non-redaction annotation has non-empty text
   const captionAnnotations = regularAnnotations.filter((a) => a.text && a.text.trim().length > 0);
 
   return (
     <div className={`${styles.outerWrapper} ${className ?? ""}`}>
       <div className={styles.wrapper} ref={wrapperRef}>
-        <img ref={imgRef} src={src} alt={alt} className={styles.image} />
+        <img
+          ref={imgRef}
+          src={src}
+          alt={alt}
+          className={styles.image}
+          onLoad={handleImgLoad}
+        />
         {ghostOverlay}
         {annotations.length > 0 && (
           <svg
             className={styles.overlay}
-            viewBox={`0 0 100 ${vbHeight}`}
+            viewBox="0 0 100 100"
             preserveAspectRatio="none"
             aria-hidden="true"
           >
             {annotations.map((ann) => {
-              // x/width: stored as % of image width → use directly as viewBox x units
-              // y/height: stored as % of image height → multiply by scaleY for viewBox y units
+              // Coordinates are already in % units — use directly.
               const ax = ann.x;
-              const ay = ann.y * scaleY;
+              const ay = ann.y;
               const aw = ann.width;
-              const ah = ann.height * scaleY;
+              const ah = ann.height;
 
-              // Redaction: opaque solid block, no border, no badge
               if (ann.isRedaction) {
                 return (
                   <rect
@@ -169,9 +167,7 @@ export function ImageAnnotationView({
               const isHovered = hoveredId === ann.id;
               const color = ann.color || "#e5484d";
               const side: BadgeSide = ann.badgeSide ?? "top-left";
-
-              const scaledAnn = { x: ax, y: ay, width: aw, height: ah };
-              const { cx, cy } = badgeCenter(scaledAnn, side, badgeRx, badgeRy);
+              const { cx, cy } = badgeCenter({ x: ax, y: ay, width: aw, height: ah }, side, badgeRx, badgeRy);
 
               return (
                 <g
@@ -180,7 +176,6 @@ export function ImageAnnotationView({
                   onMouseLeave={() => setHoveredId(null)}
                   style={{ cursor: "default" }}
                 >
-                  {/* Rectangle */}
                   <rect
                     x={ax}
                     y={ay}
@@ -188,11 +183,11 @@ export function ImageAnnotationView({
                     height={ah}
                     fill={isHovered ? `${color}33` : `${color}1a`}
                     stroke={color}
-                    strokeWidth={isHovered ? 0.6 : 0.4}
-                    rx={0.4}
+                    strokeWidth={isHovered ? 0.4 : 0.3}
+                    rx={0.3}
                   />
-                  {/* Badge — ellipse with separate rx/ry so it renders as a true
-                      circle despite the SVG using preserveAspectRatio="none" */}
+                  {/* ellipse rx/ry compensates for non-uniform SVG scaling so
+                      the badge renders as a circle on screen */}
                   <ellipse
                     cx={cx}
                     cy={cy}
@@ -200,7 +195,7 @@ export function ImageAnnotationView({
                     ry={badgeRy}
                     fill={color}
                     stroke="white"
-                    strokeWidth={0.35}
+                    strokeWidth={Math.min(badgeRx, badgeRy) * 0.12}
                   />
                   <text
                     x={cx}
@@ -208,7 +203,7 @@ export function ImageAnnotationView({
                     textAnchor="middle"
                     dominantBaseline="central"
                     fill="white"
-                    fontSize={2.8}
+                    fontSize={fontSize}
                     fontWeight="bold"
                     style={{ fontFamily: "system-ui, sans-serif", userSelect: "none" }}
                   >
