@@ -93,21 +93,20 @@ export function AppNavigation({ onNavigate, adminTab, pendingUsersCount = 0 }: A
                 onClick={handlePreview}
                 title={`Preview mission ${previewMissionId} in a new tab`}
               >
-                👁 Preview
+                👁 Open Preview
               </button>
               <button
                 className={styles.previewInAppButton}
                 onClick={handlePreviewInApp}
                 title={`Preview mission ${previewMissionId} in this window`}
               >
-                🖥 Preview in window
+                🖥 Preview in place
               </button>
             </>
           )}
           {ADMIN_PAGES.map((tab) => {
             const path = tab.path;
-            const isActive =
-              adminTab === tab.value || adminTab === tab.legacyValue || location.pathname === tab.path;
+            const isActive = adminTab === tab.value || adminTab === tab.legacyValue || location.pathname === tab.path;
             return (
               <a
                 key={tab.value}
