@@ -19,7 +19,7 @@ import styles from "./image-annotation-view.module.css";
  * rendered aspect ratio so the badge has equal pixel dimensions on both axes.
  */
 
-const BADGE_PX_RADIUS = 10; // desired on-screen badge radius in pixels
+const BADGE_PX_RADIUS = 20; // desired on-screen badge radius in pixels
 
 /**
  * Computes badge ellipse radii (in SVG units = % of image dimension) so the
