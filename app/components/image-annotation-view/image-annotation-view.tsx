@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import type { Annotation, BadgeSide } from "~/services/instructions.server";
@@ -15,24 +15,29 @@ import styles from "./image-annotation-view.module.css";
  * conversion needed.
  *
  * The badge uses <ellipse rx ry> so it looks like a circle on screen despite
- * the non-uniform SVG scaling.  rx and ry are computed from the image's
- * rendered aspect ratio so the badge has equal pixel dimensions on both axes.
+ * the non-uniform SVG scaling.  rx and ry are computed from the **rendered**
+ * image dimensions (via ResizeObserver) so the badge is always
+ * BADGE_PX_RADIUS screen-pixels in radius regardless of the source image size.
  */
 
-const BADGE_PX_RADIUS = 20; // desired on-screen badge radius in pixels
+/** Desired on-screen badge radius in pixels (minimum guaranteed size). */
+const BADGE_PX_RADIUS = 20;
 
 /**
  * Computes badge ellipse radii (in SVG units = % of image dimension) so the
  * badge appears as a circle of BADGE_PX_RADIUS pixels on screen.
  *
- * @param imgW rendered image width in px
- * @param imgH rendered image height in px
+ * Uses the **rendered** image dimensions so the badge is always the same
+ * physical size on screen, even when the source image is very large.
+ *
+ * @param renderedW rendered image width in px
+ * @param renderedH rendered image height in px
  */
-function badgeRadii(imgW: number, imgH: number): { rx: number; ry: number } {
-  // 1 SVG x-unit = imgW/100 px  →  rx (svg) = BADGE_PX_RADIUS / (imgW/100)
-  // 1 SVG y-unit = imgH/100 px  →  ry (svg) = BADGE_PX_RADIUS / (imgH/100)
-  const rx = (BADGE_PX_RADIUS / imgW) * 100;
-  const ry = (BADGE_PX_RADIUS / imgH) * 100;
+function badgeRadii(renderedW: number, renderedH: number): { rx: number; ry: number } {
+  // 1 SVG x-unit = renderedW/100 px  →  rx (svg) = BADGE_PX_RADIUS / (renderedW/100)
+  // 1 SVG y-unit = renderedH/100 px  →  ry (svg) = BADGE_PX_RADIUS / (renderedH/100)
+  const rx = (BADGE_PX_RADIUS / renderedW) * 100;
+  const ry = (BADGE_PX_RADIUS / renderedH) * 100;
   return { rx, ry };
 }
 
@@ -104,22 +109,33 @@ export function ImageAnnotationView({
   // are computed from the natural aspect ratio (naturalWidth/naturalHeight).
   // For the badge to look circular, rx and ry compensate for the stretch.
   // We read naturalWidth/naturalHeight once the image loads — these are stable.
-  const [imgNaturalSize, setImgNaturalSize] = useState<{ w: number; h: number } | null>(null);
+  // Track rendered image dimensions via ResizeObserver so badge size is always
+  // BADGE_PX_RADIUS screen-pixels regardless of the source image resolution.
+  const [renderedSize, setRenderedSize] = useState<{ w: number; h: number } | null>(null);
 
-  const handleImgLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    if (img.naturalWidth && img.naturalHeight) {
-      setImgNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
-    }
-  };
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img) return;
+
+    const update = () => {
+      if (img.clientWidth && img.clientHeight) {
+        setRenderedSize({ w: img.clientWidth, h: img.clientHeight });
+      }
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(img);
+    return () => ro.disconnect();
+  }, [imgRef]);
 
   if (!src) return null;
 
-  // Use natural image dimensions for badge sizing so the badge looks circular.
-  // If image hasn't loaded yet, use a square assumption (radii will be equal).
-  const naturalW = imgNaturalSize?.w ?? 1;
-  const naturalH = imgNaturalSize?.h ?? 1;
-  const { rx: badgeRx, ry: badgeRy } = badgeRadii(naturalW, naturalH);
+  // Use rendered image dimensions for badge sizing — always BADGE_PX_RADIUS px on screen.
+  // Fall back to a square assumption until the image has been measured.
+  const renderedW = renderedSize?.w ?? 200;
+  const renderedH = renderedSize?.h ?? 200;
+  const { rx: badgeRx, ry: badgeRy } = badgeRadii(renderedW, renderedH);
   const fontSize = badgeFontSize(badgeRx);
 
   const regularAnnotations = annotations.filter((a) => !a.isRedaction);
@@ -133,7 +149,12 @@ export function ImageAnnotationView({
           src={src}
           alt={alt}
           className={styles.image}
-          onLoad={handleImgLoad}
+          onLoad={() => {
+            const img = imgRef.current;
+            if (img?.clientWidth && img?.clientHeight) {
+              setRenderedSize({ w: img.clientWidth, h: img.clientHeight });
+            }
+          }}
         />
         {ghostOverlay}
         {annotations.length > 0 && (
