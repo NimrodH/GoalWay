@@ -185,6 +185,18 @@
   overflow: hidden;
   box-shadow: var(--shadow-2);
   user-select: none;
+  /* Prevent portrait images from overflowing the editor panel */
+  max-height: calc(92vh - 220px);
+  display: flex;
+  align-items: flex-start;
+}
+
+.imageContainer :global(img) {
+  /* Constrain portrait images so they fit within the editor panel */
+  max-height: calc(92vh - 220px);
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
 }
 
 .ghostOverlay {
