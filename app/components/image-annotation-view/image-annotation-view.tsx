@@ -21,7 +21,7 @@ import styles from "./image-annotation-view.module.css";
  */
 
 /** Desired on-screen badge radius in pixels (minimum guaranteed size). */
-const BADGE_PX_RADIUS = 20;
+const BADGE_PX_RADIUS = 10;
 
 /**
  * Computes badge ellipse radii (in SVG units = % of image dimension) so the
