@@ -47,6 +47,26 @@ export async function createOrganization(name: string, slug: string, accessToken
 }
 
 export async function deleteOrganization(id: string, accessToken: string): Promise<{ success: boolean; error?: string }> {
+  // Use the service-role client for cascade cleanup so RLS doesn't block
+  // reads/updates on profiles or mission_organizations owned by other users.
+  const adminSupabase = getSupabase();
+
+  // Step 1: Remove all mission_organizations rows that reference this org.
+  // Step 2: Null out profiles.organization_id for every user in this org.
+  // Both are independent, so run them in parallel.
+  const [missionOrgResult, profilesResult] = await Promise.all([
+    adminSupabase.from("mission_organizations").delete().eq("organization_id", id),
+    adminSupabase.from("profiles").update({ organization_id: null }).eq("organization_id", id),
+  ]);
+
+  if (missionOrgResult.error) {
+    return { success: false, error: `Failed to remove mission access: ${missionOrgResult.error.message}` };
+  }
+  if (profilesResult.error) {
+    return { success: false, error: `Failed to unassign users: ${profilesResult.error.message}` };
+  }
+
+  // Step 3: Delete the organization itself (authenticated so RLS can verify ownership).
   const supabase = getAuthenticatedSupabase(accessToken);
   const { error } = await supabase.from("organizations").delete().eq("id", id);
 
