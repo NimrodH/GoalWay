@@ -44,6 +44,10 @@ interface InstructionListItemProps {
    * Whether this instruction has been completed
    */
   isCompleted?: boolean;
+  /**
+   * Whether this instruction is inside an IF block
+   */
+  isInsideIfBlock?: boolean;
 }
 
 export function InstructionListItem({ 
@@ -55,7 +59,8 @@ export function InstructionListItem({
   instructionType,
   explanation = [],
   orderNumber,
-  isCompleted = false
+  isCompleted = false,
+  isInsideIfBlock = false
 }: InstructionListItemProps) {
   
   // Determine which indicator to show
@@ -96,7 +101,7 @@ export function InstructionListItem({
             {orderNumber}
           </div>
         )}
-        <div className={styles.title}>
+        <div className={classNames(styles.title, { [styles.ifBlockTitle]: isInsideIfBlock })}>
           <div className={styles.titleMarkdown}>
             <Markdown remarkPlugins={[remarkBreaks]}>{title}</Markdown>
           </div>

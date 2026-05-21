@@ -459,6 +459,12 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
     return map;
   })();
 
+  // Derive the full set of IDs inside any IF block (regardless of expanded/collapsed state)
+  const insideIfBlock = new Set<string>();
+  for (const ids of ifBlockMap.values()) {
+    for (const id of ids) insideIfBlock.add(id);
+  }
+
   // Instructions panel state (preview mode only)
   const [instructionsOpen, setInstructionsOpen] = useState(false);
   const [instructionSearch, setInstructionSearch] = useState("");
@@ -1104,6 +1110,7 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                       className={styles.instructionListItem}
                       orderNumber={orderNumber}
                       isCompleted={completedInstructions.has(instruction.id)}
+                      isInsideIfBlock={insideIfBlock.has(instruction.id)}
                     />
                     {isPreview && (
                       <div className={styles.editInstructionRow}>
