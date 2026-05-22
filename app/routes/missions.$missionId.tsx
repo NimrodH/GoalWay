@@ -457,6 +457,15 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
         childrenOf.set(id, childrenOf.get(id) ?? []);
         stack.push(id);
       } else if (id.startsWith("end-if-")) {
+        // Add the END-IF row itself as a child of its enclosing IF block,
+        // so it hides/shows together with the rest of the IF block content.
+        if (stack.length > 0) {
+          const parentId = stack[stack.length - 1];
+          parentOf.set(id, parentId);
+          const siblings = childrenOf.get(parentId) ?? [];
+          siblings.push(id);
+          childrenOf.set(parentId, siblings);
+        }
         stack.pop();
       } else if (stack.length > 0) {
         const parentId = stack[stack.length - 1];
