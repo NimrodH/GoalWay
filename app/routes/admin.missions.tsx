@@ -267,14 +267,14 @@ function EditMissionForm({
       if (selectedIndex !== -1) {
         updatedInstructions = [
           ...selectedInstructions.slice(0, selectedIndex + 1),
-          [endIfId, "END-IF"],
+          [endIfId],
           ...selectedInstructions.slice(selectedIndex + 1),
         ];
       } else {
-        updatedInstructions = [...selectedInstructions, [endIfId, "END-IF"]];
+        updatedInstructions = [...selectedInstructions, [endIfId]];
       }
     } else {
-      updatedInstructions = [...selectedInstructions, [endIfId, "END-IF"]];
+      updatedInstructions = [...selectedInstructions, [endIfId]];
     }
     setSelectedInstructions(updatedInstructions);
     setSelectedMissionInstruction(endIfId);
@@ -1256,7 +1256,7 @@ function EditMissionForm({
                             <span style={{ color: "var(--color-success-11)", fontWeight: 700 }}>🔀 IF:</span>
                           ) : isEndIf ? (
                             <span style={{ color: "var(--color-neutral-10)", fontWeight: 600, opacity: 0.7 }}>
-                              🔁 END-IF{customTitle ? `: ${customTitle}` : ""}
+                              🔁 END-IF{customTitle && customTitle !== "END-IF" ? `: ${customTitle}` : ""}
                             </span>
                           ) : isTemp ? (
                             <span
