@@ -401,11 +401,11 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
           explanation: [] as [],
         };
       }
-      // END-IF renders as a thin green divider (with optional label from rename)
+      // END-IF renders as a thin green divider
       if (id.startsWith("end-if-")) {
         return {
           id,
-          title: customTitle || "",
+          title: "",
           description: "",
           status: "end-if" as const,
           type: "end-if" as const,
@@ -457,15 +457,6 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
         childrenOf.set(id, childrenOf.get(id) ?? []);
         stack.push(id);
       } else if (id.startsWith("end-if-")) {
-        // Add the END-IF row itself as a child of its enclosing IF block,
-        // so it hides/shows together with the rest of the IF block content.
-        if (stack.length > 0) {
-          const parentId = stack[stack.length - 1];
-          parentOf.set(id, parentId);
-          const siblings = childrenOf.get(parentId) ?? [];
-          siblings.push(id);
-          childrenOf.set(parentId, siblings);
-        }
         stack.pop();
       } else if (stack.length > 0) {
         const parentId = stack[stack.length - 1];
@@ -1115,15 +1106,9 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                 );
               }
 
-              // Render END-IF as a thin green divider with optional label
+              // Render END-IF as a thin green divider line
               if (isEndIf) {
-                return (
-                  <div key={instruction.id} className={styles.endIfDivider}>
-                    {instruction.title ? (
-                      <span className={styles.endIfLabel}>{instruction.title}</span>
-                    ) : null}
-                  </div>
-                );
+                return <div key={instruction.id} className={styles.endIfDivider} aria-hidden="true" />;
               }
 
               // Indent regular instructions inside nested IF blocks

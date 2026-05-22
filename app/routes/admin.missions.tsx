@@ -1256,7 +1256,7 @@ function EditMissionForm({
                             <span style={{ color: "var(--color-success-11)", fontWeight: 700 }}>🔀 IF:</span>
                           ) : isEndIf ? (
                             <span style={{ color: "var(--color-neutral-10)", fontWeight: 600, opacity: 0.7 }}>
-                              🔁 END-IF{customTitle ? `: ${customTitle}` : ""}
+                              🔁 END-IF
                             </span>
                           ) : isTemp ? (
                             <span

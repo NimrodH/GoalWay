@@ -111,9 +111,7 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
     if (id.startsWith("if-")) {
       return { id, title: customTitle || "IF", description: "", status: "if" as const, type: "if" as const, explanation: [] as [] };
     }
-    if (id.startsWith("end-if-")) {
-      return { id, title: customTitle || "", description: "", status: "end-if" as const, type: "end-if" as const, explanation: [] as [] };
-    }
+    if (id.startsWith("end-if-")) return null;
     // Strip the duplicate-occurrence suffix (#2, #3, …) for DB lookup,
     // but keep the full entry key as `id` for independent selection state.
     const baseId = id.includes("#") ? id.split("#")[0] : id;
@@ -121,7 +119,7 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
     if (!instruction) return null;
     const resolved = customTitle ? { ...instruction, title: customTitle } : instruction;
     return id !== baseId ? { ...resolved, id } : resolved;
-  }).filter(Boolean) as (typeof instructions[number] | { id: string; title: string; description: string; status: "comment"; type: "comment"; explanation: [] } | { id: string; title: string; description: string; status: "if"; type: "if"; explanation: [] } | { id: string; title: string; description: string; status: "end-if"; type: "end-if"; explanation: [] })[];
+  }).filter(Boolean) as (typeof instructions[number] | { id: string; title: string; description: string; status: "comment"; type: "comment"; explanation: [] } | { id: string; title: string; description: string; status: "if"; type: "if"; explanation: [] })[];
 
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
   const [expandedIfBlocks, setExpandedIfBlocks] = useState<Set<string>>(new Set());
@@ -494,58 +492,10 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
 
               const isComment = "type" in instruction && instruction.type === "comment";
               const isIf = "type" in instruction && instruction.type === "if";
-              const isEndIf = "type" in instruction && instruction.type === "end-if";
               const isIfExpanded = isIf && expandedIfBlocks.has(instruction.id);
               const isLinkExpanded = expandedLinkInstructions.has(instruction.id);
               const isLoading = loadingLinkInstructions.has(instruction.id);
               const expandedInstructions = expandedLinkInstructions.get(instruction.id);
-
-              if (isEndIf) {
-                return (
-                  <div
-                    key={instruction.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "var(--space-2)",
-                      margin: "var(--space-2) var(--space-3)",
-                      opacity: 0.8,
-                    }}
-                  >
-                    <span
-                      style={{
-                        flex: 1,
-                        height: "2px",
-                        background: "linear-gradient(to right, transparent, var(--color-success-8))",
-                        borderRadius: "9999px",
-                      }}
-                    />
-                    {instruction.title ? (
-                      <span
-                        style={{
-                          flexShrink: 0,
-                          fontFamily: "var(--font-body)",
-                          fontSize: "0.75rem",
-                          fontWeight: 600,
-                          color: "var(--color-success-10)",
-                          whiteSpace: "nowrap",
-                          padding: "0 var(--space-1)",
-                        }}
-                      >
-                        {instruction.title}
-                      </span>
-                    ) : null}
-                    <span
-                      style={{
-                        flex: 1,
-                        height: "2px",
-                        background: "linear-gradient(to left, transparent, var(--color-success-8))",
-                        borderRadius: "9999px",
-                      }}
-                    />
-                  </div>
-                );
-              }
 
               if (isComment) {
                 return (

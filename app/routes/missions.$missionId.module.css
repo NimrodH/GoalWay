@@ -659,38 +659,9 @@
   flex: 1;
 }
 
-/* END-IF thin green divider (with optional label) */
+/* END-IF thin green divider */
 .endIfDivider {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: var(--space-2) var(--space-3);
-  opacity: 0.8;
-}
-
-.endIfDivider::before,
-.endIfDivider::after {
-  content: "";
-  flex: 1;
   height: 2px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    var(--color-success-8)
-  );
-  border-radius: 9999px;
-}
-
-.endIfDivider::after {
-  background: linear-gradient(
-    to left,
-    transparent,
-    var(--color-success-8)
-  );
-}
-
-/* When there's no label, the two pseudo-elements merge into one full line */
-.endIfDivider:empty::before {
   background: linear-gradient(
     to right,
     transparent,
@@ -698,16 +669,9 @@
     var(--color-success-8) 80%,
     transparent
   );
-}
-
-.endIfLabel {
-  flex-shrink: 0;
-  font-family: var(--font-body);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-success-10);
-  white-space: nowrap;
-  padding: 0 var(--space-1);
+  border-radius: 9999px;
+  margin: var(--space-2) var(--space-3);
+  opacity: 0.7;
 }
 
 /* Comment Markdown — renders inline, strips block spacing */
