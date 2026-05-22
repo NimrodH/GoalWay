@@ -401,11 +401,11 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
           explanation: [] as [],
         };
       }
-      // END-IF renders as a thin green divider
+      // END-IF renders as a thin green divider (with optional label from rename)
       if (id.startsWith("end-if-")) {
         return {
           id,
-          title: "",
+          title: customTitle || "",
           description: "",
           status: "end-if" as const,
           type: "end-if" as const,
@@ -1106,9 +1106,15 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                 );
               }
 
-              // Render END-IF as a thin green divider line
+              // Render END-IF as a thin green divider with optional label
               if (isEndIf) {
-                return <div key={instruction.id} className={styles.endIfDivider} aria-hidden="true" />;
+                return (
+                  <div key={instruction.id} className={styles.endIfDivider}>
+                    {instruction.title ? (
+                      <span className={styles.endIfLabel}>{instruction.title}</span>
+                    ) : null}
+                  </div>
+                );
               }
 
               // Indent regular instructions inside nested IF blocks
