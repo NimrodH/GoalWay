@@ -121,26 +121,42 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
     return id !== baseId ? { ...resolved, id } : resolved;
   }).filter(Boolean) as (typeof instructions[number] | { id: string; title: string; description: string; status: "comment"; type: "comment"; explanation: [] } | { id: string; title: string; description: string; status: "if"; type: "if"; explanation: [] })[];
 
-  // Build map: ifId -> array of raw instruction IDs inside the block
-  const ifBlockMap = (() => {
-    const map = new Map<string, string[]>();
-    let currentIfId: string | null = null;
-    const inside: string[] = [];
-    for (const [id] of mission.instructions) {
-      if (id.startsWith("if-")) {
-        currentIfId = id;
-      } else if (id.startsWith("end-if-")) {
-        if (currentIfId) { map.set(currentIfId, [...inside]); inside.length = 0; currentIfId = null; }
-      } else if (currentIfId) {
-        inside.push(id);
-      }
-    }
-    if (currentIfId) map.set(currentIfId, [...inside]);
-    return map;
-  })();
-
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
   const [expandedIfBlocks, setExpandedIfBlocks] = useState<Set<string>>(new Set());
+
+  // Build nested IF structure using a stack-based parser.
+  // parentOf: every id -> the ifId of the immediately-enclosing IF block (if any)
+  // childrenOf: ifId -> direct children ids (instructions + inner if-rows)
+  // depthOf: ifId -> nesting depth (0 = top-level)
+  const parentOf = new Map<string, string>();
+  const childrenOf = new Map<string, string[]>();
+  const depthOf = new Map<string, number>();
+  (() => {
+    const stack: string[] = [];
+    for (const [id] of mission.instructions) {
+      if (id.startsWith("if-")) {
+        const depth = stack.length;
+        depthOf.set(id, depth);
+        if (stack.length > 0) {
+          const parentId = stack[stack.length - 1];
+          parentOf.set(id, parentId);
+          const siblings = childrenOf.get(parentId) ?? [];
+          siblings.push(id);
+          childrenOf.set(parentId, siblings);
+        }
+        childrenOf.set(id, childrenOf.get(id) ?? []);
+        stack.push(id);
+      } else if (id.startsWith("end-if-")) {
+        stack.pop();
+      } else if (stack.length > 0) {
+        const parentId = stack[stack.length - 1];
+        parentOf.set(id, parentId);
+        const siblings = childrenOf.get(parentId) ?? [];
+        siblings.push(id);
+        childrenOf.set(parentId, siblings);
+      }
+    }
+  })();
 
   const toggleIfBlock = (ifId: string) => {
     setExpandedIfBlocks(prev => {
@@ -150,9 +166,12 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
     });
   };
 
+  // An item is hidden when ANY ancestor IF block is collapsed.
   const hiddenByIf = new Set<string>();
-  for (const [ifId, ids] of ifBlockMap) {
-    if (!expandedIfBlocks.has(ifId)) { for (const id of ids) hiddenByIf.add(id); }
+  for (const [ifId, children] of childrenOf) {
+    if (!expandedIfBlocks.has(ifId)) {
+      for (const id of children) hiddenByIf.add(id);
+    }
   }
   const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
   const [loadingLinkInstructions, setLoadingLinkInstructions] = useState<Set<string>>(new Set());
@@ -490,22 +509,31 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
               }
 
               if (isIf) {
+                const depth = depthOf.get(instruction.id) ?? 0;
                 return (
-                  <div key={instruction.id} className={homeStyles.instructionItem}>
+                  <div
+                    key={instruction.id}
+                    className={homeStyles.instructionItem}
+                    style={depth > 0 ? { paddingRight: `calc(${depth} * var(--space-5))` } : undefined}
+                  >
                     <button
                       onClick={() => toggleIfBlock(instruction.id)}
                       style={{
                         display: "flex", alignItems: "center", gap: "var(--space-2)",
-                        width: "100%", padding: "var(--space-3) var(--space-4)",
-                        background: isIfExpanded ? "var(--color-success-4)" : "var(--color-success-3)",
-                        border: `1px solid ${isIfExpanded ? "var(--color-success-8)" : "var(--color-success-7)"}`,
+                        width: "100%",
+                        padding: depth > 0 ? "var(--space-2) var(--space-3)" : "var(--space-3) var(--space-4)",
+                        background: isIfExpanded ? "var(--color-success-4)" : (depth > 0 ? "var(--color-success-2)" : "var(--color-success-3)"),
+                        border: `1px solid ${isIfExpanded ? "var(--color-success-8)" : (depth > 0 ? "var(--color-success-6)" : "var(--color-success-7)")}`,
                         borderRadius: "var(--radius-2)", color: "var(--color-success-11)",
-                        fontFamily: "var(--font-body)", fontSize: "0.9375rem", fontWeight: 600,
+                        fontFamily: "var(--font-body)",
+                        fontSize: depth > 0 ? "0.875rem" : "0.9375rem",
+                        fontWeight: 600,
                         cursor: "pointer", textAlign: "right", marginBottom: "var(--space-1)",
+                        opacity: depth > 0 ? 0.92 : 1,
                       }}
                       aria-expanded={isIfExpanded}
                     >
-                      <GitBranch size={18} style={{ flexShrink: 0, color: "var(--color-success-9)" }} />
+                      <GitBranch size={depth > 0 ? 15 : 18} style={{ flexShrink: 0, color: "var(--color-success-9)" }} />
                       <span style={{ flex: 1 }}>{instruction.title}</span>
                       {isIfExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                     </button>
@@ -513,8 +541,18 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
                 );
               }
 
+              const instrDepth = (() => {
+                let p = parentOf.get(instruction.id);
+                let d = 0;
+                while (p) { d++; p = parentOf.get(p); }
+                return d;
+              })();
+
               return (
-                <div key={instruction.id}>
+                <div
+                  key={instruction.id}
+                  style={instrDepth > 0 ? { paddingRight: `calc(${instrDepth} * var(--space-5))` } : undefined}
+                >
                   <div className={homeStyles.instructionItem}>
                     <InstructionListItem
                       title={instruction.title}
