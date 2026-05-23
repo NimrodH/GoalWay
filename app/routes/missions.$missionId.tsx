@@ -1106,8 +1106,11 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                 );
               }
 
-              // Render END-IF as a thin green divider line
+              // Render END-IF divider only when its matching IF block is expanded
               if (isEndIf) {
+                // Derive the matching IF id: "end-if-X" -> "if-X"
+                const matchingIfId = instruction.id.replace(/^end-if-/, "if-");
+                if (!expandedIfBlocks.has(matchingIfId)) return null;
                 return <div key={instruction.id} className={styles.endIfDivider} aria-hidden="true" />;
               }
 

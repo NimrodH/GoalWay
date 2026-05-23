@@ -111,7 +111,9 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
     if (id.startsWith("if-")) {
       return { id, title: customTitle || "IF", description: "", status: "if" as const, type: "if" as const, explanation: [] as [] };
     }
-    if (id.startsWith("end-if-")) return null;
+    if (id.startsWith("end-if-")) {
+      return { id, title: "", description: "", status: "end-if" as const, type: "end-if" as const, explanation: [] as [] };
+    }
     // Strip the duplicate-occurrence suffix (#2, #3, …) for DB lookup,
     // but keep the full entry key as `id` for independent selection state.
     const baseId = id.includes("#") ? id.split("#")[0] : id;
@@ -119,7 +121,7 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
     if (!instruction) return null;
     const resolved = customTitle ? { ...instruction, title: customTitle } : instruction;
     return id !== baseId ? { ...resolved, id } : resolved;
-  }).filter(Boolean) as (typeof instructions[number] | { id: string; title: string; description: string; status: "comment"; type: "comment"; explanation: [] } | { id: string; title: string; description: string; status: "if"; type: "if"; explanation: [] })[];
+  }).filter(Boolean) as (typeof instructions[number] | { id: string; title: string; description: string; status: "comment"; type: "comment"; explanation: [] } | { id: string; title: string; description: string; status: "if"; type: "if"; explanation: [] } | { id: string; title: string; description: string; status: "end-if"; type: "end-if"; explanation: [] })[];
 
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
   const [expandedIfBlocks, setExpandedIfBlocks] = useState<Set<string>>(new Set());
@@ -492,10 +494,30 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
 
               const isComment = "type" in instruction && instruction.type === "comment";
               const isIf = "type" in instruction && instruction.type === "if";
+              const isEndIf = "type" in instruction && instruction.type === "end-if";
               const isIfExpanded = isIf && expandedIfBlocks.has(instruction.id);
               const isLinkExpanded = expandedLinkInstructions.has(instruction.id);
               const isLoading = loadingLinkInstructions.has(instruction.id);
               const expandedInstructions = expandedLinkInstructions.get(instruction.id);
+
+              // Render END-IF divider only when its matching IF block is expanded
+              if (isEndIf) {
+                const matchingIfId = instruction.id.replace(/^end-if-/, "if-");
+                if (!expandedIfBlocks.has(matchingIfId)) return null;
+                return (
+                  <div
+                    key={instruction.id}
+                    style={{
+                      height: "2px",
+                      background: "linear-gradient(to left, transparent, var(--color-success-8) 20%, var(--color-success-8) 80%, transparent)",
+                      borderRadius: "9999px",
+                      margin: "var(--space-2) var(--space-3)",
+                      opacity: 0.7,
+                    }}
+                    aria-hidden="true"
+                  />
+                );
+              }
 
               if (isComment) {
                 return (
