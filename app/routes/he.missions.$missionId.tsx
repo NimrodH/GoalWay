@@ -103,7 +103,7 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
   const { mission, instructions, allMissions, isPreview, adminNotes: initialAdminNotes } = loaderData;
 
   // Map instructions to maintain order from mission.instructions and apply custom titles
-  // IF entries are special conditional blocks; END-IF is hidden from end user
+  // IF entries are special conditional blocks; END-IF and ELSE are structural markers
   const missionInstructions = mission.instructions.map(([id, customTitle]) => {
     if (id.startsWith("comment-") || id === "0") {
       return { id, title: customTitle || "", description: "", status: "comment" as const, type: "comment" as const, explanation: [] as [] };
@@ -114,6 +114,9 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
     if (id.startsWith("end-if-")) {
       return { id, title: "", description: "", status: "end-if" as const, type: "end-if" as const, explanation: [] as [] };
     }
+    if (id.startsWith("else-")) {
+      return { id, title: customTitle || "ELSE", description: "", status: "else" as const, type: "else" as const, explanation: [] as [] };
+    }
     // Strip the duplicate-occurrence suffix (#2, #3, …) for DB lookup,
     // but keep the full entry key as `id` for independent selection state.
     const baseId = id.includes("#") ? id.split("#")[0] : id;
@@ -121,20 +124,21 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
     if (!instruction) return null;
     const resolved = customTitle ? { ...instruction, title: customTitle } : instruction;
     return id !== baseId ? { ...resolved, id } : resolved;
-  }).filter(Boolean) as (typeof instructions[number] | { id: string; title: string; description: string; status: "comment"; type: "comment"; explanation: [] } | { id: string; title: string; description: string; status: "if"; type: "if"; explanation: [] } | { id: string; title: string; description: string; status: "end-if"; type: "end-if"; explanation: [] })[];
+  }).filter(Boolean) as (typeof instructions[number] | { id: string; title: string; description: string; status: "comment"; type: "comment"; explanation: [] } | { id: string; title: string; description: string; status: "if"; type: "if"; explanation: [] } | { id: string; title: string; description: string; status: "end-if"; type: "end-if"; explanation: [] } | { id: string; title: string; description: string; status: "else"; type: "else"; explanation: [] })[];
 
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
-  const [expandedIfBlocks, setExpandedIfBlocks] = useState<Set<string>>(new Set());
+  // Map<ifId, 'if' | 'else'> — tracks which branch is active (missing = collapsed)
+  const [expandedIfBlocks, setExpandedIfBlocks] = useState<Map<string, "if" | "else">>(new Map());
 
-  // Build nested IF structure using a stack-based parser.
-  // parentOf: every id -> the ifId of the immediately-enclosing IF block (if any)
-  // childrenOf: ifId -> direct children ids (instructions + inner if-rows)
-  // depthOf: ifId -> nesting depth (0 = top-level)
+  // Build nested IF/ELSE structure using a stack-based parser.
   const parentOf = new Map<string, string>();
   const childrenOf = new Map<string, string[]>();
+  const elseChildrenOf = new Map<string, string[]>();
+  const elseIdOf = new Map<string, string>(); // ifId -> elseId
   const depthOf = new Map<string, number>();
   (() => {
     const stack: string[] = [];
+    const inElseBranch = new Set<string>();
     for (const [id] of mission.instructions) {
       if (id.startsWith("if-")) {
         const depth = stack.length;
@@ -142,37 +146,74 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
         if (stack.length > 0) {
           const parentId = stack[stack.length - 1];
           parentOf.set(id, parentId);
+          if (inElseBranch.has(parentId)) {
+            const siblings = elseChildrenOf.get(parentId) ?? [];
+            siblings.push(id);
+            elseChildrenOf.set(parentId, siblings);
+          } else {
+            const siblings = childrenOf.get(parentId) ?? [];
+            siblings.push(id);
+            childrenOf.set(parentId, siblings);
+          }
+        }
+        childrenOf.set(id, childrenOf.get(id) ?? []);
+        elseChildrenOf.set(id, elseChildrenOf.get(id) ?? []);
+        stack.push(id);
+      } else if (id.startsWith("else-")) {
+        if (stack.length > 0) {
+          const ifId = stack[stack.length - 1];
+          inElseBranch.add(ifId);
+          elseIdOf.set(ifId, id);
+          parentOf.set(id, ifId);
+          const siblings = childrenOf.get(ifId) ?? [];
+          siblings.push(id);
+          childrenOf.set(ifId, siblings);
+        }
+      } else if (id.startsWith("end-if-")) {
+        const closed = stack.pop();
+        if (closed) inElseBranch.delete(closed);
+      } else if (stack.length > 0) {
+        const parentId = stack[stack.length - 1];
+        parentOf.set(id, parentId);
+        if (inElseBranch.has(parentId)) {
+          const siblings = elseChildrenOf.get(parentId) ?? [];
+          siblings.push(id);
+          elseChildrenOf.set(parentId, siblings);
+        } else {
           const siblings = childrenOf.get(parentId) ?? [];
           siblings.push(id);
           childrenOf.set(parentId, siblings);
         }
-        childrenOf.set(id, childrenOf.get(id) ?? []);
-        stack.push(id);
-      } else if (id.startsWith("end-if-")) {
-        stack.pop();
-      } else if (stack.length > 0) {
-        const parentId = stack[stack.length - 1];
-        parentOf.set(id, parentId);
-        const siblings = childrenOf.get(parentId) ?? [];
-        siblings.push(id);
-        childrenOf.set(parentId, siblings);
       }
     }
   })();
 
-  const toggleIfBlock = (ifId: string) => {
+  const toggleIfBlock = (ifId: string, branch: "if" | "else" = "if") => {
     setExpandedIfBlocks(prev => {
-      const next = new Set(prev);
-      if (next.has(ifId)) next.delete(ifId); else next.add(ifId);
+      const next = new Map(prev);
+      if (next.get(ifId) === branch) {
+        next.delete(ifId);
+      } else {
+        next.set(ifId, branch);
+      }
       return next;
     });
   };
 
-  // An item is hidden when ANY ancestor IF block is collapsed.
+  // An item is hidden when its parent IF is collapsed or it's in the non-active branch.
   const hiddenByIf = new Set<string>();
   for (const [ifId, children] of childrenOf) {
-    if (!expandedIfBlocks.has(ifId)) {
+    const activeBranch = expandedIfBlocks.get(ifId);
+    if (!activeBranch) {
       for (const id of children) hiddenByIf.add(id);
+      for (const id of elseChildrenOf.get(ifId) ?? []) hiddenByIf.add(id);
+    } else if (activeBranch === "if") {
+      for (const id of elseChildrenOf.get(ifId) ?? []) hiddenByIf.add(id);
+    } else {
+      for (const id of children) {
+        const elseId = elseIdOf.get(ifId);
+        if (id !== elseId) hiddenByIf.add(id);
+      }
     }
   }
   const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
@@ -300,7 +341,7 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
 
     // IF block toggle
     if (instruction && "type" in instruction && instruction.type === "if") {
-      toggleIfBlock(instructionId);
+      toggleIfBlock(instructionId, "if");
       return;
     }
 
@@ -495,15 +536,20 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
               const isComment = "type" in instruction && instruction.type === "comment";
               const isIf = "type" in instruction && instruction.type === "if";
               const isEndIf = "type" in instruction && instruction.type === "end-if";
-              const isIfExpanded = isIf && expandedIfBlocks.has(instruction.id);
+              const isElse = "type" in instruction && instruction.type === "else";
+              const activeBranch = isIf ? expandedIfBlocks.get(instruction.id) : undefined;
+              const isIfExpanded = isIf && activeBranch !== undefined;
               const isLinkExpanded = expandedLinkInstructions.has(instruction.id);
               const isLoading = loadingLinkInstructions.has(instruction.id);
               const expandedInstructions = expandedLinkInstructions.get(instruction.id);
 
+              // ELSE separator rows are rendered inline within the IF row, not standalone
+              if (isElse) return null;
+
               // Render END-IF divider only when its matching IF block is expanded
               if (isEndIf) {
                 const matchingIfId = instruction.id.replace(/^end-if-/, "if-");
-                if (!expandedIfBlocks.has(matchingIfId)) return null;
+                if (!expandedIfBlocks.get(matchingIfId)) return null;
                 return (
                   <div
                     key={instruction.id}
@@ -532,33 +578,82 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
 
               if (isIf) {
                 const depth = depthOf.get(instruction.id) ?? 0;
+                const elseId = elseIdOf.get(instruction.id);
+                const hasElse = Boolean(elseId);
+                const elseEntry = hasElse
+                  ? missionInstructions.find((m) => m && "type" in m && m.type === "else" && m.id === elseId)
+                  : null;
+                const elseTitle = elseEntry && "title" in elseEntry ? elseEntry.title : "ELSE";
+
+                const ifBtnStyle = {
+                  display: "flex", alignItems: "center", gap: "var(--space-2)",
+                  flex: hasElse ? 1 : undefined,
+                  width: hasElse ? undefined : "100%",
+                  minWidth: 0,
+                  padding: depth > 0 ? "var(--space-2) var(--space-3)" : "var(--space-3) var(--space-4)",
+                  background: activeBranch === "if" ? "var(--color-success-4)" : (depth > 0 ? "var(--color-success-2)" : "var(--color-success-3)"),
+                  border: `1px solid ${activeBranch === "if" ? "var(--color-success-8)" : (depth > 0 ? "var(--color-success-6)" : "var(--color-success-7)")}`,
+                  borderRadius: "var(--radius-2)", color: "var(--color-success-11)",
+                  fontFamily: "var(--font-body)",
+                  fontSize: depth > 0 ? "0.875rem" : "0.9375rem",
+                  fontWeight: 600,
+                  cursor: "pointer", textAlign: "right" as const, marginBottom: hasElse ? 0 : "var(--space-1)",
+                  opacity: depth > 0 ? 0.92 : 1,
+                };
+
+                const elseBtnStyle = {
+                  display: "flex", alignItems: "center", gap: "var(--space-2)",
+                  flex: 1,
+                  minWidth: 0,
+                  padding: depth > 0 ? "var(--space-2) var(--space-3)" : "var(--space-3) var(--space-4)",
+                  background: activeBranch === "else" ? "var(--color-amber-4)" : (depth > 0 ? "var(--color-amber-2)" : "var(--color-amber-3)"),
+                  border: `1px solid ${activeBranch === "else" ? "var(--color-amber-8)" : (depth > 0 ? "var(--color-amber-6)" : "var(--color-amber-7)")}`,
+                  borderRadius: "var(--radius-2)", color: "var(--color-amber-11)",
+                  fontFamily: "var(--font-body)",
+                  fontSize: depth > 0 ? "0.875rem" : "0.9375rem",
+                  fontWeight: 600,
+                  cursor: "pointer", textAlign: "right" as const, marginBottom: 0,
+                  opacity: depth > 0 ? 0.92 : 1,
+                };
+
                 return (
                   <div
                     key={instruction.id}
                     className={homeStyles.instructionItem}
                     style={depth > 0 ? { paddingRight: `calc(${depth} * var(--space-5))` } : undefined}
                   >
-                    <button
-                      onClick={() => toggleIfBlock(instruction.id)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: "var(--space-2)",
-                        width: "100%",
-                        padding: depth > 0 ? "var(--space-2) var(--space-3)" : "var(--space-3) var(--space-4)",
-                        background: isIfExpanded ? "var(--color-success-4)" : (depth > 0 ? "var(--color-success-2)" : "var(--color-success-3)"),
-                        border: `1px solid ${isIfExpanded ? "var(--color-success-8)" : (depth > 0 ? "var(--color-success-6)" : "var(--color-success-7)")}`,
-                        borderRadius: "var(--radius-2)", color: "var(--color-success-11)",
-                        fontFamily: "var(--font-body)",
-                        fontSize: depth > 0 ? "0.875rem" : "0.9375rem",
-                        fontWeight: 600,
-                        cursor: "pointer", textAlign: "right", marginBottom: "var(--space-1)",
-                        opacity: depth > 0 ? 0.92 : 1,
-                      }}
-                      aria-expanded={isIfExpanded}
-                    >
-                      <GitBranch size={depth > 0 ? 15 : 18} style={{ flexShrink: 0, color: "var(--color-success-9)" }} />
-                      <span style={{ flex: 1 }}>{instruction.title}</span>
-                      {isIfExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </button>
+                    {hasElse ? (
+                      <div style={{ display: "flex", gap: "4px", marginBottom: "var(--space-1)" }}>
+                        <button
+                          onClick={() => toggleIfBlock(instruction.id, "if")}
+                          style={ifBtnStyle}
+                          aria-expanded={activeBranch === "if"}
+                        >
+                          <GitBranch size={depth > 0 ? 15 : 18} style={{ flexShrink: 0, color: "var(--color-success-9)" }} />
+                          <span style={{ flex: 1 }}>{instruction.title}</span>
+                          {activeBranch === "if" ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </button>
+                        <button
+                          onClick={() => toggleIfBlock(instruction.id, "else")}
+                          style={elseBtnStyle}
+                          aria-expanded={activeBranch === "else"}
+                        >
+                          <GitBranch size={depth > 0 ? 15 : 18} style={{ flexShrink: 0, color: "var(--color-amber-9)" }} />
+                          <span style={{ flex: 1 }}>{elseTitle}</span>
+                          {activeBranch === "else" ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => toggleIfBlock(instruction.id, "if")}
+                        style={ifBtnStyle}
+                        aria-expanded={isIfExpanded}
+                      >
+                        <GitBranch size={depth > 0 ? 15 : 18} style={{ flexShrink: 0, color: "var(--color-success-9)" }} />
+                        <span style={{ flex: 1 }}>{instruction.title}</span>
+                        {isIfExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </button>
+                    )}
                   </div>
                 );
               }
@@ -634,7 +729,7 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
             instruction={
               selectedInstruction &&
               "status" in selectedInstruction &&
-              (selectedInstruction.status === "comment" || selectedInstruction.status === "if")
+              (selectedInstruction.status === "comment" || selectedInstruction.status === "if" || selectedInstruction.status === "else")
                 ? null
                 : (selectedInstruction as Instruction | null)
             }

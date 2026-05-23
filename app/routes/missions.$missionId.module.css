@@ -674,6 +674,47 @@
   opacity: 0.7;
 }
 
+/* IF + ELSE side-by-side row */
+.ifElseRow {
+  display: flex;
+  gap: 4px;
+  margin-bottom: var(--space-1);
+}
+
+.ifElseHalf {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+/* ELSE button — amber/orange tint to distinguish from IF (green) */
+.elseBlockButton {
+  background: var(--color-amber-3);
+  border-color: var(--color-amber-7);
+  color: var(--color-amber-11);
+}
+
+.elseBlockButton:hover {
+  background: var(--color-amber-4);
+  border-color: var(--color-amber-8);
+  color: var(--color-amber-12);
+}
+
+.elseBlockButton .ifBlockIcon {
+  color: var(--color-amber-9);
+}
+
+/* Active branch highlight */
+.ifBranchActive {
+  background: var(--color-success-4);
+  border-color: var(--color-success-8);
+}
+
+.elseBranchActive {
+  background: var(--color-amber-4);
+  border-color: var(--color-amber-8);
+}
+
 /* Comment Markdown — renders inline, strips block spacing */
 .commentMarkdown p {
   margin: 0;

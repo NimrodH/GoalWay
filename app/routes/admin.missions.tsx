@@ -283,6 +283,105 @@ function EditMissionForm({
     setSelectedMissionInstruction(endIfId);
   };
 
+  const handleAddElse = () => {
+    if (!selectedMissionInstruction) {
+      alert("Select an IF, instruction inside an IF block, or END-IF first");
+      return;
+    }
+
+    // Find the IF block that the currently selected item belongs to.
+    // Accepted selections: the if- row itself, any instruction inside it, or the matching end-if- row.
+    const selId = selectedMissionInstruction;
+    let matchingIfIndex = -1;
+    let matchingEndIfIndex = -1;
+
+    // Walk through the list to find a matching IF → END-IF pair that contains the selection
+    const stack: Array<{ ifId: string; ifIndex: number }> = [];
+    for (let i = 0; i < selectedInstructions.length; i++) {
+      const [id] = selectedInstructions[i];
+      if (id.startsWith("if-")) {
+        stack.push({ ifId: id, ifIndex: i });
+      } else if (id.startsWith("end-if-")) {
+        const top = stack.pop();
+        if (top) {
+          // The end-if suffix should match the if suffix
+          const matchingEndIf = id.replace(/^end-if-/, "") === top.ifId.replace(/^if-/, "");
+          const sameTimestamp = id.split("-").slice(2).join("-") === top.ifId.split("-").slice(1).join("-");
+          // Check if selection is this IF, this END-IF, or anything between
+          const isInRange = i >= top.ifIndex &&
+            (selId === top.ifId || selId === id ||
+              selectedInstructions.slice(top.ifIndex + 1, i).some(([sid]) => sid === selId));
+          if (isInRange && (matchingEndIf || sameTimestamp || selId === top.ifId || selId === id)) {
+            matchingIfIndex = top.ifIndex;
+            matchingEndIfIndex = i;
+          }
+        }
+      }
+    }
+
+    // Simpler fallback: if selected is an if- itself, find its end-if
+    if (matchingIfIndex === -1 && selId.startsWith("if-")) {
+      matchingIfIndex = selectedInstructions.findIndex(([id]) => id === selId);
+      const suffix = selId.replace(/^if-/, "");
+      matchingEndIfIndex = selectedInstructions.findIndex(([id]) => id === `end-if-${suffix}`);
+    }
+
+    // Simpler fallback: if selected is an end-if- itself, find its if
+    if (matchingIfIndex === -1 && selId.startsWith("end-if-")) {
+      matchingEndIfIndex = selectedInstructions.findIndex(([id]) => id === selId);
+      const suffix = selId.replace(/^end-if-/, "");
+      matchingIfIndex = selectedInstructions.findIndex(([id]) => id === `if-${suffix}`);
+    }
+
+    if (matchingIfIndex === -1 || matchingEndIfIndex === -1) {
+      // Try: selected is inside an IF block — find the enclosing if-/end-if- pair
+      const stack2: Array<{ ifId: string; ifIndex: number }> = [];
+      let found = false;
+      for (let i = 0; i < selectedInstructions.length; i++) {
+        const [id] = selectedInstructions[i];
+        if (id.startsWith("if-")) {
+          stack2.push({ ifId: id, ifIndex: i });
+        } else if (id.startsWith("end-if-")) {
+          const top = stack2[stack2.length - 1];
+          if (top) {
+            // Check if our selection was inside this block
+            if (selectedInstructions.slice(top.ifIndex + 1, i).some(([sid]) => sid === selId)) {
+              matchingIfIndex = top.ifIndex;
+              matchingEndIfIndex = i;
+              found = true;
+            }
+          }
+          stack2.pop();
+        }
+        if (found) break;
+      }
+    }
+
+    if (matchingIfIndex === -1 || matchingEndIfIndex === -1) {
+      alert("Could not find a matching IF…END-IF pair. Select the IF row, a row inside the IF block, or the END-IF row.");
+      return;
+    }
+
+    // Check if there's already an else- between this if and end-if
+    const ifId = selectedInstructions[matchingIfIndex][0];
+    const suffix = ifId.replace(/^if-/, "");
+    const existingElse = selectedInstructions.slice(matchingIfIndex + 1, matchingEndIfIndex).find(([id]) => id === `else-${suffix}`);
+    if (existingElse) {
+      alert("This IF block already has an ELSE branch.");
+      return;
+    }
+
+    // Insert ELSE just before END-IF
+    const elseId = `else-${suffix}`;
+    const updatedInstructions = [
+      ...selectedInstructions.slice(0, matchingEndIfIndex),
+      [elseId] as [string, string?],
+      ...selectedInstructions.slice(matchingEndIfIndex),
+    ];
+    setSelectedInstructions(updatedInstructions);
+    setSelectedMissionInstruction(elseId);
+  };
+
   const handleAddComment = () => {
     if (!commentText.trim()) {
       alert("Please enter a comment");
@@ -721,8 +820,9 @@ function EditMissionForm({
     const isComment = selectedMissionInstruction.startsWith("comment-") || selectedMissionInstruction === "0";
     const isIf = selectedMissionInstruction.startsWith("if-");
     const isEndIf = selectedMissionInstruction.startsWith("end-if-");
+    const isElse = selectedMissionInstruction.startsWith("else-");
     const isTemp = /^T\d+$/.test(selectedMissionInstruction);
-    if (isComment || isIf || isEndIf || isTemp) {
+    if (isComment || isIf || isEndIf || isElse || isTemp) {
       alert("JSON editing is only available for real saved instructions");
       return;
     }
@@ -1121,6 +1221,16 @@ function EditMissionForm({
                 </button>
                 <button
                   type="button"
+                  onClick={handleAddElse}
+                  className={styles.addButton}
+                  disabled={!selectedMissionId || !session}
+                  title="Insert an ELSE branch into the selected IF…END-IF block (select the IF row, a row inside it, or the END-IF row)"
+                  style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                >
+                  ↔️ ELSE
+                </button>
+                <button
+                  type="button"
                   onClick={() => setShowCommentDialog(true)}
                   className={styles.addButton}
                   disabled={!selectedMissionId || !session}
@@ -1191,7 +1301,8 @@ function EditMissionForm({
                         !selectedMissionInstruction ||
                         createAndEditFetcher.state !== "idle" ||
                         selectedMissionInstruction.startsWith("if-") ||
-                        selectedMissionInstruction.startsWith("end-if-")
+                        selectedMissionInstruction.startsWith("end-if-") ||
+                        selectedMissionInstruction.startsWith("else-")
                       }
                       style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
                       title={
@@ -1213,6 +1324,7 @@ function EditMissionForm({
                         selectedMissionInstruction.startsWith("comment-") ||
                         selectedMissionInstruction.startsWith("if-") ||
                         selectedMissionInstruction.startsWith("end-if-") ||
+                        selectedMissionInstruction.startsWith("else-") ||
                         selectedMissionInstruction === "0" ||
                         /^T\d+$/.test(selectedMissionInstruction || "")
                       }
@@ -1257,19 +1369,20 @@ function EditMissionForm({
                     const isComment = instructionId.startsWith("comment-") || instructionId === "0";
                     const isIf = instructionId.startsWith("if-");
                     const isEndIf = instructionId.startsWith("end-if-");
+                    const isElse = instructionId.startsWith("else-");
                     const isTemp = instructionId.startsWith("T") && /^T\d+$/.test(instructionId);
                     // Strip the duplicate suffix (#2, #3, …) to get the real instruction ID for lookup
                     const baseInstructionId = instructionId.includes("#") ? instructionId.split("#")[0] : instructionId;
                     const instruction =
-                      !isComment && !isIf && !isEndIf && !isTemp
+                      !isComment && !isIf && !isEndIf && !isElse && !isTemp
                         ? instructions.find((i) => i.id === baseInstructionId)
                         : null;
 
                     // Non-special entries must resolve to a real instruction (or be filtered out)
-                    if (!isComment && !isIf && !isEndIf && !isTemp && !instruction) return null;
+                    if (!isComment && !isIf && !isEndIf && !isElse && !isTemp && !instruction) return null;
 
                     const displayTitle =
-                      isComment || isIf || isEndIf || isTemp ? customTitle : customTitle || instruction?.title || "";
+                      isComment || isIf || isEndIf || isElse || isTemp ? customTitle : customTitle || instruction?.title || "";
                     return (
                       <label
                         key={instructionId}
@@ -1282,9 +1395,11 @@ function EditMissionForm({
                             ? "var(--color-success-3)"
                             : isEndIf
                               ? "var(--color-neutral-3)"
-                              : isTemp
-                                ? "var(--color-accent-2)"
-                                : undefined,
+                              : isElse
+                                ? "var(--color-accent-3)"
+                                : isTemp
+                                  ? "var(--color-accent-2)"
+                                  : undefined,
                         }}
                       >
                         <input
@@ -1302,6 +1417,8 @@ function EditMissionForm({
                             <span style={{ color: "var(--color-neutral-10)", fontWeight: 600, opacity: 0.7 }}>
                               🔁 END-IF{customTitle && customTitle !== "END-IF" ? `: ${customTitle}` : ""}
                             </span>
+                          ) : isElse ? (
+                            <span style={{ color: "var(--color-accent-11)", fontWeight: 700 }}>↔️ ELSE</span>
                           ) : isTemp ? (
                             <span
                               style={{ color: "var(--color-accent-10)", fontWeight: 600 }}
@@ -1329,9 +1446,9 @@ function EditMissionForm({
                               )}
                             </span>
                           )}
-                          {!isComment && !isEndIf && " "}
-                          {!isEndIf && displayTitle}
-                          {!isComment && !isIf && !isEndIf && !isTemp && customTitle && (
+                          {!isComment && !isEndIf && !isElse && " "}
+                          {!isEndIf && !isElse && displayTitle}
+                          {!isComment && !isIf && !isEndIf && !isElse && !isTemp && customTitle && (
                             <span
                               style={{
                                 color: "var(--color-accent-11)",

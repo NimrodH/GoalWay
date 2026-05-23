@@ -246,6 +246,15 @@ type EndIfEntry = {
   explanation: [];
 };
 
+type ElseEntry = {
+  id: string;
+  title: string;
+  description: string;
+  status: "else";
+  type: "else";
+  explanation: [];
+};
+
 type TempEntry = {
   id: string;
   title: string;
@@ -260,6 +269,7 @@ type MissionInstruction =
   | CommentEntry
   | IfEntry
   | EndIfEntry
+  | ElseEntry
   | TempEntry;
 
 export default function MissionPage({ loaderData, params }: Route.ComponentProps) {
@@ -412,6 +422,17 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
           explanation: [] as [],
         };
       }
+      // ELSE branch separator
+      if (id.startsWith("else-")) {
+        return {
+          id,
+          title: customTitle || "ELSE",
+          description: "",
+          status: "else" as const,
+          type: "else" as const,
+          explanation: [] as [],
+        };
+      }
       // Temp instruction (T1, T2, ...) — not yet saved to DB, show as empty instruction
       if (/^T\d+$/.test(id)) {
         return {
@@ -432,17 +453,22 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
       const resolvedInstruction = customTitle ? { ...instruction, title: customTitle } : instruction;
       return id !== baseId ? { ...resolvedInstruction, id } : resolvedInstruction;
     })
-    .filter(Boolean) as (NonNullable<ReturnType<typeof instructions["find"]>> | CommentEntry | IfEntry | EndIfEntry | TempEntry)[];
+    .filter(Boolean) as (NonNullable<ReturnType<typeof instructions["find"]>> | CommentEntry | IfEntry | EndIfEntry | ElseEntry | TempEntry)[];
 
-  // Build nested IF structure using a stack-based parser.
+  // Build nested IF/ELSE structure using a stack-based parser.
   // parentOf: every id -> the ifId of the immediately-enclosing IF block (if any)
-  // childrenOf: ifId -> direct children ids (instructions + inner if-rows)
+  // childrenOf: ifId -> direct IF-branch children ids
+  // elseChildrenOf: ifId -> direct ELSE-branch children ids
+  // elseIdOf: ifId -> the else- entry id (if it has an ELSE)
   // depthOf: ifId -> nesting depth (0 = top-level)
   const parentOf = new Map<string, string>();
   const childrenOf = new Map<string, string[]>();
+  const elseChildrenOf = new Map<string, string[]>();
+  const elseIdOf = new Map<string, string>(); // ifId -> elseId
   const depthOf = new Map<string, number>();
   (() => {
     const stack: string[] = []; // stack of open ifIds
+    const inElseBranch = new Set<string>(); // set of ifIds currently in their else branch
     for (const [id] of mission.instructions) {
       if (id.startsWith("if-")) {
         const depth = stack.length;
@@ -450,20 +476,46 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
         if (stack.length > 0) {
           const parentId = stack[stack.length - 1];
           parentOf.set(id, parentId);
+          if (inElseBranch.has(parentId)) {
+            const siblings = elseChildrenOf.get(parentId) ?? [];
+            siblings.push(id);
+            elseChildrenOf.set(parentId, siblings);
+          } else {
+            const siblings = childrenOf.get(parentId) ?? [];
+            siblings.push(id);
+            childrenOf.set(parentId, siblings);
+          }
+        }
+        childrenOf.set(id, childrenOf.get(id) ?? []);
+        elseChildrenOf.set(id, elseChildrenOf.get(id) ?? []);
+        stack.push(id);
+      } else if (id.startsWith("else-")) {
+        // Switch the top-of-stack IF into its else branch
+        if (stack.length > 0) {
+          const ifId = stack[stack.length - 1];
+          inElseBranch.add(ifId);
+          elseIdOf.set(ifId, id);
+          // The else- entry itself is a child of its enclosing IF (for hiding purposes)
+          parentOf.set(id, ifId);
+          const siblings = childrenOf.get(ifId) ?? [];
+          siblings.push(id);
+          childrenOf.set(ifId, siblings);
+        }
+      } else if (id.startsWith("end-if-")) {
+        const closed = stack.pop();
+        if (closed) inElseBranch.delete(closed);
+      } else if (stack.length > 0) {
+        const parentId = stack[stack.length - 1];
+        parentOf.set(id, parentId);
+        if (inElseBranch.has(parentId)) {
+          const siblings = elseChildrenOf.get(parentId) ?? [];
+          siblings.push(id);
+          elseChildrenOf.set(parentId, siblings);
+        } else {
           const siblings = childrenOf.get(parentId) ?? [];
           siblings.push(id);
           childrenOf.set(parentId, siblings);
         }
-        childrenOf.set(id, childrenOf.get(id) ?? []);
-        stack.push(id);
-      } else if (id.startsWith("end-if-")) {
-        stack.pop();
-      } else if (stack.length > 0) {
-        const parentId = stack[stack.length - 1];
-        parentOf.set(id, parentId);
-        const siblings = childrenOf.get(parentId) ?? [];
-        siblings.push(id);
-        childrenOf.set(parentId, siblings);
       }
     }
   })();
@@ -473,6 +525,7 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
 
   // Instructions panel state (preview mode only)
   const [instructionsOpen, setInstructionsOpen] = useState(false);
+
   const [instructionSearch, setInstructionSearch] = useState("");
 
   // Admin notes panel state (preview mode only)
@@ -558,26 +611,42 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
   const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
   const [loadingLinkInstructions, setLoadingLinkInstructions] = useState<Set<string>>(new Set());
   const [completedInstructions, setCompletedInstructions] = useState<Set<string>>(new Set());
-  // Track which IF blocks the user has expanded
-  const [expandedIfBlocks, setExpandedIfBlocks] = useState<Set<string>>(new Set());
+  // Map<ifId, 'if' | 'else'> — tracks which branch is active (null/missing = collapsed)
+  const [expandedIfBlocks, setExpandedIfBlocks] = useState<Map<string, "if" | "else">>(new Map());
 
-  // An item is hidden when ANY of its ancestor IF blocks is collapsed.
-  // We only hide *direct* children of a collapsed IF — grandchildren are already
-  // hidden transitively because their parent IF row is itself hidden.
+  // An item is hidden when its parent IF block is collapsed, or it belongs to the
+  // non-active branch. The else- separator row itself is always hidden.
   const hiddenByIf = new Set<string>();
   for (const [ifId, children] of childrenOf) {
-    if (!expandedIfBlocks.has(ifId)) {
+    const activeBranch = expandedIfBlocks.get(ifId);
+    if (!activeBranch) {
+      // Collapsed — hide all IF-branch and ELSE-branch children
       for (const id of children) hiddenByIf.add(id);
+      for (const id of elseChildrenOf.get(ifId) ?? []) hiddenByIf.add(id);
+    } else if (activeBranch === "if") {
+      // Showing IF branch — hide ELSE-branch children
+      for (const id of elseChildrenOf.get(ifId) ?? []) hiddenByIf.add(id);
+    } else {
+      // Showing ELSE branch — hide IF-branch children (but not the else- row itself)
+      for (const id of children) {
+        const elseId = elseIdOf.get(ifId);
+        if (id !== elseId) hiddenByIf.add(id);
+      }
     }
   }
 
-  const toggleIfBlock = (ifId: string) => {
+  /**
+   * Toggle IF block. branch = 'if' | 'else'.
+   * Clicking the active branch collapses it; clicking the other switches to it.
+   */
+  const toggleIfBlock = (ifId: string, branch: "if" | "else" = "if") => {
     setExpandedIfBlocks((prev) => {
-      const next = new Set(prev);
-      if (next.has(ifId)) {
+      const next = new Map(prev);
+      if (next.get(ifId) === branch) {
+        // Same branch clicked — collapse
         next.delete(ifId);
       } else {
-        next.add(ifId);
+        next.set(ifId, branch);
       }
       return next;
     });
@@ -676,7 +745,7 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
 
     // IF block toggle
     if (instruction && "type" in instruction && instruction.type === "if") {
-      toggleIfBlock(instructionId);
+      toggleIfBlock(instructionId, "if");
       return;
     }
 
@@ -716,11 +785,11 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
 
   const selectedInstruction = missionInstructions.find((inst) => inst?.id === selectedInstructionId) || null;
 
-  // Don't pass comments, IF, or temp entries to ExplanationDisplay
+  // Don't pass comments, IF, ELSE, or temp entries to ExplanationDisplay
   const instructionToDisplay =
     selectedInstruction &&
     "type" in selectedInstruction &&
-    (selectedInstruction.type === "comment" || selectedInstruction.type === "if" || selectedInstruction.type === "temp")
+    (selectedInstruction.type === "comment" || selectedInstruction.type === "if" || selectedInstruction.type === "else" || selectedInstruction.type === "temp")
       ? null
       : selectedInstruction;
 
@@ -1036,11 +1105,15 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
               const isComment = "type" in instruction && instruction.type === "comment";
               const isIf = "type" in instruction && instruction.type === "if";
               const isEndIf = "type" in instruction && instruction.type === "end-if";
+              const isElse = "type" in instruction && instruction.type === "else";
               const isTemp = "type" in instruction && instruction.type === "temp";
-              const isIfExpanded = isIf && expandedIfBlocks.has(instruction.id);
+              const activeBranch = isIf ? expandedIfBlocks.get(instruction.id) : undefined;
+              const isIfExpanded = isIf && activeBranch !== undefined;
               const isLinkExpanded = expandedLinkInstructions.has(instruction.id);
               const isLoading = loadingLinkInstructions.has(instruction.id);
               const expandedInstructions = expandedLinkInstructions.get(instruction.id);
+              // The else- separator row is always hidden from the UI (it's rendered as part of the IF row)
+              if (isElse) return null;
 
               // Hide instructions that are inside a collapsed IF block
               if (hiddenByIf.has(instruction.id)) {
@@ -1053,7 +1126,7 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                 .filter(
                   (inst) => {
                     if (!inst) return false;
-                    if ("type" in inst) return inst.type !== "comment" && inst.type !== "if" && inst.type !== "end-if";
+                    if ("type" in inst) return inst.type !== "comment" && inst.type !== "if" && inst.type !== "end-if" && inst.type !== "else";
                     return true; // no type field = default instruction, count it
                   }
                 ).length;
@@ -1083,9 +1156,16 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                 );
               }
 
-              // Render IF block toggle
+              // Render IF block toggle (with optional ELSE side-by-side)
               if (isIf) {
                 const depth = depthOf.get(instruction.id) ?? 0;
+                const elseId = elseIdOf.get(instruction.id);
+                const hasElse = Boolean(elseId);
+                const elseEntry = hasElse
+                  ? missionInstructions.find((m) => m && "type" in m && m.type === "else" && m.id === elseId)
+                  : null;
+                const elseTitle = elseEntry && "title" in elseEntry ? elseEntry.title : "ELSE";
+
                 return (
                   <div
                     key={instruction.id}
@@ -1093,15 +1173,38 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                     data-instruction-id={instruction.id}
                     style={depth > 0 ? { paddingLeft: `calc(${depth} * var(--space-5))` } : undefined}
                   >
-                    <button
-                      onClick={() => toggleIfBlock(instruction.id)}
-                      className={`${styles.ifBlockButton} ${depth > 0 ? styles.ifBlockButtonNested : ""}`}
-                      aria-expanded={isIfExpanded}
-                    >
-                      <GitBranch size={depth > 0 ? 15 : 18} className={styles.ifBlockIcon} />
-                      <span className={styles.ifBlockTitle}>{instruction.title}</span>
-                      {isIfExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </button>
+                    {hasElse ? (
+                      <div className={styles.ifElseRow}>
+                        <button
+                          onClick={() => toggleIfBlock(instruction.id, "if")}
+                          className={`${styles.ifBlockButton} ${styles.ifElseHalf} ${depth > 0 ? styles.ifBlockButtonNested : ""} ${activeBranch === "if" ? styles.ifBranchActive : ""}`}
+                          aria-expanded={activeBranch === "if"}
+                        >
+                          <GitBranch size={depth > 0 ? 15 : 18} className={styles.ifBlockIcon} />
+                          <span className={styles.ifBlockTitle}>{instruction.title}</span>
+                          {activeBranch === "if" ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </button>
+                        <button
+                          onClick={() => toggleIfBlock(instruction.id, "else")}
+                          className={`${styles.ifBlockButton} ${styles.ifElseHalf} ${styles.elseBlockButton} ${depth > 0 ? styles.ifBlockButtonNested : ""} ${activeBranch === "else" ? styles.elseBranchActive : ""}`}
+                          aria-expanded={activeBranch === "else"}
+                        >
+                          <GitBranch size={depth > 0 ? 15 : 18} className={styles.ifBlockIcon} />
+                          <span className={styles.ifBlockTitle}>{elseTitle}</span>
+                          {activeBranch === "else" ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => toggleIfBlock(instruction.id, "if")}
+                        className={`${styles.ifBlockButton} ${depth > 0 ? styles.ifBlockButtonNested : ""}`}
+                        aria-expanded={isIfExpanded}
+                      >
+                        <GitBranch size={depth > 0 ? 15 : 18} className={styles.ifBlockIcon} />
+                        <span className={styles.ifBlockTitle}>{instruction.title}</span>
+                        {isIfExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </button>
+                    )}
                   </div>
                 );
               }
@@ -1113,6 +1216,7 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                 if (!expandedIfBlocks.has(matchingIfId)) return null;
                 return <div key={instruction.id} className={styles.endIfDivider} aria-hidden="true" />;
               }
+
 
               // Indent regular instructions inside nested IF blocks
               const instrDepth = (() => {
