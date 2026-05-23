@@ -8,6 +8,7 @@ import { loader as adminLoader, action as adminAction } from "~/routes/admin";
 import type { Instruction } from "~/services/instructions.server";
 import type { Mission } from "~/services/missions.server";
 import styles0 from "./admin.missions.module.css";
+import { DrawioUploadDialog } from "~/components/drawio-upload-dialog/drawio-upload-dialog";
 
 export const loader = adminLoader;
 export const action = adminAction;
@@ -151,6 +152,7 @@ function EditMissionForm({
   const duplicateMissionFetcher = useFetcher<typeof action>();
   const [codeEditorValue, setCodeEditorValue] = useState("");
   const [codeEditorError, setCodeEditorError] = useState<string | null>(null);
+  const [showDrawioDialog, setShowDrawioDialog] = useState(false);
 
   useEffect(() => {
     if (selectedMissionId) {
@@ -747,6 +749,10 @@ function EditMissionForm({
 
   const isJsonSaving = jsonFetcher.state !== "idle";
 
+  const handleDrawioImport = (importedInstructions: Array<[string, string?]>) => {
+    setSelectedInstructions((prev) => [...prev, ...importedInstructions]);
+  };
+
   const handleDuplicateMission = () => {
     if (!selectedMissionId) {
       alert("Please select a mission first");
@@ -1092,6 +1098,16 @@ function EditMissionForm({
                   style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
                 >
                   + New
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDrawioDialog(true)}
+                  className={styles.addButton}
+                  disabled={!selectedMissionId || !session}
+                  title="Import steps from a draw.io flowchart file"
+                  style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                >
+                  📊 draw.io
                 </button>
               </div>
 
@@ -1901,6 +1917,13 @@ function EditMissionForm({
             </div>
           </div>
         </div>
+      )}
+
+      {showDrawioDialog && (
+        <DrawioUploadDialog
+          onClose={() => setShowDrawioDialog(false)}
+          onImport={handleDrawioImport}
+        />
       )}
 
       {showNewInstructionDialog && (
