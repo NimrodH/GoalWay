@@ -1365,17 +1365,12 @@ function EditMissionForm({
                     overflowY: "auto",
                   }}
                 >
-                  {(() => {
-                    let stepCounter = 0;
-                    return selectedInstructions.map(([instructionId, customTitle]) => {
+                  {selectedInstructions.map(([instructionId, customTitle]) => {
                     const isComment = instructionId.startsWith("comment-") || instructionId === "0";
                     const isIf = instructionId.startsWith("if-");
                     const isEndIf = instructionId.startsWith("end-if-");
                     const isElse = instructionId.startsWith("else-");
                     const isTemp = instructionId.startsWith("T") && /^T\d+$/.test(instructionId);
-                    const isCountable = !isComment && !isIf && !isEndIf && !isElse;
-                    if (isCountable) stepCounter++;
-                    const stepNumber = isCountable ? stepCounter : null;
                     // Strip the duplicate suffix (#2, #3, …) to get the real instruction ID for lookup
                     const baseInstructionId = instructionId.includes("#") ? instructionId.split("#")[0] : instructionId;
                     const instruction =
@@ -1413,26 +1408,6 @@ function EditMissionForm({
                           checked={selectedMissionInstruction === instructionId}
                           onChange={() => setSelectedMissionInstruction(instructionId)}
                         />
-                        {stepNumber !== null && (
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              minWidth: "22px",
-                              height: "22px",
-                              borderRadius: "50%",
-                              background: "var(--color-neutral-5)",
-                              color: "var(--color-neutral-11)",
-                              fontSize: "0.7rem",
-                              fontWeight: 700,
-                              marginRight: "var(--space-2)",
-                              flexShrink: 0,
-                            }}
-                          >
-                            {stepNumber}
-                          </span>
-                        )}
                         <span>
                           {isComment ? (
                             <span style={{ color: "var(--color-accent-11)", fontStyle: "italic" }}>💬 Comment:</span>
@@ -1487,7 +1462,7 @@ function EditMissionForm({
                         </span>
                       </label>
                     );
-                  });})()}
+                  })}
                 </div>
               </div>
             </div>
