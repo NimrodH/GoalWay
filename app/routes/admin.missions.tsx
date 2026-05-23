@@ -1365,7 +1365,25 @@ function EditMissionForm({
                     overflowY: "auto",
                   }}
                 >
-                  {selectedInstructions.map(([instructionId, customTitle]) => {
+                  {(() => {
+                    // Compute nesting depths for indentation
+                    const depthMap = new Map<string, number>();
+                    let depth = 0;
+                    for (const [id] of selectedInstructions) {
+                      if (id.startsWith("end-if-")) {
+                        depth = Math.max(0, depth - 1);
+                        depthMap.set(id, depth);
+                      } else if (id.startsWith("else-")) {
+                        depthMap.set(id, Math.max(0, depth - 1));
+                      } else if (id.startsWith("if-")) {
+                        depthMap.set(id, depth);
+                        depth += 1;
+                      } else {
+                        depthMap.set(id, depth);
+                      }
+                    }
+
+                    return selectedInstructions.map(([instructionId, customTitle]) => {
                     const isComment = instructionId.startsWith("comment-") || instructionId === "0";
                     const isIf = instructionId.startsWith("if-");
                     const isEndIf = instructionId.startsWith("end-if-");
@@ -1383,12 +1401,16 @@ function EditMissionForm({
 
                     const displayTitle =
                       isComment || isIf || isEndIf || isElse || isTemp ? customTitle : customTitle || instruction?.title || "";
+                    const indentLevel = depthMap.get(instructionId) ?? 0;
                     return (
                       <label
                         key={instructionId}
                         className={styles.checkboxLabel}
                         style={{
-                          padding: "var(--space-2)",
+                          paddingTop: "var(--space-2)",
+                          paddingBottom: "var(--space-2)",
+                          paddingRight: "var(--space-2)",
+                          paddingLeft: `calc(var(--space-2) + ${indentLevel * 20}px)`,
                           borderBottom: "1px solid var(--color-neutral-4)",
                           margin: 0,
                           background: isIf
@@ -1462,7 +1484,8 @@ function EditMissionForm({
                         </span>
                       </label>
                     );
-                  })}
+                  });
+                  })()}
                 </div>
               </div>
             </div>
