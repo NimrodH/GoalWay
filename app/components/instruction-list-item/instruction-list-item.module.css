@@ -85,10 +85,6 @@
   font-weight: 600;
 }
 
-.title.ifBlockTitle {
-  color: var(--color-success-11);
-}
-
 .item.selected .title.ifBlockTitle {
   color: var(--color-accent-11);
 }
