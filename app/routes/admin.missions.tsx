@@ -845,6 +845,16 @@ function EditMissionForm({
             >
               {missionFetcher.state !== "idle" ? "Creating..." : "+ Create New Mission"}
             </button>
+            <button
+              type="button"
+              onClick={() => setShowDrawioDialog(true)}
+              className={styles.addButton}
+              disabled={drawioImportFetcher.state !== "idle" || !session}
+              title="Import a draw.io flowchart and create a new mission from it"
+              style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+            >
+              {drawioImportFetcher.state !== "idle" ? "Creating..." : "📊 draw.io"}
+            </button>
           </div>
         </div>
         <select
@@ -987,7 +997,13 @@ function EditMissionForm({
                             {" - "}
                             {instruction.title}
                             {alreadyAdded && (
-                              <span style={{ marginLeft: "var(--space-2)", fontSize: "0.75rem", color: "var(--color-accent-10)" }}>
+                              <span
+                                style={{
+                                  marginLeft: "var(--space-2)",
+                                  fontSize: "0.75rem",
+                                  color: "var(--color-accent-10)",
+                                }}
+                              >
                                 (already in mission)
                               </span>
                             )}
@@ -1028,9 +1044,7 @@ function EditMissionForm({
                     // resolve the underlying instruction from the database.
                     const newEntries: Array<[string, string?]> = selectedAvailableInstructions.map((baseId) => {
                       const existingKeys = selectedInstructions.map(([k]) => k);
-                      const alreadyPresent = existingKeys.some(
-                        (k) => k === baseId || k.startsWith(`${baseId}#`),
-                      );
+                      const alreadyPresent = existingKeys.some((k) => k === baseId || k.startsWith(`${baseId}#`));
                       if (!alreadyPresent) return [baseId] as [string];
                       let suffix = 2;
                       while (existingKeys.includes(`${baseId}#${suffix}`)) suffix++;
@@ -1122,16 +1136,6 @@ function EditMissionForm({
                   style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
                 >
                   + New
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowDrawioDialog(true)}
-                  className={styles.addButton}
-                  disabled={drawioImportFetcher.state !== "idle" || !session}
-                  title="Import a draw.io flowchart and create a new mission from it"
-                  style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                >
-                  {drawioImportFetcher.state !== "idle" ? "Creating..." : "📊 draw.io"}
                 </button>
               </div>
 
@@ -1944,10 +1948,7 @@ function EditMissionForm({
       )}
 
       {showDrawioDialog && (
-        <DrawioUploadDialog
-          onClose={() => setShowDrawioDialog(false)}
-          onImport={handleDrawioImport}
-        />
+        <DrawioUploadDialog onClose={() => setShowDrawioDialog(false)} onImport={handleDrawioImport} />
       )}
 
       {showNewInstructionDialog && (
