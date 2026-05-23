@@ -448,7 +448,17 @@ function emitNodeWithInstructions(
     return;
   }
 
-  // Junction — emit IF / END-IF blocks, skip empty branches
+  // Junction — first two non-empty branches become IF / ELSE / END-IF.
+  // Additional branches (3+, rare) each get their own separate IF block.
+
+  // Collect all non-empty branches first so we can decide which is ELSE.
+  interface BranchData {
+    conditionText: string;
+    branchLines: string[];
+    branchInstructions: Array<[string, string?]>;
+  }
+  const nonEmptyBranches: BranchData[] = [];
+
   for (const edge of nextEdges) {
     const conditionText = formatCondition(node.text, edge.label);
     const branchLines: string[] = [];
@@ -470,21 +480,55 @@ function emitNodeWithInstructions(
       (line) => line.trim() !== ""
     );
 
-    if (cleanedBranchLines.length === 0) {
-      continue;
-    }
+    if (cleanedBranchLines.length === 0) continue;
 
-    const ifId = `if-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    const endIfId = `end-if-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    nonEmptyBranches.push({ conditionText, branchLines: cleanedBranchLines, branchInstructions });
+  }
 
-    lines.push(`${indent(indentLevel)}IF ${conditionText}`);
-    lines.push(...cleanedBranchLines);
+  if (nonEmptyBranches.length === 0) {
+    visitedInCurrentPath.delete(nodeId);
+    return;
+  }
+
+  // First branch → IF, second branch → ELSE (same block), rest → separate IFs
+  const [ifBranch, elseBranch, ...extraBranches] = nonEmptyBranches;
+
+  // Build a shared suffix string that is unique per call-site so that the
+  // if-/else-/end-if- ids all share the same suffix and are paired correctly.
+  const suffix = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const ifId = `if-${suffix}`;
+  const elseId = `else-${suffix}`;
+  const endIfId = `end-if-${suffix}`;
+
+  lines.push(`${indent(indentLevel)}IF ${ifBranch.conditionText}`);
+  lines.push(...ifBranch.branchLines);
+
+  instructionList.push([ifId, ifBranch.conditionText]);
+  instructionList.push(...ifBranch.branchInstructions);
+
+  if (elseBranch) {
+    lines.push(`${indent(indentLevel)}ELSE`);
+    lines.push(...elseBranch.branchLines);
+    instructionList.push([elseId]);
+    instructionList.push(...elseBranch.branchInstructions);
+  }
+
+  lines.push(`${indent(indentLevel)}END IF`);
+  lines.push("");
+  instructionList.push([endIfId]);
+
+  // Handle any extra branches (3rd, 4th, …) as independent IF blocks
+  for (const extra of extraBranches) {
+    const xSuffix = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const xIfId = `if-${xSuffix}`;
+    const xEndIfId = `end-if-${xSuffix}`;
+    lines.push(`${indent(indentLevel)}IF ${extra.conditionText}`);
+    lines.push(...extra.branchLines);
     lines.push(`${indent(indentLevel)}END IF`);
     lines.push("");
-
-    instructionList.push([ifId, conditionText]);
-    instructionList.push(...branchInstructions);
-    instructionList.push([endIfId]);
+    instructionList.push([xIfId, extra.conditionText]);
+    instructionList.push(...extra.branchInstructions);
+    instructionList.push([xEndIfId]);
   }
 
   visitedInCurrentPath.delete(nodeId);
