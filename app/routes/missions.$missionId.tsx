@@ -636,18 +636,49 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
   }
 
   /**
+   * Collect all nested IF IDs (direct and transitive) inside a given IF block,
+   * across both its IF-branch children and ELSE-branch children.
+   */
+  const collectDescendantIfIds = (ifId: string): string[] => {
+    const result: string[] = [];
+    const queue = [
+      ...(childrenOf.get(ifId) ?? []),
+      ...(elseChildrenOf.get(ifId) ?? []),
+    ];
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      if (id.startsWith("if-")) {
+        result.push(id);
+        queue.push(...(childrenOf.get(id) ?? []));
+        queue.push(...(elseChildrenOf.get(id) ?? []));
+      }
+    }
+    return result;
+  };
+
+  /**
    * Toggle IF block. branch = 'if' | 'else'.
    * Clicking the active branch collapses it; clicking the other switches to it.
+   * In both cases, any nested IF blocks that were previously expanded are collapsed.
    */
   const toggleIfBlock = (ifId: string, branch: "if" | "else" = "if") => {
     setExpandedIfBlocks((prev) => {
       const next = new Map(prev);
-      if (next.get(ifId) === branch) {
-        // Same branch clicked — collapse
+      const isCollapsing = next.get(ifId) === branch;
+
+      if (isCollapsing) {
+        // Collapse this block
         next.delete(ifId);
       } else {
+        // Switch to the new branch
         next.set(ifId, branch);
       }
+
+      // In either case, collapse all nested IF blocks inside this one
+      for (const descendantId of collectDescendantIfIds(ifId)) {
+        next.delete(descendantId);
+      }
+
       return next;
     });
   };
