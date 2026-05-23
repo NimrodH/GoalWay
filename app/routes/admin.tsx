@@ -369,6 +369,74 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     }
   }
 
+  if (actionType === "createMissionWithInstructions") {
+    const accessToken = formData.get("accessToken") as string | null;
+    const instructionsJson = formData.get("instructions") as string | null;
+
+    if (!accessToken) {
+      return { success: false, error: "Unauthorized: Authentication required" };
+    }
+
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+        global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      });
+
+      const { data: existingMissions, error: fetchError } = await supabase
+        .from("missions")
+        .select("id")
+        .order("created_at", { ascending: true });
+
+      if (fetchError) {
+        return { success: false, error: fetchError.message };
+      }
+
+      const numericIds = (existingMissions || [])
+        .map((m: any) => parseInt(m.id, 10))
+        .filter((id: number) => !isNaN(id));
+      const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+      const newId = String(maxId + 1);
+
+      let instructions: Array<[string, string?]> = [];
+      try {
+        instructions = instructionsJson ? JSON.parse(instructionsJson) : [];
+      } catch {
+        instructions = [];
+      }
+
+      const newMission = {
+        id: newId,
+        title: "",
+        description: "",
+        instructions,
+      };
+
+      const insertData: any = {
+        id: newId,
+        data_en: newMission,
+        data_he: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase.from("missions").insert(insertData);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return {
+        success: true,
+        message: `New mission ${newId} created with imported instructions!`,
+        newMissionId: newId,
+      };
+    } catch (error) {
+      console.error("Error in createMissionWithInstructions:", error);
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
   if (actionType === "createMission") {
     const accessToken = formData.get("accessToken") as string | null;
 

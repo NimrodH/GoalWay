@@ -132,7 +132,7 @@ export function DrawioUploadDialog({ onClose, onImport }: DrawioUploadDialogProp
             Cancel
           </button>
           <button className={styles.importBtn} onClick={handleImport} disabled={!parsed}>
-            Import to Mission
+            Create New Mission
           </button>
         </div>
       </div>

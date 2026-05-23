@@ -150,6 +150,7 @@ function EditMissionForm({
   const [jsonSaveError, setJsonSaveError] = useState<string | null>(null);
   const jsonFetcher = useFetcher<typeof action>();
   const duplicateMissionFetcher = useFetcher<typeof action>();
+  const drawioImportFetcher = useFetcher<typeof action>();
   const [codeEditorValue, setCodeEditorValue] = useState("");
   const [codeEditorError, setCodeEditorError] = useState<string | null>(null);
   const [showDrawioDialog, setShowDrawioDialog] = useState(false);
@@ -433,6 +434,16 @@ function EditMissionForm({
       }
     }
   }, [duplicateMissionFetcher.data, duplicateMissionFetcher.state, language]);
+
+  useEffect(() => {
+    if (drawioImportFetcher.data && drawioImportFetcher.state === "idle") {
+      if (drawioImportFetcher.data.success && drawioImportFetcher.data.newMissionId) {
+        window.location.href = `/admin/missions?lang=${language}&missionId=${drawioImportFetcher.data.newMissionId}`;
+      } else if (drawioImportFetcher.data.error) {
+        alert(`Failed to create mission from draw.io: ${drawioImportFetcher.data.error}`);
+      }
+    }
+  }, [drawioImportFetcher.data, drawioImportFetcher.state, language]);
 
   useEffect(() => {
     if (createAndEditFetcher.data && createAndEditFetcher.state === "idle" && pendingTempEdit) {
@@ -750,7 +761,20 @@ function EditMissionForm({
   const isJsonSaving = jsonFetcher.state !== "idle";
 
   const handleDrawioImport = (importedInstructions: Array<[string, string?]>) => {
-    setSelectedInstructions((prev) => [...prev, ...importedInstructions]);
+    const doCreate = () => {
+      const formData = new FormData();
+      formData.append("actionType", "createMissionWithInstructions");
+      formData.append("instructions", JSON.stringify(importedInstructions));
+      formData.append("accessToken", session?.access_token || "");
+      drawioImportFetcher.submit(formData, { method: "post" });
+    };
+
+    // If there are unsaved changes, prompt the user to save/discard first
+    if (hasUnsavedChangesMission) {
+      onNavigationRequest(doCreate);
+    } else {
+      doCreate();
+    }
   };
 
   const handleDuplicateMission = () => {
@@ -1103,11 +1127,11 @@ function EditMissionForm({
                   type="button"
                   onClick={() => setShowDrawioDialog(true)}
                   className={styles.addButton}
-                  disabled={!selectedMissionId || !session}
-                  title="Import steps from a draw.io flowchart file"
+                  disabled={drawioImportFetcher.state !== "idle" || !session}
+                  title="Import a draw.io flowchart and create a new mission from it"
                   style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
                 >
-                  📊 draw.io
+                  {drawioImportFetcher.state !== "idle" ? "Creating..." : "📊 draw.io"}
                 </button>
               </div>
 
