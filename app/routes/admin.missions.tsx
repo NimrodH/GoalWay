@@ -221,9 +221,9 @@ function EditMissionForm({
       const selectedIndex = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
       if (selectedIndex !== -1) {
         updatedInstructions = [
-          ...selectedInstructions.slice(0, selectedIndex),
+          ...selectedInstructions.slice(0, selectedIndex + 1),
           [tempId, newInstructionTitle.trim()],
-          ...selectedInstructions.slice(selectedIndex),
+          ...selectedInstructions.slice(selectedIndex + 1),
         ];
       } else {
         updatedInstructions = [...selectedInstructions, [tempId, newInstructionTitle.trim()]];
@@ -1155,9 +1155,9 @@ function EditMissionForm({
                     if (selectedMissionInstruction) {
                       const insertIndex = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
                       newInstructions = [
-                        ...selectedInstructions.slice(0, insertIndex),
+                        ...selectedInstructions.slice(0, insertIndex + 1),
                         ...newEntries,
-                        ...selectedInstructions.slice(insertIndex),
+                        ...selectedInstructions.slice(insertIndex + 1),
                       ];
                     } else {
                       newInstructions = [...selectedInstructions, ...newEntries];
