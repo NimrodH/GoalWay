@@ -67,11 +67,13 @@ function ImageLibraryDialog({
   const [isDeleting, setIsDeleting] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
+  const [imageNameFilter, setImageNameFilter] = useState("");
 
   useEffect(() => {
     if (isOpen) {
       loadImages();
       setSelectedImages(new Set());
+      setImageNameFilter("");
       // If preSelectImageUrl is provided, open it in preview mode
       if (preSelectImageUrl) {
         const imageName = preSelectImageUrl.split("/").pop() || "Preview";
@@ -334,13 +336,40 @@ function ImageLibraryDialog({
           <>
             <div
               style={{
-                padding: "var(--space-4)",
+                padding: "var(--space-3) var(--space-4)",
                 borderBottom: "1px solid var(--color-neutral-6)",
                 display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
+                flexDirection: "column",
+                gap: "var(--space-3)",
               }}
             >
+              <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={imageNameFilter}
+                  onChange={(e) => setImageNameFilter(e.target.value)}
+                  placeholder="Filter by image name..."
+                  style={{ flex: 1, fontSize: "0.875rem" }}
+                />
+                {imageNameFilter && (
+                  <button
+                    type="button"
+                    onClick={() => setImageNameFilter("")}
+                    className={styles.addButton}
+                    style={{ minWidth: "60px", fontSize: "0.875rem" }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
               <div style={{ fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
                 {selectedImages.size > 0 ? `${selectedImages.size} image(s) selected` : "Select images to delete"}
               </div>
@@ -386,9 +415,15 @@ function ImageLibraryDialog({
                   {isDeleting ? "Deleting..." : "Delete Selected"}
                 </button>
               </div>
+              </div>
             </div>
             <div className={styles.imageGrid}>
-              {images.map((image) => {
+              {images
+                .filter((image) => {
+                  if (!imageNameFilter.trim()) return true;
+                  return image.name.toLowerCase().includes(imageNameFilter.toLowerCase().trim());
+                })
+                .map((image) => {
                 const isUsed = isImageUsed(image.url);
                 const isSelected = selectedImages.has(image.path);
                 return (
