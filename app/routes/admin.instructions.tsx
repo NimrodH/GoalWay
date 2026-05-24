@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useActionData, useLoaderData, useSearchParams, useFetcher } from "react-router";
 import classNames from "classnames";
 import { AdminLayout } from "~/components/admin-layout/admin-layout";
 import { useAuth } from "~/hooks/use-auth";
 import { uploadImage, listAllImages } from "~/lib/image-upload";
+import { fetchImageKeywords, saveImageKeywords, fetchKeywordsForPaths } from "~/lib/image-keywords";
 import type { Instruction, InstructionContent, Annotation } from "~/services/instructions.server";
 import type { Mission } from "~/services/missions.server";
 import { ImageAnnotationEditor } from "~/components/image-annotation-editor/image-annotation-editor";
@@ -61,6 +62,7 @@ function ImageLibraryDialog({
   preSelectImageUrl?: string;
 }) {
   const [images, setImages] = useState<Array<{ name: string; url: string; path: string }>>([]);
+  const [imageKeywordsMap, setImageKeywordsMap] = useState<Record<string, string[]>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
@@ -74,7 +76,6 @@ function ImageLibraryDialog({
       loadImages();
       setSelectedImages(new Set());
       setImageNameFilter("");
-      // If preSelectImageUrl is provided, open it in preview mode
       if (preSelectImageUrl) {
         const imageName = preSelectImageUrl.split("/").pop() || "Preview";
         setPreviewImage({ url: preSelectImageUrl, name: imageName });
@@ -94,36 +95,25 @@ function ImageLibraryDialog({
       setError(result.error);
     } else {
       setImages(result.images);
+      const paths = result.images.map((img) => img.path);
+      const kwMap = await fetchKeywordsForPaths(paths);
+      setImageKeywordsMap(kwMap);
     }
   };
 
-  // Check if an image URL is used in any instruction (check both languages)
   const isImageUsed = (imageUrl: string) => {
     const allInstructions = [...instructionsEn, ...instructionsHe];
     const found = allInstructions.some((instruction) => {
-      // Skip if instruction has no explanation or it's not an array
-      if (!instruction.explanation || !Array.isArray(instruction.explanation)) {
-        return false;
-      }
+      if (!instruction.explanation || !Array.isArray(instruction.explanation)) return false;
       return instruction.explanation.some((item) => item.type === "image" && item.content === imageUrl);
     });
-    // Console log for debugging (will show in browser console)
     if (!found) {
       console.log("Image not found in any instruction:", imageUrl);
       console.log("Total instructions checked:", allInstructions.length);
-      const instructionsWithExplanation = allInstructions.filter(
-        (i) => i.explanation && Array.isArray(i.explanation) && i.explanation.length > 0,
-      );
-      console.log("Instructions with explanations:", instructionsWithExplanation.length);
-      const allImageUrls = instructionsWithExplanation.flatMap((i) =>
-        i.explanation!.filter((e) => e.type === "image").map((e) => e.content),
-      );
-      console.log("All image URLs in instructions:", allImageUrls);
     }
     return found;
   };
 
-  // Toggle image selection
   const toggleImageSelection = (imagePath: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedImages((prev) => {
@@ -137,20 +127,15 @@ function ImageLibraryDialog({
     });
   };
 
-  // Delete selected images
   const handleDeleteSelected = async () => {
     if (selectedImages.size === 0) {
       alert("Please select at least one image to delete");
       return;
     }
-
     const confirmDelete = window.confirm(
       `Are you sure you want to delete ${selectedImages.size} image(s)?\n\nThis action cannot be undone.`,
     );
-
-    if (!confirmDelete) {
-      return;
-    }
+    if (!confirmDelete) return;
 
     setIsDeleting(true);
     const { deleteImage } = await import("~/lib/image-upload");
@@ -177,14 +162,12 @@ function ImageLibraryDialog({
       alert(`Successfully deleted ${successCount} image(s)!`);
     }
 
-    // Reload images and clear selection
     setSelectedImages(new Set());
     await loadImages();
   };
 
   if (!isOpen) return null;
 
-  // If preview mode is active, show the large preview
   if (previewImage) {
     const handlePrevImage = () => {
       if (currentImageIndex > 0) {
@@ -252,51 +235,29 @@ function ImageLibraryDialog({
             >
               {currentImageIndex + 1} / {images.length}
             </div>
-            {/* Previous arrow button */}
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePrevImage();
-              }}
+              onClick={(e) => { e.stopPropagation(); handlePrevImage(); }}
               disabled={currentImageIndex === 0}
               className={styles.imageNavButton}
-              style={{
-                position: "absolute",
-                left: "var(--space-4)",
-                top: "50%",
-                transform: "translateY(-50%)",
-              }}
+              style={{ position: "absolute", left: "var(--space-4)", top: "50%", transform: "translateY(-50%)" }}
               title="Previous image"
             >
               ←
             </button>
-
             <img
               src={previewImage.url}
               alt={previewImage.name}
               style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: "var(--radius-2)" }}
             />
-
-            {/* Next arrow button */}
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleNextImage();
-              }}
+              onClick={(e) => { e.stopPropagation(); handleNextImage(); }}
               disabled={currentImageIndex === images.length - 1}
               className={styles.imageNavButton}
-              style={{
-                position: "absolute",
-                right: "var(--space-4)",
-                top: "50%",
-                transform: "translateY(-50%)",
-              }}
+              style={{ position: "absolute", right: "var(--space-4)", top: "50%", transform: "translateY(-50%)" }}
               title="Next image"
             >
               →
             </button>
-
-            {/* Image counter and Select button */}
             <div
               style={{
                 position: "absolute",
@@ -307,7 +268,7 @@ function ImageLibraryDialog({
                 gap: "var(--space-3)",
                 alignItems: "center",
               }}
-            ></div>
+            />
           </div>
         </div>
       </div>
@@ -325,9 +286,7 @@ function ImageLibraryDialog({
         </div>
 
         {isLoading && <div className={styles.dialogLoading}>Loading images...</div>}
-
         {error && <div className={styles.errorMessage}>{error}</div>}
-
         {!isLoading && !error && images.length === 0 && (
           <div className={styles.dialogEmpty}>No images found in storage</div>
         )}
@@ -349,7 +308,7 @@ function ImageLibraryDialog({
                   className={styles.input}
                   value={imageNameFilter}
                   onChange={(e) => setImageNameFilter(e.target.value)}
-                  placeholder="Filter by image name..."
+                  placeholder="Filter by name or keyword..."
                   style={{ flex: 1, fontSize: "0.875rem" }}
                 />
                 {imageNameFilter && (
@@ -363,123 +322,139 @@ function ImageLibraryDialog({
                   </button>
                 )}
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-              <div style={{ fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
-                {selectedImages.size > 0 ? `${selectedImages.size} image(s) selected` : "Select images to delete"}
-              </div>
-              <div style={{ display: "flex", gap: "var(--space-2)" }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const selectedImagePath = Array.from(selectedImages)[0];
-                    const selectedImage = images.find((img) => img.path === selectedImagePath);
-                    if (selectedImage) {
-                      onSelectImage(selectedImage.url);
-                      onClose();
-                    }
-                  }}
-                  className={styles.submitButton}
-                  disabled={selectedImages.size !== 1}
-                  style={{ minWidth: "100px" }}
-                >
-                  ✓ Select
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const selectedImagePath = Array.from(selectedImages)[0];
-                    const selectedImage = images.find((img) => img.path === selectedImagePath);
-                    if (selectedImage) {
-                      window.location.href = `/instructions-with-images?imageUrl=${encodeURIComponent(selectedImage.url)}`;
-                    }
-                  }}
-                  className={styles.addButton}
-                  disabled={selectedImages.size !== 1}
-                  style={{ minWidth: "180px" }}
-                >
-                  🔍 View Instructions with Image
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDeleteSelected}
-                  className={styles.removeButton}
-                  disabled={selectedImages.size === 0 || isDeleting}
-                  style={{ minWidth: "100px" }}
-                >
-                  {isDeleting ? "Deleting..." : "Delete Selected"}
-                </button>
-              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
+                  {selectedImages.size > 0 ? `${selectedImages.size} image(s) selected` : "Select images to delete"}
+                </div>
+                <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const selectedImagePath = Array.from(selectedImages)[0];
+                      const selectedImage = images.find((img) => img.path === selectedImagePath);
+                      if (selectedImage) { onSelectImage(selectedImage.url); onClose(); }
+                    }}
+                    className={styles.submitButton}
+                    disabled={selectedImages.size !== 1}
+                    style={{ minWidth: "100px" }}
+                  >
+                    ✓ Select
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const selectedImagePath = Array.from(selectedImages)[0];
+                      const selectedImage = images.find((img) => img.path === selectedImagePath);
+                      if (selectedImage) {
+                        window.location.href = `/instructions-with-images?imageUrl=${encodeURIComponent(selectedImage.url)}`;
+                      }
+                    }}
+                    className={styles.addButton}
+                    disabled={selectedImages.size !== 1}
+                    style={{ minWidth: "180px" }}
+                  >
+                    🔍 View Instructions with Image
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteSelected}
+                    className={styles.removeButton}
+                    disabled={selectedImages.size === 0 || isDeleting}
+                    style={{ minWidth: "100px" }}
+                  >
+                    {isDeleting ? "Deleting..." : "Delete Selected"}
+                  </button>
+                </div>
               </div>
             </div>
+
             <div className={styles.imageGrid}>
               {images
                 .filter((image) => {
                   if (!imageNameFilter.trim()) return true;
-                  return image.name.toLowerCase().includes(imageNameFilter.toLowerCase().trim());
+                  const term = imageNameFilter.toLowerCase().trim();
+                  if (image.name.toLowerCase().includes(term)) return true;
+                  const kws = imageKeywordsMap[image.path] ?? [];
+                  return kws.some((kw) => kw.toLowerCase().includes(term));
                 })
                 .map((image) => {
-                const isUsed = isImageUsed(image.url);
-                const isSelected = selectedImages.has(image.path);
-                return (
-                  <div
-                    key={image.path}
-                    className={styles.imageGridItem}
-                    onClick={() => {
-                      setCurrentImageIndex(images.indexOf(image));
-                      setPreviewImage({ url: image.url, name: image.name });
-                    }}
-                    style={{
-                      position: "relative",
-                      border: isSelected ? "3px solid var(--color-accent-9)" : undefined,
-                      opacity: isUsed ? 1 : 0.6,
-                    }}
-                  >
+                  const isUsed = isImageUsed(image.url);
+                  const isSelected = selectedImages.has(image.path);
+                  return (
                     <div
-                      style={{
-                        position: "absolute",
-                        top: "var(--space-2)",
-                        left: "var(--space-2)",
-                        zIndex: 10,
+                      key={image.path}
+                      className={styles.imageGridItem}
+                      onClick={() => {
+                        setCurrentImageIndex(images.indexOf(image));
+                        setPreviewImage({ url: image.url, name: image.name });
                       }}
-                      onClick={(e) => toggleImageSelection(image.path, e)}
+                      style={{
+                        position: "relative",
+                        border: isSelected ? "3px solid var(--color-accent-9)" : undefined,
+                        opacity: isUsed ? 1 : 0.6,
+                      }}
                     >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => {}}
-                        style={{ cursor: "pointer", width: "18px", height: "18px" }}
-                      />
-                    </div>
-                    {!isUsed && (
                       <div
-                        style={{
-                          position: "absolute",
-                          top: "var(--space-2)",
-                          right: "var(--space-2)",
-                          background: "var(--color-error-9)",
-                          color: "white",
-                          padding: "var(--space-1) var(--space-2)",
-                          borderRadius: "var(--radius-2)",
-                          fontSize: "0.75rem",
-                          fontWeight: 600,
-                          zIndex: 5,
-                          pointerEvents: "none",
-                        }}
+                        style={{ position: "absolute", top: "var(--space-2)", left: "var(--space-2)", zIndex: 10 }}
+                        onClick={(e) => toggleImageSelection(image.path, e)}
                       >
-                        Not Used
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {}}
+                          style={{ cursor: "pointer", width: "18px", height: "18px" }}
+                        />
                       </div>
-                    )}
-                    <img src={image.url} alt={image.name} className={styles.imageGridThumb} />
-                    <div className={styles.imageGridName}>{image.name}</div>
-                  </div>
-                );
-              })}
+                      {!isUsed && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "var(--space-2)",
+                            right: "var(--space-2)",
+                            background: "var(--color-error-9)",
+                            color: "white",
+                            padding: "var(--space-1) var(--space-2)",
+                            borderRadius: "var(--radius-2)",
+                            fontSize: "0.75rem",
+                            fontWeight: 600,
+                            zIndex: 5,
+                            pointerEvents: "none",
+                          }}
+                        >
+                          Not Used
+                        </div>
+                      )}
+                      <img src={image.url} alt={image.name} className={styles.imageGridThumb} />
+                      <div className={styles.imageGridName}>{image.name}</div>
+                      {(imageKeywordsMap[image.path] ?? []).length > 0 && (
+                        <div
+                          style={{
+                            padding: "var(--space-1) var(--space-2)",
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: "var(--space-1)",
+                          }}
+                        >
+                          {(imageKeywordsMap[image.path] ?? []).map((kw) => (
+                            <span
+                              key={kw}
+                              style={{
+                                background: "var(--color-accent-3)",
+                                color: "var(--color-accent-11)",
+                                borderRadius: "var(--radius-round)",
+                                padding: "1px 6px",
+                                fontSize: "0.7rem",
+                                fontWeight: 600,
+                              }}
+                            >
+                              {kw}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           </>
         )}
@@ -530,15 +505,67 @@ function ExplanationContentItem({
   const [isUploading, setIsUploading] = useState(false);
   const [showImageLibrary, setShowImageLibrary] = useState(false);
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
-  const [imageName, setImageName] = useState("");
+  // Keywords state (replaces plain image name)
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [keywordInput, setKeywordInput] = useState("");
+  const [isSavingKeywords, setIsSavingKeywords] = useState(false);
+  const keywordInputRef = useRef<HTMLInputElement>(null);
+
+  // Derive the image name / upload filename from first keyword
+  const imageName = keywords[0]?.trim() ?? "";
+
+  // When the item already has an uploaded image, load its existing keywords
+  useEffect(() => {
+    if (item.type === "image" && item.content && item.content.startsWith("http")) {
+      // Derive the storage path from the URL — path is everything after "/object/public/mission-images/"
+      const marker = "/object/public/mission-images/";
+      const markerIdx = item.content.indexOf(marker);
+      if (markerIdx !== -1) {
+        const storagePath = decodeURIComponent(item.content.slice(markerIdx + marker.length).split("?")[0]);
+        fetchImageKeywords(storagePath).then((kws) => {
+          if (kws.length > 0) setKeywords(kws);
+        });
+      }
+    }
+  }, [item.content]);
+
+  const addKeyword = () => {
+    const trimmed = keywordInput.trim();
+    if (!trimmed || keywords.includes(trimmed)) {
+      setKeywordInput("");
+      return;
+    }
+    setKeywords((prev) => [...prev, trimmed]);
+    setKeywordInput("");
+    keywordInputRef.current?.focus();
+  };
+
+  const removeKeyword = (kw: string) => {
+    setKeywords((prev) => prev.filter((k) => k !== kw));
+  };
+
+  /** Save keywords to Supabase for an already-uploaded image */
+  const handleSaveKeywords = async () => {
+    if (!item.content || !item.content.startsWith("http")) return;
+    const marker = "/object/public/mission-images/";
+    const markerIdx = item.content.indexOf(marker);
+    if (markerIdx === -1) return;
+    const storagePath = decodeURIComponent(item.content.slice(markerIdx + marker.length).split("?")[0]);
+    setIsSavingKeywords(true);
+    const result = await saveImageKeywords(storagePath, keywords);
+    setIsSavingKeywords(false);
+    if (!result.success) {
+      alert(`Failed to save keywords: ${result.error}`);
+    }
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Pre-fill the name field from the original file name (without extension)
-      if (!imageName) {
+      // Pre-fill the first keyword from filename if keywords is empty
+      if (keywords.length === 0) {
         const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
-        setImageName(nameWithoutExt);
+        setKeywords([nameWithoutExt]);
       }
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -552,43 +579,22 @@ function ExplanationContentItem({
 
   const handlePasteFromClipboard = async () => {
     try {
-      // Method 1: Try Clipboard API first (modern browsers)
       if (navigator.clipboard && navigator.clipboard.read) {
         try {
-          // Check if permission API is available
           if (navigator.permissions) {
             const permissionStatus = await navigator.permissions.query({ name: "clipboard-read" as PermissionName });
-            console.log("Clipboard permission:", permissionStatus.state);
-
-            // If explicitly denied, inform user immediately
             if (permissionStatus.state === "denied") {
-              throw new Error(
-                "Clipboard access denied. Please enable it in your browser settings or use the manual paste method.",
-              );
+              throw new Error("Clipboard access denied.");
             }
           }
-
-          // Try to read from clipboard
           const clipboardItems = await navigator.clipboard.read();
-          console.log("Clipboard items count:", clipboardItems.length);
-
-          for (const item of clipboardItems) {
-            console.log("Available clipboard types:", item.types);
-
-            // Look for image types
-            const imageType = item.types.find((type) => type.startsWith("image/"));
-
+          for (const clipItem of clipboardItems) {
+            const imageType = clipItem.types.find((type) => type.startsWith("image/"));
             if (imageType) {
-              console.log("Found image type:", imageType);
-              const blob = await item.getType(imageType);
-              console.log("Blob size:", blob.size, "bytes");
-
-              // Convert blob to File object
+              const blob = await clipItem.getType(imageType);
               const timestamp = Date.now();
               const extension = imageType.split("/")[1] || "png";
               const file = new File([blob], `pasted-image-${timestamp}.${extension}`, { type: blob.type });
-
-              // Create preview
               const reader = new FileReader();
               reader.onloadend = () => {
                 const preview = reader.result as string;
@@ -596,30 +602,20 @@ function ExplanationContentItem({
                 onImageFileChange(index, file, preview);
               };
               reader.readAsDataURL(blob);
-
               alert(`Image pasted successfully! (${Math.round(blob.size / 1024)}KB)`);
-              return; // Exit after finding first image
+              return;
             }
           }
-
-          // No image found in clipboard
-          const allTypes = clipboardItems.flatMap((item) => item.types).join(", ");
-          alert(
-            `No image found in clipboard.\n\nAvailable formats: ${allTypes || "none"}\n\nTip: Right-click on an image and select "Copy Image", or use a screenshot tool.`,
-          );
+          const allTypes = clipboardItems.flatMap((ci) => ci.types).join(", ");
+          alert(`No image found in clipboard.\n\nAvailable formats: ${allTypes || "none"}`);
           return;
         } catch (clipboardError) {
-          // Log error but don't throw - we'll try the fallback method
           console.warn("Clipboard API failed, trying fallback:", clipboardError);
         }
       }
-
-      // Method 2: Fallback - instruct user to use manual paste event
       alert(
         'Clipboard API not available or access denied.\n\nTry this instead:\n1. Click in the "Paste Zone" box below\n2. Press Ctrl+V (or Cmd+V on Mac)\n\nOR\n\nUse the file upload button to select an image manually.',
       );
-
-      // Create a paste zone element if it doesn't exist
       const existingPasteZone = document.getElementById("manual-paste-zone");
       if (!existingPasteZone) {
         const pasteZone = document.createElement("div");
@@ -640,23 +636,18 @@ function ExplanationContentItem({
           justify-content: center;
         `;
         pasteZone.textContent = "📋 Click here and press Ctrl+V (or Cmd+V) to paste an image";
-
-        // Handle paste event on this element
         pasteZone.addEventListener("paste", async (e: ClipboardEvent) => {
           e.preventDefault();
           const items = e.clipboardData?.items;
           if (!items) return;
-
           for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            if (item.type.startsWith("image/")) {
-              const blob = item.getAsFile();
+            const pastedItem = items[i];
+            if (pastedItem.type.startsWith("image/")) {
+              const blob = pastedItem.getAsFile();
               if (blob) {
                 const timestamp = Date.now();
                 const extension = blob.type.split("/")[1] || "png";
                 const file = new File([blob], `pasted-image-${timestamp}.${extension}`, { type: blob.type });
-
-                // Create preview
                 const reader = new FileReader();
                 reader.onloadend = () => {
                   const preview = reader.result as string;
@@ -664,19 +655,14 @@ function ExplanationContentItem({
                   onImageFileChange(index, file, preview);
                 };
                 reader.readAsDataURL(blob);
-
-                // Remove paste zone after success
                 pasteZone.remove();
                 alert(`Image pasted successfully! (${Math.round(blob.size / 1024)}KB)`);
                 return;
               }
             }
           }
-
-          alert("No image found in the pasted content. Please copy an image and try again.");
+          alert("No image found in the pasted content.");
         });
-
-        // Insert the paste zone after the button
         const pasteButton = document.querySelector("[data-paste-button]");
         if (pasteButton && pasteButton.parentElement) {
           pasteButton.parentElement.insertBefore(pasteZone, pasteButton.nextSibling);
@@ -688,17 +674,14 @@ function ExplanationContentItem({
     } catch (error) {
       console.error("Paste operation error:", error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-
-      alert(
-        `Paste failed: ${errorMessage}\n\nAlternative:\nUse the file upload button below to select an image from your computer.`,
-      );
+      alert(`Paste failed: ${errorMessage}\n\nAlternative: Use the file upload button.`);
     }
   };
 
   const handleImageUpload = async () => {
     if (!imageFile) return;
-
     setIsUploading(true);
+    // Use the first keyword as the filename
     const result = await uploadImage(imageFile, "instructions", imageName || undefined);
     setIsUploading(false);
 
@@ -708,7 +691,10 @@ function ExplanationContentItem({
       setImagePreview(result.url);
       onUpdate(index, result.url);
       onImageFileChange(index, null, result.url);
-      setImageName("");
+      // Save keywords to Supabase after successful upload
+      if (keywords.length > 0) {
+        await saveImageKeywords(result.path, keywords);
+      }
     }
   };
 
@@ -777,6 +763,110 @@ function ExplanationContentItem({
               placeholder="Enter image URL or upload below..."
             />
           </div>
+
+          {/* ── Keywords / Tags UI ─────────────────────────────────── */}
+          <div
+            className={styles.formGroup}
+            style={{
+              marginTop: "var(--space-3)",
+              padding: "var(--space-3)",
+              background: "var(--color-neutral-2)",
+              border: "1px solid var(--color-neutral-6)",
+              borderRadius: "var(--radius-2)",
+            }}
+          >
+            <label className={styles.label} style={{ marginBottom: "var(--space-2)", display: "block" }}>
+              🏷️ Keywords
+              <span
+                style={{ fontWeight: 400, fontSize: "0.8125rem", color: "var(--color-neutral-10)", marginLeft: "var(--space-2)" }}
+              >
+                First keyword = filename when saving
+              </span>
+            </label>
+
+            {/* Tag chips */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", marginBottom: keywords.length > 0 ? "var(--space-2)" : 0 }}>
+              {keywords.map((kw, i) => (
+                <span
+                  key={kw}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "var(--space-1)",
+                    background: i === 0 ? "var(--color-accent-4)" : "var(--color-neutral-4)",
+                    color: i === 0 ? "var(--color-accent-12)" : "var(--color-neutral-12)",
+                    border: `1px solid ${i === 0 ? "var(--color-accent-7)" : "var(--color-neutral-7)"}`,
+                    borderRadius: "var(--radius-round)",
+                    padding: "2px 10px 2px 10px",
+                    fontSize: "0.8125rem",
+                    fontWeight: i === 0 ? 700 : 500,
+                  }}
+                >
+                  {i === 0 && <span style={{ fontSize: "0.75rem", opacity: 0.7 }}>name·</span>}
+                  {kw}
+                  <button
+                    type="button"
+                    onClick={() => removeKeyword(kw)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "0 0 0 2px",
+                      lineHeight: 1,
+                      color: "inherit",
+                      opacity: 0.7,
+                      fontSize: "0.875rem",
+                    }}
+                    title={`Remove keyword "${kw}"`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+
+            {/* Add keyword input */}
+            <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+              <input
+                ref={keywordInputRef}
+                type="text"
+                className={styles.input}
+                value={keywordInput}
+                onChange={(e) => setKeywordInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); addKeyword(); }
+                }}
+                placeholder={keywords.length === 0 ? "First keyword = filename (e.g. login-screen-step-1)" : "Add another keyword..."}
+                style={{ flex: 1, fontSize: "0.875rem" }}
+              />
+              <button
+                type="button"
+                onClick={addKeyword}
+                className={styles.addButton}
+                disabled={!keywordInput.trim()}
+                style={{ fontSize: "0.875rem" }}
+              >
+                + Add
+              </button>
+            </div>
+
+            {/* Save keywords button (shown when image is already uploaded) */}
+            {item.content && item.content.startsWith("http") && (
+              <div style={{ marginTop: "var(--space-2)", display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={handleSaveKeywords}
+                  className={styles.addButton}
+                  disabled={isSavingKeywords}
+                  style={{ fontSize: "0.8125rem" }}
+                >
+                  {isSavingKeywords ? "Saving..." : "💾 Save Keywords"}
+                </button>
+              </div>
+            )}
+          </div>
+          {/* ── End Keywords UI ─────────────────────────────────────── */}
+
           <div className={styles.formGroup} style={{ marginTop: "var(--space-3)" }}>
             <label className={styles.label}>Upload New Image or Select from Library</label>
             <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
@@ -790,7 +880,6 @@ function ExplanationContentItem({
             <input type="file" accept="image/*" onChange={handleImageChange} className={styles.input} />
             {imagePreview && (
               <div style={{ marginTop: "var(--space-2)", maxWidth: "400px" }}>
-                {/* Show stored filename if already uploaded to Supabase */}
                 {item.content && !imageFile && (() => {
                   const storedName = item.content.split("/").pop()?.split("?")[0] ?? "";
                   return (
@@ -816,18 +905,11 @@ function ExplanationContentItem({
             )}
             {imageFile && !isUploading && (
               <div style={{ marginTop: "var(--space-2)" }}>
-                <label className={styles.label} style={{ fontSize: "0.8125rem", marginBottom: "var(--space-1)", display: "block" }}>
-                  Image name (saved to Supabase as this filename)
-                </label>
                 <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
-                  <input
-                    type="text"
-                    className={styles.input}
-                    value={imageName}
-                    onChange={(e) => setImageName(e.target.value)}
-                    placeholder="e.g. login-screen-step-1"
-                    style={{ flex: 1 }}
-                  />
+                  <div style={{ flex: 1, fontSize: "0.8125rem", color: "var(--color-neutral-11)" }}>
+                    Will upload as: <strong style={{ fontFamily: "var(--font-code)" }}>{imageName || "(auto-generated name)"}</strong>
+                    {!imageName && " — add a keyword above to set a custom filename"}
+                  </div>
                   <button
                     type="button"
                     onClick={handleImageUpload}
@@ -941,7 +1023,6 @@ function EditInstructionForm({
   const [status, setStatus] = useState<"only title" | "partial explanation" | "full explanation">("only title");
   const [missionId, setMissionId] = useState("");
   const [explanation, setExplanation] = useState<InstructionContentWithKey[]>([]);
-  // Parallel array tracking pending image files for each explanation item (index-aligned)
   const [explanationFiles, setExplanationFiles] = useState<(File | null)[]>([]);
   const [isSavingWithUploads, setIsSavingWithUploads] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
@@ -955,7 +1036,6 @@ function EditInstructionForm({
   const [instructionFilterEdit, setInstructionFilterEdit] = useState("");
   const [showReplaceDialog, setShowReplaceDialog] = useState(false);
   const [replacementInstructionId, setReplacementInstructionId] = useState("");
-  // Admin notes state
   const [adminNotes, setAdminNotes] = useState<string[]>([]);
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [newNoteText, setNewNoteText] = useState("");
@@ -963,7 +1043,6 @@ function EditInstructionForm({
   const [editingNoteText, setEditingNoteText] = useState("");
   const adminNotesFetcher = useFetcher<typeof action>();
 
-  // Track changes
   useEffect(() => {
     if (selectedInstructionId) {
       const currentCode = generateCode();
@@ -975,7 +1054,6 @@ function EditInstructionForm({
     }
   }, [id, title, description, type, status, missionId, explanation, selectedInstructionId]);
 
-  // Reset on save or instruction change
   useEffect(() => {
     if (actionData?.success || selectedInstructionId) {
       setOriginalCode(generateCode());
@@ -983,7 +1061,6 @@ function EditInstructionForm({
     }
   }, [actionData, selectedInstructionId]);
 
-  // Auto-reload after successful save to refresh instruction list with updated data
   useEffect(() => {
     if (actionData?.success && actionData.message && id) {
       const timer = setTimeout(() => {
@@ -993,7 +1070,6 @@ function EditInstructionForm({
     }
   }, [actionData, id, language]);
 
-  // Watch saveFetcher (used for save-with-uploads flow)
   useEffect(() => {
     if (saveFetcher.data && saveFetcher.state === "idle") {
       if (saveFetcher.data.success) {
@@ -1008,7 +1084,6 @@ function EditInstructionForm({
     }
   }, [saveFetcher.data, saveFetcher.state, id, language]);
 
-  // Handle URL parameter for instruction selection
   useEffect(() => {
     const instructionIdFromUrl = searchParams.get("instructionId");
     if (
@@ -1020,11 +1095,9 @@ function EditInstructionForm({
     }
   }, [searchParams, allInstructionIds, selectedInstructionId]);
 
-  // Watch for fetcher completion
   useEffect(() => {
     if (fetcher.data && fetcher.state === "idle") {
       if (fetcher.data.success && fetcher.data.newInstructionId) {
-        // Reload the page to refresh with the new instruction selected
         window.location.href = `/admin/instructions?lang=${language}&instructionId=${fetcher.data.newInstructionId}`;
       } else if (fetcher.data.error) {
         alert(`Failed to create instruction: ${fetcher.data.error}`);
@@ -1032,12 +1105,10 @@ function EditInstructionForm({
     }
   }, [fetcher.data, fetcher.state, language]);
 
-  // Watch for delete instruction fetcher completion
   useEffect(() => {
     if (deleteInstructionFetcher.data && deleteInstructionFetcher.state === "idle") {
       if (deleteInstructionFetcher.data.success) {
         alert(deleteInstructionFetcher.data.message || "Instruction deleted successfully!");
-        // Clear the selected instruction and reload the page
         window.location.href = `/admin/instructions?lang=${language}`;
       } else if (deleteInstructionFetcher.data.error) {
         alert(`Failed to delete instruction: ${deleteInstructionFetcher.data.error}`);
@@ -1045,15 +1116,12 @@ function EditInstructionForm({
     }
   }, [deleteInstructionFetcher.data, deleteInstructionFetcher.state, language]);
 
-  // Watch for replace instruction fetcher completion
   useEffect(() => {
     if (replaceInstructionFetcher.data && replaceInstructionFetcher.state === "idle") {
       if (replaceInstructionFetcher.data.success) {
         alert(replaceInstructionFetcher.data.message || "Instruction replaced successfully!");
-        // Close the dialog
         setShowReplaceDialog(false);
         setReplacementInstructionId("");
-        // Reload the page to refresh the mission list
         window.location.href = `/admin/instructions?lang=${language}&instructionId=${selectedInstructionId}`;
       } else if (replaceInstructionFetcher.data.error) {
         alert(`Failed to replace instruction: ${replaceInstructionFetcher.data.error}`);
@@ -1063,77 +1131,47 @@ function EditInstructionForm({
 
   const handleAddNewInstruction = () => {
     onNavigationRequest(() => {
-      // Find the highest ID from existing instructions
       const numericIds = allInstructionIds.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
       const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
       const newId = String(maxId + 1);
-
-      // Create the new instruction via fetcher
       const formData = new FormData();
       formData.append("actionType", "createInstruction");
       formData.append("newId", newId);
       formData.append("language", language);
       formData.append("accessToken", session?.access_token || "");
-
       fetcher.submit(formData, { method: "post" });
     });
   };
 
   const handleDeleteInstruction = () => {
-    if (!selectedInstructionId) {
-      alert("Please select an instruction first");
-      return;
-    }
-
+    if (!selectedInstructionId) { alert("Please select an instruction first"); return; }
     const instruction = instructions.find((i) => i.id === selectedInstructionId);
     const instructionTitle = instruction ? instruction.title : "(No title)";
-
     const confirmDelete = window.confirm(
       `Are you sure you want to delete instruction "${selectedInstructionId} - ${instructionTitle}"?\n\nThis action cannot be undone and will remove the instruction from the database.`,
     );
-
-    if (!confirmDelete) {
-      return;
-    }
-
-    // Create the delete request
+    if (!confirmDelete) return;
     const formData = new FormData();
     formData.append("actionType", "deleteInstruction");
     formData.append("instructionId", selectedInstructionId);
     formData.append("accessToken", session?.access_token || "");
-
     deleteInstructionFetcher.submit(formData, { method: "post" });
   };
 
   const handleReplaceInstruction = () => {
-    if (!selectedInstructionId) {
-      alert("Please select an instruction first");
-      return;
-    }
-
-    if (!replacementInstructionId.trim()) {
-      alert("Please enter a replacement instruction ID");
-      return;
-    }
-
+    if (!selectedInstructionId) { alert("Please select an instruction first"); return; }
+    if (!replacementInstructionId.trim()) { alert("Please enter a replacement instruction ID"); return; }
     const instruction = instructions.find((i) => i.id === selectedInstructionId);
     const instructionTitle = instruction ? instruction.title : "(No title)";
-
     const confirmReplace = window.confirm(
       `Are you sure you want to replace instruction "${selectedInstructionId} - ${instructionTitle}" with instruction "${replacementInstructionId}" in all missions?\n\nThis action will update all missions that use this instruction.`,
     );
-
-    if (!confirmReplace) {
-      return;
-    }
-
-    // Create the replace request
+    if (!confirmReplace) return;
     const formData = new FormData();
     formData.append("actionType", "replaceInstruction");
     formData.append("oldInstructionId", selectedInstructionId);
     formData.append("newInstructionId", replacementInstructionId.trim());
     formData.append("accessToken", session?.access_token || "");
-
     replaceInstructionFetcher.submit(formData, { method: "post" });
   };
 
@@ -1147,7 +1185,6 @@ function EditInstructionForm({
       setType(instruction.type || "default");
       setStatus(instruction.status || "only title");
       setMissionId(instruction.missionId || "");
-      // Add unique keys to explanation items if they don't have them
       const explanationWithKeys: InstructionContentWithKey[] = (instruction.explanation || []).map((item, idx) => ({
         ...item,
         _key: `content-${Date.now()}-${idx}-${Math.random()}`,
@@ -1155,7 +1192,6 @@ function EditInstructionForm({
       setExplanation(explanationWithKeys);
       setExplanationFiles(new Array(explanationWithKeys.length).fill(null));
     } else {
-      // No data for this language, start with empty fields
       setId(instructionId);
       setTitle("");
       setDescription("");
@@ -1165,7 +1201,6 @@ function EditInstructionForm({
       setExplanation([]);
       setExplanationFiles([]);
     }
-    // Load admin notes for this instruction
     setAdminNotes(adminNotesMap[instructionId] || []);
     setShowNoteInput(false);
     setNewNoteText("");
@@ -1241,7 +1276,6 @@ function EditInstructionForm({
 
   const handleImageFileChange = (index: number, file: File | null, _preview: string) => {
     const updated = [...explanationFiles];
-    // Grow array if needed
     while (updated.length <= index) updated.push(null);
     updated[index] = file;
     setExplanationFiles(updated);
@@ -1287,13 +1321,10 @@ function EditInstructionForm({
     else if (selectedContentIndex === idx + 1) setSelectedContentIndex(idx);
   };
 
-  /** Auto-upload pending images then submit via fetcher */
   const handleSaveWithUploads = async () => {
     if (!session) return;
     setIsSavingWithUploads(true);
-
     try {
-      // Find image items with empty URL but a pending file
       const pendingItems = explanation
         .map((item, idx) => ({ item, idx, file: explanationFiles[idx] ?? null }))
         .filter(({ item, file }) => item.type === "image" && !item.content && file !== null);
@@ -1301,7 +1332,6 @@ function EditInstructionForm({
       if (pendingItems.length > 0) {
         const updatedExplanation = [...explanation];
         const updatedFiles = [...explanationFiles];
-
         for (const { idx, file } of pendingItems) {
           const result = await uploadImage(file!, "instructions");
           if ("error" in result) {
@@ -1312,11 +1342,8 @@ function EditInstructionForm({
           updatedExplanation[idx] = { ...updatedExplanation[idx], content: result.url };
           updatedFiles[idx] = null;
         }
-
         setExplanation(updatedExplanation);
         setExplanationFiles(updatedFiles);
-
-        // Generate code from the updated explanation; preserve annotations
         const cleanExplanation: InstructionContent[] = updatedExplanation.map(({ _key, ...item }) => item);
         const instructionData: Instruction = {
           id,
@@ -1327,7 +1354,6 @@ function EditInstructionForm({
           ...(type === "link" && { type, missionId }),
         };
         const data = JSON.stringify(instructionData, null, 2);
-
         const formData = new FormData();
         formData.append("actionType", "saveInstruction");
         formData.append("id", id);
@@ -1336,7 +1362,6 @@ function EditInstructionForm({
         formData.append("accessToken", session.access_token || "");
         saveFetcher.submit(formData, { method: "post" });
       } else {
-        // No pending uploads — submit normally
         const formData = new FormData();
         formData.append("actionType", "saveInstruction");
         formData.append("id", id);
@@ -1353,9 +1378,7 @@ function EditInstructionForm({
   };
 
   const generateCode = () => {
-    // Remove internal _key property before generating code; preserve annotations
     const cleanExplanation: InstructionContent[] = explanation.map(({ _key, ...item }) => item);
-
     const instruction: Instruction = {
       id,
       title,
@@ -1364,66 +1387,43 @@ function EditInstructionForm({
       explanation: cleanExplanation,
       ...(type === "link" && { type, missionId }),
     };
-
     return JSON.stringify(instruction, null, 2);
   };
 
   const handleTranslateAndSwitch = async () => {
-    if (!title) {
-      alert("Please fill in at least the title before translating");
-      return;
-    }
-
+    if (!title) { alert("Please fill in at least the title before translating"); return; }
     setIsTranslating(true);
-
     try {
       const sourceLang = language === "en" ? "en" : "he";
       const targetLang = language === "en" ? "he" : "en";
-
       const textsToTranslate = [
         title,
         description || "",
         ...explanation.filter((e) => e.type === "text").map((e) => e.content),
       ].filter(Boolean);
-
       const translationPromises = textsToTranslate.map(async (text) => {
         const formData = new FormData();
         formData.append("actionType", "translate");
         formData.append("text", text);
         formData.append("sourceLang", sourceLang);
         formData.append("targetLang", targetLang);
-
-        const response = await fetch("/admin", {
-          method: "POST",
-          body: formData,
-        });
-
+        const response = await fetch("/admin", { method: "POST", body: formData });
         const result = await response.json();
-        if (!result.success) {
-          throw new Error(result.error || "Translation failed");
-        }
+        if (!result.success) throw new Error(result.error || "Translation failed");
         return result.translatedText;
       });
-
       const translations = await Promise.all(translationPromises);
-
       let index = 0;
       const translatedTitle = translations[index++];
       const translatedDescription = description ? translations[index++] : "";
-
       const translatedExplanation = explanation.map((item) => {
-        if (item.type === "text" && item.content) {
-          return { ...item, content: translations[index++] };
-        }
+        if (item.type === "text" && item.content) return { ...item, content: translations[index++] };
         return item;
       });
-
       setTitle(translatedTitle);
       setDescription(translatedDescription);
       setExplanation(translatedExplanation);
-
       alert(`Translation successful! Fields updated to ${targetLang === "he" ? "Hebrew" : "English"}`);
-
       window.location.href = `/admin/instructions?lang=${targetLang}`;
     } catch (error) {
       console.error("Translation error:", error);
@@ -1433,10 +1433,8 @@ function EditInstructionForm({
     }
   };
 
-  // Track if there are unsaved changes
   const hasUnsavedChanges = selectedInstructionId && originalCode !== "" && generateCode() !== originalCode;
 
-  // Get missions that include the selected instruction
   const getMissionsForInstruction = (instructionId: string) => {
     return missions.filter((mission) => mission.instructions?.some(([id]) => id === instructionId));
   };
@@ -1445,20 +1443,16 @@ function EditInstructionForm({
 
   return (
     <div>
-      {/* Replace Instruction Dialog */}
       {showReplaceDialog && (
         <div className={styles.dialogOverlay} onClick={() => setShowReplaceDialog(false)}>
           <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.dialogHeader}>
               <h2 className={styles.dialogTitle}>Replace Instruction</h2>
-              <button className={styles.dialogClose} onClick={() => setShowReplaceDialog(false)}>
-                ✕
-              </button>
+              <button className={styles.dialogClose} onClick={() => setShowReplaceDialog(false)}>✕</button>
             </div>
             <div style={{ padding: "var(--space-4)" }}>
               <p style={{ marginBottom: "var(--space-3)", color: "var(--color-neutral-11)" }}>
-                Replace instruction <strong>{selectedInstructionId}</strong> with another instruction in all missions
-                that use it.
+                Replace instruction <strong>{selectedInstructionId}</strong> with another instruction in all missions that use it.
               </p>
               <div className={styles.formGroup}>
                 <label className={styles.label}>New Instruction ID</label>
@@ -1478,40 +1472,21 @@ function EditInstructionForm({
                   </p>
                   <div
                     style={{
-                      maxHeight: "150px",
-                      overflowY: "auto",
-                      padding: "var(--space-2)",
-                      background: "var(--color-neutral-3)",
-                      borderRadius: "var(--radius-2)",
+                      maxHeight: "150px", overflowY: "auto", padding: "var(--space-2)",
+                      background: "var(--color-neutral-3)", borderRadius: "var(--radius-2)",
                       border: "1px solid var(--color-neutral-6)",
                     }}
                   >
                     {selectedInstructionMissions.map((mission) => (
-                      <div
-                        key={mission.id}
-                        style={{
-                          fontSize: "0.75rem",
-                          padding: "var(--space-1)",
-                          borderBottom: "1px solid var(--color-neutral-4)",
-                        }}
-                      >
+                      <div key={mission.id} style={{ fontSize: "0.75rem", padding: "var(--space-1)", borderBottom: "1px solid var(--color-neutral-4)" }}>
                         {mission.id} - {mission.title}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-              <div
-                style={{
-                  display: "flex",
-                  gap: "var(--space-2)",
-                  marginTop: "var(--space-4)",
-                  justifyContent: "flex-end",
-                }}
-              >
-                <button type="button" onClick={() => setShowReplaceDialog(false)} className={styles.addButton}>
-                  Cancel
-                </button>
+              <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)", justifyContent: "flex-end" }}>
+                <button type="button" onClick={() => setShowReplaceDialog(false)} className={styles.addButton}>Cancel</button>
                 <button
                   type="button"
                   onClick={handleReplaceInstruction}
@@ -1527,14 +1502,7 @@ function EditInstructionForm({
       )}
 
       <div className={styles.formSection}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "var(--space-3)",
-          }}
-        >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
           <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
             Select Instruction to Edit
           </h2>
@@ -1565,7 +1533,6 @@ function EditInstructionForm({
             </button>
           </div>
         </div>
-        {/* Filter controls */}
         <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
           <input
             type="text"
@@ -1586,7 +1553,6 @@ function EditInstructionForm({
           </button>
         </div>
         <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-start" }}>
-          {/* Left list - Instructions */}
           <div style={{ flex: 1, maxWidth: "400px" }}>
             <div className={styles.instructionCheckboxList}>
               {allInstructionIds
@@ -1631,7 +1597,6 @@ function EditInstructionForm({
             </div>
           </div>
 
-          {/* Right panel - Missions using this instruction */}
           <div style={{ flex: 1 }}>
             <h3 style={{ fontSize: "0.875rem", fontWeight: 600, marginBottom: "var(--space-2)" }}>
               {selectedInstructionId ? "Missions using this instruction" : "Select an instruction to see missions"}
@@ -1659,16 +1624,9 @@ function EditInstructionForm({
                     return (
                       <div
                         key={mission.id}
-                        style={{
-                          padding: "var(--space-2)",
-                          borderBottom: "1px solid var(--color-neutral-4)",
-                          cursor: "pointer",
-                        }}
+                        style={{ padding: "var(--space-2)", borderBottom: "1px solid var(--color-neutral-4)", cursor: "pointer" }}
                         onClick={() => {
-                          // Store the current instruction selection before navigating
-                          if (selectedInstructionId) {
-                            localStorage.setItem("lastSelectedInstructionId", selectedInstructionId);
-                          }
+                          if (selectedInstructionId) localStorage.setItem("lastSelectedInstructionId", selectedInstructionId);
                           onNavigationRequest(() => {
                             window.location.href = `/admin/missions?lang=${language}&missionId=${mission.id}`;
                           });
@@ -1678,13 +1636,7 @@ function EditInstructionForm({
                           {mission.id} - {mission.title}
                         </div>
                         {hasCustomTitle && (
-                          <div
-                            style={{
-                              fontSize: "0.75rem",
-                              color: "var(--color-accent-11)",
-                              marginTop: "var(--space-1)",
-                            }}
-                          >
+                          <div style={{ fontSize: "0.75rem", color: "var(--color-accent-11)", marginTop: "var(--space-1)" }}>
                             Custom title: "{instructionData[1]}"
                           </div>
                         )}
@@ -1702,13 +1654,9 @@ function EditInstructionForm({
         <>
           {type === "default" && (
             <div className={styles.formSection}>
-              <h2
-                className={styles.sectionTitle}
-                style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}
-              >
+              <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
                 Explanation Content
               </h2>
-
               {explanation.map((item, index) => (
                 <ExplanationContentItem
                   key={item._key || `fallback-${index}`}
@@ -1731,26 +1679,16 @@ function EditInstructionForm({
                   onUpdateAnnotations={handleUpdateAnnotations}
                 />
               ))}
-
               <div className={styles.addContentButtons}>
-                <button className={styles.addButton} onClick={() => addContent("text")}>
-                  + Add Text
-                </button>
-                <button className={styles.addButton} onClick={() => addContent("image")}>
-                  + Add Image
-                </button>
-                <button className={styles.addButton} onClick={() => addContent("video")}>
-                  + Add Video
-                </button>
+                <button className={styles.addButton} onClick={() => addContent("text")}>+ Add Text</button>
+                <button className={styles.addButton} onClick={() => addContent("image")}>+ Add Image</button>
+                <button className={styles.addButton} onClick={() => addContent("video")}>+ Add Video</button>
               </div>
             </div>
           )}
 
           <div className={styles.formSection}>
-            <h2
-              className={styles.sectionTitle}
-              style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}
-            >
+            <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
               Instruction Details
             </h2>
             <div className={styles.formGrid}>
@@ -1769,7 +1707,6 @@ function EditInstructionForm({
                   />
                 </div>
               </div>
-
               <div className={styles.formGroup}>
                 <label className={styles.label}>
                   Description (to be shown to the end user under the renamed title before he click the instruction)
@@ -1782,7 +1719,6 @@ function EditInstructionForm({
                   placeholder="e.g., Brief description of the instruction"
                 />
               </div>
-
               <div className={styles.div5}>
                 <div>
                   <div className={classNames(styles.formGroup, styles.div9)}>
@@ -1801,9 +1737,7 @@ function EditInstructionForm({
                   <select
                     className={styles.input}
                     value={status}
-                    onChange={(e) =>
-                      setStatus(e.target.value as "only title" | "partial explanation" | "full explanation")
-                    }
+                    onChange={(e) => setStatus(e.target.value as "only title" | "partial explanation" | "full explanation")}
                   >
                     <option value="only title">Only Title</option>
                     <option value="partial explanation">Partial Explanation</option>
@@ -1822,15 +1756,11 @@ function EditInstructionForm({
                   </select>
                 </div>
               </div>
-
               {type === "link" && (
                 <div className={styles.formGroup}>
                   <div className={styles.div6}>
                     <label className={styles.label}>Target Mission</label>
-                    <small
-                      style={{ color: "var(--color-neutral-11)", fontSize: "0.875rem", marginTop: "var(--space-1)" }}
-                      className={styles.small1}
-                    >
+                    <small style={{ color: "var(--color-neutral-11)", fontSize: "0.875rem", marginTop: "var(--space-1)" }} className={styles.small1}>
                       The mission to navigate to when this instruction is clicked
                     </small>
                   </div>
@@ -1840,8 +1770,7 @@ function EditInstructionForm({
                       const missionData = missions.find((m) => m.id === id);
                       return (
                         <option key={id} value={id}>
-                          {id}
-                          {missionData ? ` - ${missionData.title}` : ""}
+                          {id}{missionData ? ` - ${missionData.title}` : ""}
                         </option>
                       );
                     })}
@@ -1850,6 +1779,7 @@ function EditInstructionForm({
               )}
             </div>
           </div>
+
           <div className={styles.previewSection}>
             <div
               className={styles.formSection}
@@ -1864,13 +1794,7 @@ function EditInstructionForm({
                 }}
               >
                 <h3
-                  style={{
-                    fontFamily: "var(--font-subheading)",
-                    fontSize: "1rem",
-                    fontWeight: 600,
-                    color: "var(--color-neutral-11)",
-                    margin: 0,
-                  }}
+                  style={{ fontFamily: "var(--font-subheading)", fontSize: "1rem", fontWeight: 600, color: "var(--color-neutral-11)", margin: 0 }}
                 >
                   🔒 Admin Notes {adminNotes.length > 0 && `(${adminNotes.length})`}
                 </h3>
@@ -1884,7 +1808,6 @@ function EditInstructionForm({
                   {showNoteInput ? "Cancel" : "+ Admin Note"}
                 </button>
               </div>
-
               {showNoteInput && (
                 <div style={{ marginBottom: "var(--space-3)" }}>
                   <textarea
@@ -1895,19 +1818,13 @@ function EditInstructionForm({
                     style={{ minHeight: "72px", marginBottom: "var(--space-2)" }}
                     autoFocus
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                        e.preventDefault();
-                        handleAddNote();
-                      }
+                      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); handleAddNote(); }
                     }}
                   />
                   <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end" }}>
                     <button
                       type="button"
-                      onClick={() => {
-                        setShowNoteInput(false);
-                        setNewNoteText("");
-                      }}
+                      onClick={() => { setShowNoteInput(false); setNewNoteText(""); }}
                       className={styles.addButton}
                       style={{ fontSize: "0.8125rem" }}
                     >
@@ -1925,18 +1842,8 @@ function EditInstructionForm({
                   </div>
                 </div>
               )}
-
               {adminNotes.length > 0 && (
-                <ul
-                  style={{
-                    listStyle: "none",
-                    padding: 0,
-                    margin: 0,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "var(--space-2)",
-                  }}
-                >
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
                   {adminNotes.map((note, idx) => (
                     <li
                       key={idx}
@@ -1950,16 +1857,7 @@ function EditInstructionForm({
                         borderRadius: "var(--radius-2)",
                       }}
                     >
-                      <span
-                        style={{
-                          marginTop: "2px",
-                          fontSize: "0.875rem",
-                          color: "var(--color-neutral-10)",
-                          flexShrink: 0,
-                        }}
-                      >
-                        ☐
-                      </span>
+                      <span style={{ marginTop: "2px", fontSize: "0.875rem", color: "var(--color-neutral-10)", flexShrink: 0 }}>☐</span>
                       {editingNoteIndex === idx ? (
                         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
                           <textarea
@@ -1969,93 +1867,38 @@ function EditInstructionForm({
                             style={{ minHeight: "60px", fontSize: "0.875rem", marginBottom: 0 }}
                             autoFocus
                             onKeyDown={(e) => {
-                              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                                e.preventDefault();
-                                handleSaveEditedNote();
-                              } else if (e.key === "Escape") {
-                                handleCancelEditNote();
-                              }
+                              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); handleSaveEditedNote(); }
+                              else if (e.key === "Escape") { handleCancelEditNote(); }
                             }}
                           />
                           <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end" }}>
-                            <button
-                              type="button"
-                              onClick={handleCancelEditNote}
-                              className={styles.addButton}
-                              style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleSaveEditedNote}
-                              className={styles.submitButton}
-                              disabled={!editingNoteText.trim()}
-                              style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                            >
-                              Save
-                            </button>
+                            <button type="button" onClick={handleCancelEditNote} className={styles.addButton} style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}>Cancel</button>
+                            <button type="button" onClick={handleSaveEditedNote} className={styles.submitButton} disabled={!editingNoteText.trim()} style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}>Save</button>
                           </div>
                         </div>
                       ) : (
-                        <span
-                          style={{
-                            flex: 1,
-                            fontFamily: "var(--font-body)",
-                            fontSize: "0.875rem",
-                            color: "var(--color-neutral-12)",
-                            wordBreak: "break-word",
-                          }}
-                        >
+                        <span style={{ flex: 1, fontFamily: "var(--font-body)", fontSize: "0.875rem", color: "var(--color-neutral-12)", wordBreak: "break-word" }}>
                           {note}
                         </span>
                       )}
                       {editingNoteIndex !== idx && (
                         <>
-                          <button
-                            type="button"
-                            onClick={() => handleStartEditNote(idx)}
-                            className={styles.addButton}
-                            style={{
-                              flexShrink: 0,
-                              fontSize: "0.75rem",
-                              padding: "var(--space-1) var(--space-2)",
-                            }}
-                            title="Edit note"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveNote(idx)}
-                            className={styles.removeButton}
-                            style={{
-                              marginRight: 0,
-                              flexShrink: 0,
-                              fontSize: "0.75rem",
-                              padding: "var(--space-1) var(--space-2)",
-                            }}
-                            title="Remove note"
-                          >
-                            ✕
-                          </button>
+                          <button type="button" onClick={() => handleStartEditNote(idx)} className={styles.addButton} style={{ flexShrink: 0, fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }} title="Edit note">Edit</button>
+                          <button type="button" onClick={() => handleRemoveNote(idx)} className={styles.removeButton} style={{ marginRight: 0, flexShrink: 0, fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }} title="Remove note">✕</button>
                         </>
                       )}
                     </li>
                   ))}
                 </ul>
               )}
-
               {adminNotes.length === 0 && !showNoteInput && (
                 <p style={{ fontSize: "0.8125rem", color: "var(--color-neutral-9)", margin: 0, fontStyle: "italic" }}>
                   No admin notes yet. Click &quot;+ Admin Note&quot; to add one.
                 </p>
               )}
             </div>
-            <h2
-              className={styles.previewTitle}
-              style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}
-            >
+
+            <h2 className={styles.previewTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
               Updated Code
             </h2>
             <textarea
@@ -2064,14 +1907,12 @@ function EditInstructionForm({
               onChange={(e) => {
                 try {
                   const parsed = JSON.parse(e.target.value);
-                  // Update form fields from the edited JSON
                   setId(parsed.id || "");
                   setTitle(parsed.title || "");
                   setDescription(parsed.description || "");
                   setType(parsed.type || "default");
                   setStatus(parsed.status || "only title");
                   setMissionId(parsed.missionId || "");
-                  // Handle explanation with unique keys
                   const explanationWithKeys: InstructionContentWithKey[] = (parsed.explanation || []).map(
                     (item: InstructionContent, idx: number) => ({
                       ...item,
@@ -2080,7 +1921,7 @@ function EditInstructionForm({
                   );
                   setExplanation(explanationWithKeys);
                 } catch (err) {
-                  // Invalid JSON - don't update
+                  // Invalid JSON — skip
                 }
               }}
               spellCheck={false}
@@ -2110,7 +1951,6 @@ function EditInstructionForm({
               </button>
             </div>
 
-            {/* Custom save button that auto-uploads pending images first */}
             <div style={{ marginTop: "var(--space-4)" }}>
               <button
                 type="button"
@@ -2124,7 +1964,6 @@ function EditInstructionForm({
                   : `Save to Database (${language === "he" ? "Hebrew" : "English"})`}
               </button>
             </div>
-            {/* Note: replaced by handleSaveWithUploads button above */}
 
             {((actionData?.success && actionData.message) || (saveFetcher.data?.success && saveFetcher.data.message)) && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
