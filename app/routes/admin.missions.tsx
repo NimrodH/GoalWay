@@ -1440,7 +1440,9 @@ function EditMissionForm({
                               🔁 END-IF{customTitle && customTitle !== "END-IF" ? `: ${customTitle}` : ""}
                             </span>
                           ) : isElse ? (
-                            <span style={{ color: "var(--color-accent-11)", fontWeight: 700 }}>↔️ ELSE</span>
+                            <span style={{ color: "var(--color-accent-11)", fontWeight: 700 }}>
+                              ↔️ ELSE{customTitle ? `: ${customTitle}` : ""}
+                            </span>
                           ) : isTemp ? (
                             <span
                               style={{ color: "var(--color-accent-10)", fontWeight: 600 }}
