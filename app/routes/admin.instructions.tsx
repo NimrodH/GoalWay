@@ -932,20 +932,10 @@ function ExplanationContentItem({
             </>
           )}
 
-          {(showUploadSource || showAdvanced) && (
-          <div className={styles.formGroup} style={{ marginTop: "var(--space-3)" }}>
-            <label className={styles.label}>Upload New Image or Select from Library</label>
-            <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-              <button type="button" onClick={() => setShowImageLibrary(true)} className={styles.addButton}>
-                📚 Select from Library
-              </button>
-              <button type="button" onClick={handlePasteFromClipboard} className={styles.addButton} data-paste-button>
-                📋 Paste from Clipboard
-              </button>
-              <input type="file" accept="image/*" onChange={handleImageChange} className={styles.input} />
-            </div>
-            {imagePreview && (
-              <div style={{ marginTop: "var(--space-2)", maxWidth: "400px" }}>
+          {/* ── Image preview — always visible ─────────────────────── */}
+          {imagePreview && (
+            <div className={styles.formGroup} style={{ marginTop: "var(--space-3)" }}>
+              <div style={{ maxWidth: "400px" }}>
                 {item.content &&
                   !imageFile &&
                   (() => {
@@ -966,23 +956,38 @@ function ExplanationContentItem({
                   })()}
                 <ImageAnnotationView src={imagePreview} alt="Preview" annotations={item.annotations ?? []} />
               </div>
-            )}
-            {imageFile && !isUploading && (
-              <div style={{ marginTop: "var(--space-2)" }}>
-                <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
-                  <div style={{ flex: 1, fontSize: "0.8125rem", color: "var(--color-neutral-11)" }}>
-                    Image ready to upload
-                  </div>
-                  <button type="button" onClick={handleImageUpload} className={styles.addButton}>
-                    Upload to Supabase
-                  </button>
-                </div>
+            </div>
+          )}
+
+          {/* ── Upload source buttons — hidden after selection ──────── */}
+          {(showUploadSource || showAdvanced) && (
+            <div className={styles.formGroup} style={{ marginTop: "var(--space-3)" }}>
+              <label className={styles.label}>Upload New Image or Select from Library</label>
+              <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+                <button type="button" onClick={() => setShowImageLibrary(true)} className={styles.addButton}>
+                  📚 Select from Library
+                </button>
+                <button type="button" onClick={handlePasteFromClipboard} className={styles.addButton} data-paste-button>
+                  📋 Paste from Clipboard
+                </button>
+                <input type="file" accept="image/*" onChange={handleImageChange} className={styles.input} />
               </div>
-            )}
-            {isUploading && (
-              <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>Uploading...</p>
-            )}
-          </div>
+              {imageFile && !isUploading && (
+                <div style={{ marginTop: "var(--space-2)" }}>
+                  <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+                    <div style={{ flex: 1, fontSize: "0.8125rem", color: "var(--color-neutral-11)" }}>
+                      Image ready to upload
+                    </div>
+                    <button type="button" onClick={handleImageUpload} className={styles.addButton}>
+                      Upload to Supabase
+                    </button>
+                  </div>
+                </div>
+              )}
+              {isUploading && (
+                <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>Uploading...</p>
+              )}
+            </div>
           )}
           {item.content && (
             <div style={{ marginTop: "var(--space-3)", display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
