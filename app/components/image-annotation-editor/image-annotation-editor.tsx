@@ -208,6 +208,20 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
     if (selectedId === id) setSelectedId(null);
   };
 
+  /** Move a regular (non-redaction) annotation up or down in the list and renumber. */
+  const moveAnnotation = (id: string, direction: "up" | "down") => {
+    const idx = annotations.findIndex((a) => a.id === id);
+    if (idx === -1) return;
+    const newIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (newIdx < 0 || newIdx >= annotations.length) return;
+    const updated = [...annotations];
+    [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
+    // Renumber only regular annotations
+    let labelCounter = 1;
+    const renumbered = updated.map((a) => (a.isRedaction ? a : { ...a, label: labelCounter++ }));
+    onChange(renumbered);
+  };
+
   const updateAnnotationColor = (id: string, color: string) => {
     onChange(annotations.map((a) => (a.id === id ? { ...a, color } : a)));
   };
@@ -351,13 +365,16 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
               }
 
               // ── Regular annotation row ───────────────────────────────────
+              const annIdx = annotations.indexOf(ann);
+              const canMoveUp = annIdx > 0;
+              const canMoveDown = annIdx < annotations.length - 1;
               return (
                 <div
                   key={ann.id}
                   className={`${styles.annotationRow} ${isSelected ? styles.annotationRowSelected : ""}`}
                   onClick={() => setSelectedId(isSelected ? null : ann.id)}
                 >
-                  {/* Top row: badge + coords + delete */}
+                  {/* Top row: badge + coords + move + delete */}
                   <div className={styles.annTopRow}>
                     <div
                       className={styles.annBadge}
@@ -369,6 +386,22 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
                       x:{ann.x.toFixed(1)}% y:{ann.y.toFixed(1)}%
                       &nbsp;{ann.width.toFixed(1)}×{ann.height.toFixed(1)}%
                     </div>
+                    <button
+                      className={styles.moveBtn}
+                      onClick={(e) => { e.stopPropagation(); moveAnnotation(ann.id, "up"); }}
+                      disabled={!canMoveUp}
+                      title="Move annotation up"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      className={styles.moveBtn}
+                      onClick={(e) => { e.stopPropagation(); moveAnnotation(ann.id, "down"); }}
+                      disabled={!canMoveDown}
+                      title="Move annotation down"
+                    >
+                      ↓
+                    </button>
                     <button
                       className={styles.deleteBtn}
                       onClick={(e) => { e.stopPropagation(); deleteAnnotation(ann.id); }}
