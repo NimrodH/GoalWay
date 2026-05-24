@@ -236,7 +236,10 @@ function ImageLibraryDialog({
               {currentImageIndex + 1} / {images.length}
             </div>
             <button
-              onClick={(e) => { e.stopPropagation(); handlePrevImage(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrevImage();
+              }}
               disabled={currentImageIndex === 0}
               className={styles.imageNavButton}
               style={{ position: "absolute", left: "var(--space-4)", top: "50%", transform: "translateY(-50%)" }}
@@ -250,7 +253,10 @@ function ImageLibraryDialog({
               style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: "var(--radius-2)" }}
             />
             <button
-              onClick={(e) => { e.stopPropagation(); handleNextImage(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNextImage();
+              }}
               disabled={currentImageIndex === images.length - 1}
               className={styles.imageNavButton}
               style={{ position: "absolute", right: "var(--space-4)", top: "50%", transform: "translateY(-50%)" }}
@@ -332,7 +338,10 @@ function ImageLibraryDialog({
                     onClick={() => {
                       const selectedImagePath = Array.from(selectedImages)[0];
                       const selectedImage = images.find((img) => img.path === selectedImagePath);
-                      if (selectedImage) { onSelectImage(selectedImage.url); onClose(); }
+                      if (selectedImage) {
+                        onSelectImage(selectedImage.url);
+                        onClose();
+                      }
                     }}
                     className={styles.submitButton}
                     disabled={selectedImages.size !== 1}
@@ -778,14 +787,26 @@ function ExplanationContentItem({
             <label className={styles.label} style={{ marginBottom: "var(--space-2)", display: "block" }}>
               🏷️ Keywords
               <span
-                style={{ fontWeight: 400, fontSize: "0.8125rem", color: "var(--color-neutral-10)", marginLeft: "var(--space-2)" }}
+                style={{
+                  fontWeight: 400,
+                  fontSize: "0.8125rem",
+                  color: "var(--color-neutral-10)",
+                  marginLeft: "var(--space-2)",
+                }}
               >
                 First keyword = filename when saving
               </span>
             </label>
 
             {/* Tag chips */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", marginBottom: keywords.length > 0 ? "var(--space-2)" : 0 }}>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "var(--space-2)",
+                marginBottom: keywords.length > 0 ? "var(--space-2)" : 0,
+              }}
+            >
               {keywords.map((kw, i) => (
                 <span
                   key={kw}
@@ -834,9 +855,16 @@ function ExplanationContentItem({
                 value={keywordInput}
                 onChange={(e) => setKeywordInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") { e.preventDefault(); addKeyword(); }
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addKeyword();
+                  }
                 }}
-                placeholder={keywords.length === 0 ? "First keyword = filename (e.g. login-screen-step-1)" : "Add another keyword..."}
+                placeholder={
+                  keywords.length === 0
+                    ? "First keyword = filename (e.g. login-screen-step-1)"
+                    : "Add another keyword..."
+                }
                 style={{ flex: 1, fontSize: "0.875rem" }}
               />
               <button
@@ -876,45 +904,40 @@ function ExplanationContentItem({
               <button type="button" onClick={handlePasteFromClipboard} className={styles.addButton} data-paste-button>
                 📋 Paste from Clipboard
               </button>
+              <input type="file" accept="image/*" onChange={handleImageChange} className={styles.input} />
             </div>
-            <input type="file" accept="image/*" onChange={handleImageChange} className={styles.input} />
             {imagePreview && (
               <div style={{ marginTop: "var(--space-2)", maxWidth: "400px" }}>
-                {item.content && !imageFile && (() => {
-                  const storedName = item.content.split("/").pop()?.split("?")[0] ?? "";
-                  return (
-                    <div
-                      style={{
-                        marginBottom: "var(--space-2)",
-                        fontSize: "0.8125rem",
-                        color: "var(--color-neutral-11)",
-                        fontFamily: "var(--font-code)",
-                        wordBreak: "break-all",
-                      }}
-                    >
-                      📁 <strong>Stored as:</strong> {storedName}
-                    </div>
-                  );
-                })()}
-                <ImageAnnotationView
-                  src={imagePreview}
-                  alt="Preview"
-                  annotations={item.annotations ?? []}
-                />
+                {item.content &&
+                  !imageFile &&
+                  (() => {
+                    const storedName = item.content.split("/").pop()?.split("?")[0] ?? "";
+                    return (
+                      <div
+                        style={{
+                          marginBottom: "var(--space-2)",
+                          fontSize: "0.8125rem",
+                          color: "var(--color-neutral-11)",
+                          fontFamily: "var(--font-code)",
+                          wordBreak: "break-all",
+                        }}
+                      >
+                        📁 <strong>Stored as:</strong> {storedName}
+                      </div>
+                    );
+                  })()}
+                <ImageAnnotationView src={imagePreview} alt="Preview" annotations={item.annotations ?? []} />
               </div>
             )}
             {imageFile && !isUploading && (
               <div style={{ marginTop: "var(--space-2)" }}>
                 <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
                   <div style={{ flex: 1, fontSize: "0.8125rem", color: "var(--color-neutral-11)" }}>
-                    Will upload as: <strong style={{ fontFamily: "var(--font-code)" }}>{imageName || "(auto-generated name)"}</strong>
+                    Will upload as:{" "}
+                    <strong style={{ fontFamily: "var(--font-code)" }}>{imageName || "(auto-generated name)"}</strong>
                     {!imageName && " — add a keyword above to set a custom filename"}
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleImageUpload}
-                    className={styles.addButton}
-                  >
+                  <button type="button" onClick={handleImageUpload} className={styles.addButton}>
                     Upload to Supabase
                   </button>
                 </div>
@@ -1144,7 +1167,10 @@ function EditInstructionForm({
   };
 
   const handleDeleteInstruction = () => {
-    if (!selectedInstructionId) { alert("Please select an instruction first"); return; }
+    if (!selectedInstructionId) {
+      alert("Please select an instruction first");
+      return;
+    }
     const instruction = instructions.find((i) => i.id === selectedInstructionId);
     const instructionTitle = instruction ? instruction.title : "(No title)";
     const confirmDelete = window.confirm(
@@ -1159,8 +1185,14 @@ function EditInstructionForm({
   };
 
   const handleReplaceInstruction = () => {
-    if (!selectedInstructionId) { alert("Please select an instruction first"); return; }
-    if (!replacementInstructionId.trim()) { alert("Please enter a replacement instruction ID"); return; }
+    if (!selectedInstructionId) {
+      alert("Please select an instruction first");
+      return;
+    }
+    if (!replacementInstructionId.trim()) {
+      alert("Please enter a replacement instruction ID");
+      return;
+    }
     const instruction = instructions.find((i) => i.id === selectedInstructionId);
     const instructionTitle = instruction ? instruction.title : "(No title)";
     const confirmReplace = window.confirm(
@@ -1391,7 +1423,10 @@ function EditInstructionForm({
   };
 
   const handleTranslateAndSwitch = async () => {
-    if (!title) { alert("Please fill in at least the title before translating"); return; }
+    if (!title) {
+      alert("Please fill in at least the title before translating");
+      return;
+    }
     setIsTranslating(true);
     try {
       const sourceLang = language === "en" ? "en" : "he";
@@ -1448,11 +1483,14 @@ function EditInstructionForm({
           <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.dialogHeader}>
               <h2 className={styles.dialogTitle}>Replace Instruction</h2>
-              <button className={styles.dialogClose} onClick={() => setShowReplaceDialog(false)}>✕</button>
+              <button className={styles.dialogClose} onClick={() => setShowReplaceDialog(false)}>
+                ✕
+              </button>
             </div>
             <div style={{ padding: "var(--space-4)" }}>
               <p style={{ marginBottom: "var(--space-3)", color: "var(--color-neutral-11)" }}>
-                Replace instruction <strong>{selectedInstructionId}</strong> with another instruction in all missions that use it.
+                Replace instruction <strong>{selectedInstructionId}</strong> with another instruction in all missions
+                that use it.
               </p>
               <div className={styles.formGroup}>
                 <label className={styles.label}>New Instruction ID</label>
@@ -1472,21 +1510,40 @@ function EditInstructionForm({
                   </p>
                   <div
                     style={{
-                      maxHeight: "150px", overflowY: "auto", padding: "var(--space-2)",
-                      background: "var(--color-neutral-3)", borderRadius: "var(--radius-2)",
+                      maxHeight: "150px",
+                      overflowY: "auto",
+                      padding: "var(--space-2)",
+                      background: "var(--color-neutral-3)",
+                      borderRadius: "var(--radius-2)",
                       border: "1px solid var(--color-neutral-6)",
                     }}
                   >
                     {selectedInstructionMissions.map((mission) => (
-                      <div key={mission.id} style={{ fontSize: "0.75rem", padding: "var(--space-1)", borderBottom: "1px solid var(--color-neutral-4)" }}>
+                      <div
+                        key={mission.id}
+                        style={{
+                          fontSize: "0.75rem",
+                          padding: "var(--space-1)",
+                          borderBottom: "1px solid var(--color-neutral-4)",
+                        }}
+                      >
                         {mission.id} - {mission.title}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-              <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)", justifyContent: "flex-end" }}>
-                <button type="button" onClick={() => setShowReplaceDialog(false)} className={styles.addButton}>Cancel</button>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "var(--space-2)",
+                  marginTop: "var(--space-4)",
+                  justifyContent: "flex-end",
+                }}
+              >
+                <button type="button" onClick={() => setShowReplaceDialog(false)} className={styles.addButton}>
+                  Cancel
+                </button>
                 <button
                   type="button"
                   onClick={handleReplaceInstruction}
@@ -1502,7 +1559,14 @@ function EditInstructionForm({
       )}
 
       <div className={styles.formSection}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "var(--space-3)",
+          }}
+        >
           <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
             Select Instruction to Edit
           </h2>
@@ -1624,9 +1688,14 @@ function EditInstructionForm({
                     return (
                       <div
                         key={mission.id}
-                        style={{ padding: "var(--space-2)", borderBottom: "1px solid var(--color-neutral-4)", cursor: "pointer" }}
+                        style={{
+                          padding: "var(--space-2)",
+                          borderBottom: "1px solid var(--color-neutral-4)",
+                          cursor: "pointer",
+                        }}
                         onClick={() => {
-                          if (selectedInstructionId) localStorage.setItem("lastSelectedInstructionId", selectedInstructionId);
+                          if (selectedInstructionId)
+                            localStorage.setItem("lastSelectedInstructionId", selectedInstructionId);
                           onNavigationRequest(() => {
                             window.location.href = `/admin/missions?lang=${language}&missionId=${mission.id}`;
                           });
@@ -1636,7 +1705,13 @@ function EditInstructionForm({
                           {mission.id} - {mission.title}
                         </div>
                         {hasCustomTitle && (
-                          <div style={{ fontSize: "0.75rem", color: "var(--color-accent-11)", marginTop: "var(--space-1)" }}>
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "var(--color-accent-11)",
+                              marginTop: "var(--space-1)",
+                            }}
+                          >
                             Custom title: "{instructionData[1]}"
                           </div>
                         )}
@@ -1654,7 +1729,10 @@ function EditInstructionForm({
         <>
           {type === "default" && (
             <div className={styles.formSection}>
-              <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
+              <h2
+                className={styles.sectionTitle}
+                style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}
+              >
                 Explanation Content
               </h2>
               {explanation.map((item, index) => (
@@ -1680,15 +1758,24 @@ function EditInstructionForm({
                 />
               ))}
               <div className={styles.addContentButtons}>
-                <button className={styles.addButton} onClick={() => addContent("text")}>+ Add Text</button>
-                <button className={styles.addButton} onClick={() => addContent("image")}>+ Add Image</button>
-                <button className={styles.addButton} onClick={() => addContent("video")}>+ Add Video</button>
+                <button className={styles.addButton} onClick={() => addContent("text")}>
+                  + Add Text
+                </button>
+                <button className={styles.addButton} onClick={() => addContent("image")}>
+                  + Add Image
+                </button>
+                <button className={styles.addButton} onClick={() => addContent("video")}>
+                  + Add Video
+                </button>
               </div>
             </div>
           )}
 
           <div className={styles.formSection}>
-            <h2 className={styles.sectionTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
+            <h2
+              className={styles.sectionTitle}
+              style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}
+            >
               Instruction Details
             </h2>
             <div className={styles.formGrid}>
@@ -1737,7 +1824,9 @@ function EditInstructionForm({
                   <select
                     className={styles.input}
                     value={status}
-                    onChange={(e) => setStatus(e.target.value as "only title" | "partial explanation" | "full explanation")}
+                    onChange={(e) =>
+                      setStatus(e.target.value as "only title" | "partial explanation" | "full explanation")
+                    }
                   >
                     <option value="only title">Only Title</option>
                     <option value="partial explanation">Partial Explanation</option>
@@ -1760,7 +1849,10 @@ function EditInstructionForm({
                 <div className={styles.formGroup}>
                   <div className={styles.div6}>
                     <label className={styles.label}>Target Mission</label>
-                    <small style={{ color: "var(--color-neutral-11)", fontSize: "0.875rem", marginTop: "var(--space-1)" }} className={styles.small1}>
+                    <small
+                      style={{ color: "var(--color-neutral-11)", fontSize: "0.875rem", marginTop: "var(--space-1)" }}
+                      className={styles.small1}
+                    >
                       The mission to navigate to when this instruction is clicked
                     </small>
                   </div>
@@ -1770,7 +1862,8 @@ function EditInstructionForm({
                       const missionData = missions.find((m) => m.id === id);
                       return (
                         <option key={id} value={id}>
-                          {id}{missionData ? ` - ${missionData.title}` : ""}
+                          {id}
+                          {missionData ? ` - ${missionData.title}` : ""}
                         </option>
                       );
                     })}
@@ -1794,7 +1887,13 @@ function EditInstructionForm({
                 }}
               >
                 <h3
-                  style={{ fontFamily: "var(--font-subheading)", fontSize: "1rem", fontWeight: 600, color: "var(--color-neutral-11)", margin: 0 }}
+                  style={{
+                    fontFamily: "var(--font-subheading)",
+                    fontSize: "1rem",
+                    fontWeight: 600,
+                    color: "var(--color-neutral-11)",
+                    margin: 0,
+                  }}
                 >
                   🔒 Admin Notes {adminNotes.length > 0 && `(${adminNotes.length})`}
                 </h3>
@@ -1818,13 +1917,19 @@ function EditInstructionForm({
                     style={{ minHeight: "72px", marginBottom: "var(--space-2)" }}
                     autoFocus
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); handleAddNote(); }
+                      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault();
+                        handleAddNote();
+                      }
                     }}
                   />
                   <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end" }}>
                     <button
                       type="button"
-                      onClick={() => { setShowNoteInput(false); setNewNoteText(""); }}
+                      onClick={() => {
+                        setShowNoteInput(false);
+                        setNewNoteText("");
+                      }}
                       className={styles.addButton}
                       style={{ fontSize: "0.8125rem" }}
                     >
@@ -1843,7 +1948,16 @@ function EditInstructionForm({
                 </div>
               )}
               {adminNotes.length > 0 && (
-                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    margin: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "var(--space-2)",
+                  }}
+                >
                   {adminNotes.map((note, idx) => (
                     <li
                       key={idx}
@@ -1853,11 +1967,23 @@ function EditInstructionForm({
                         gap: "var(--space-2)",
                         padding: "var(--space-2) var(--space-3)",
                         background: editingNoteIndex === idx ? "var(--color-accent-2)" : "var(--color-neutral-2)",
-                        border: editingNoteIndex === idx ? "1px solid var(--color-accent-7)" : "1px solid var(--color-neutral-6)",
+                        border:
+                          editingNoteIndex === idx
+                            ? "1px solid var(--color-accent-7)"
+                            : "1px solid var(--color-neutral-6)",
                         borderRadius: "var(--radius-2)",
                       }}
                     >
-                      <span style={{ marginTop: "2px", fontSize: "0.875rem", color: "var(--color-neutral-10)", flexShrink: 0 }}>☐</span>
+                      <span
+                        style={{
+                          marginTop: "2px",
+                          fontSize: "0.875rem",
+                          color: "var(--color-neutral-10)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        ☐
+                      </span>
                       {editingNoteIndex === idx ? (
                         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
                           <textarea
@@ -1867,24 +1993,72 @@ function EditInstructionForm({
                             style={{ minHeight: "60px", fontSize: "0.875rem", marginBottom: 0 }}
                             autoFocus
                             onKeyDown={(e) => {
-                              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); handleSaveEditedNote(); }
-                              else if (e.key === "Escape") { handleCancelEditNote(); }
+                              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                                e.preventDefault();
+                                handleSaveEditedNote();
+                              } else if (e.key === "Escape") {
+                                handleCancelEditNote();
+                              }
                             }}
                           />
                           <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end" }}>
-                            <button type="button" onClick={handleCancelEditNote} className={styles.addButton} style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}>Cancel</button>
-                            <button type="button" onClick={handleSaveEditedNote} className={styles.submitButton} disabled={!editingNoteText.trim()} style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}>Save</button>
+                            <button
+                              type="button"
+                              onClick={handleCancelEditNote}
+                              className={styles.addButton}
+                              style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSaveEditedNote}
+                              className={styles.submitButton}
+                              disabled={!editingNoteText.trim()}
+                              style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                            >
+                              Save
+                            </button>
                           </div>
                         </div>
                       ) : (
-                        <span style={{ flex: 1, fontFamily: "var(--font-body)", fontSize: "0.875rem", color: "var(--color-neutral-12)", wordBreak: "break-word" }}>
+                        <span
+                          style={{
+                            flex: 1,
+                            fontFamily: "var(--font-body)",
+                            fontSize: "0.875rem",
+                            color: "var(--color-neutral-12)",
+                            wordBreak: "break-word",
+                          }}
+                        >
                           {note}
                         </span>
                       )}
                       {editingNoteIndex !== idx && (
                         <>
-                          <button type="button" onClick={() => handleStartEditNote(idx)} className={styles.addButton} style={{ flexShrink: 0, fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }} title="Edit note">Edit</button>
-                          <button type="button" onClick={() => handleRemoveNote(idx)} className={styles.removeButton} style={{ marginRight: 0, flexShrink: 0, fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }} title="Remove note">✕</button>
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditNote(idx)}
+                            className={styles.addButton}
+                            style={{ flexShrink: 0, fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                            title="Edit note"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveNote(idx)}
+                            className={styles.removeButton}
+                            style={{
+                              marginRight: 0,
+                              flexShrink: 0,
+                              fontSize: "0.75rem",
+                              padding: "var(--space-1) var(--space-2)",
+                            }}
+                            title="Remove note"
+                          >
+                            ✕
+                          </button>
                         </>
                       )}
                     </li>
@@ -1898,7 +2072,10 @@ function EditInstructionForm({
               )}
             </div>
 
-            <h2 className={styles.previewTitle} style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}>
+            <h2
+              className={styles.previewTitle}
+              style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}
+            >
               Updated Code
             </h2>
             <textarea
@@ -1965,7 +2142,8 @@ function EditInstructionForm({
               </button>
             </div>
 
-            {((actionData?.success && actionData.message) || (saveFetcher.data?.success && saveFetcher.data.message)) && (
+            {((actionData?.success && actionData.message) ||
+              (saveFetcher.data?.success && saveFetcher.data.message)) && (
               <div className={styles.successMessage} style={{ marginTop: "var(--space-3)" }}>
                 {saveFetcher.data?.message || actionData?.message}
               </div>
