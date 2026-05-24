@@ -514,7 +514,8 @@ function ExplanationContentItem({
   const [isUploading, setIsUploading] = useState(false);
   const [showImageLibrary, setShowImageLibrary] = useState(false);
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
-  // Keywords state (replaces plain image name)
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  // Keywords state
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
   const [isSavingKeywords, setIsSavingKeywords] = useState(false);
@@ -571,11 +572,6 @@ function ExplanationContentItem({
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Pre-fill the first keyword from filename if keywords is empty
-      if (keywords.length === 0) {
-        const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
-        setKeywords([nameWithoutExt]);
-      }
       const reader = new FileReader();
       reader.onloadend = () => {
         const preview = reader.result as string;
@@ -689,9 +685,23 @@ function ExplanationContentItem({
 
   const handleImageUpload = async () => {
     if (!imageFile) return;
+    // Ask for image name via dialog — this becomes the first keyword
+    const promptedName = window.prompt(
+      "Enter a name for this image (will be used as filename and first keyword):",
+      imageName || "",
+    );
+    if (promptedName === null) return; // user cancelled
+    const trimmedName = promptedName.trim();
+    if (!trimmedName) {
+      alert("Image name cannot be empty.");
+      return;
+    }
+    // Set as first keyword (replace or prepend)
+    const updatedKeywords = [trimmedName, ...keywords.filter((k) => k !== trimmedName).slice(keywords[0] === imageName ? 1 : 0)];
+    setKeywords(updatedKeywords);
+
     setIsUploading(true);
-    // Use the first keyword as the filename
-    const result = await uploadImage(imageFile, "instructions", imageName || undefined);
+    const result = await uploadImage(imageFile, "instructions", trimmedName);
     setIsUploading(false);
 
     if ("error" in result) {
@@ -701,9 +711,8 @@ function ExplanationContentItem({
       onUpdate(index, result.url);
       onImageFileChange(index, null, result.url);
       // Save keywords to Supabase after successful upload
-      if (keywords.length > 0) {
-        await saveImageKeywords(result.path, keywords);
-      }
+      const kwsToSave = updatedKeywords.length > 0 ? updatedKeywords : [trimmedName];
+      await saveImageKeywords(result.path, kwsToSave);
     }
   };
 
@@ -762,138 +771,150 @@ function ExplanationContentItem({
         />
       ) : item.type === "image" ? (
         <div>
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Image URL</label>
-            <input
-              type="text"
-              className={styles.input}
-              value={item.content}
-              onChange={(e) => onUpdate(index, e.target.value)}
-              placeholder="Enter image URL or upload below..."
-            />
+          {/* ── Advanced toggle ──────────────────────────────────────── */}
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-2)" }}>
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((v) => !v)}
+              className={styles.addButton}
+              style={{ fontSize: "0.8125rem" }}
+            >
+              {showAdvanced ? "▲ Hide Advanced" : "▼ Advanced"}
+            </button>
           </div>
 
-          {/* ── Keywords / Tags UI ─────────────────────────────────── */}
-          <div
-            className={styles.formGroup}
-            style={{
-              marginTop: "var(--space-3)",
-              padding: "var(--space-3)",
-              background: "var(--color-neutral-2)",
-              border: "1px solid var(--color-neutral-6)",
-              borderRadius: "var(--radius-2)",
-            }}
-          >
-            <label className={styles.label} style={{ marginBottom: "var(--space-2)", display: "block" }}>
-              🏷️ Keywords
-              <span
+          {showAdvanced && (
+            <>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Image URL</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={item.content}
+                  onChange={(e) => onUpdate(index, e.target.value)}
+                  placeholder="Enter image URL or upload below..."
+                />
+              </div>
+
+              {/* ── Keywords / Tags UI ─────────────────────────────────── */}
+              <div
+                className={styles.formGroup}
                 style={{
-                  fontWeight: 400,
-                  fontSize: "0.8125rem",
-                  color: "var(--color-neutral-10)",
-                  marginLeft: "var(--space-2)",
+                  marginTop: "var(--space-3)",
+                  padding: "var(--space-3)",
+                  background: "var(--color-neutral-2)",
+                  border: "1px solid var(--color-neutral-6)",
+                  borderRadius: "var(--radius-2)",
                 }}
               >
-                First keyword = filename when saving
-              </span>
-            </label>
+                <label className={styles.label} style={{ marginBottom: "var(--space-2)", display: "block" }}>
+                  🏷️ Keywords
+                  <span
+                    style={{
+                      fontWeight: 400,
+                      fontSize: "0.8125rem",
+                      color: "var(--color-neutral-10)",
+                      marginLeft: "var(--space-2)",
+                    }}
+                  >
+                    First keyword = filename when uploading
+                  </span>
+                </label>
 
-            {/* Tag chips */}
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "var(--space-2)",
-                marginBottom: keywords.length > 0 ? "var(--space-2)" : 0,
-              }}
-            >
-              {keywords.map((kw, i) => (
-                <span
-                  key={kw}
+                {/* Tag chips */}
+                <div
                   style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "var(--space-1)",
-                    background: i === 0 ? "var(--color-accent-4)" : "var(--color-neutral-4)",
-                    color: i === 0 ? "var(--color-accent-12)" : "var(--color-neutral-12)",
-                    border: `1px solid ${i === 0 ? "var(--color-accent-7)" : "var(--color-neutral-7)"}`,
-                    borderRadius: "var(--radius-round)",
-                    padding: "2px 10px 2px 10px",
-                    fontSize: "0.8125rem",
-                    fontWeight: i === 0 ? 700 : 500,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "var(--space-2)",
+                    marginBottom: keywords.length > 0 ? "var(--space-2)" : 0,
                   }}
                 >
-                  {i === 0 && <span style={{ fontSize: "0.75rem", opacity: 0.7 }}>name·</span>}
-                  {kw}
+                  {keywords.map((kw, i) => (
+                    <span
+                      key={kw}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "var(--space-1)",
+                        background: i === 0 ? "var(--color-accent-4)" : "var(--color-neutral-4)",
+                        color: i === 0 ? "var(--color-accent-12)" : "var(--color-neutral-12)",
+                        border: `1px solid ${i === 0 ? "var(--color-accent-7)" : "var(--color-neutral-7)"}`,
+                        borderRadius: "var(--radius-round)",
+                        padding: "2px 10px 2px 10px",
+                        fontSize: "0.8125rem",
+                        fontWeight: i === 0 ? 700 : 500,
+                      }}
+                    >
+                      {i === 0 && <span style={{ fontSize: "0.75rem", opacity: 0.7 }}>name·</span>}
+                      {kw}
+                      <button
+                        type="button"
+                        onClick={() => removeKeyword(kw)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          padding: "0 0 0 2px",
+                          lineHeight: 1,
+                          color: "inherit",
+                          opacity: 0.7,
+                          fontSize: "0.875rem",
+                        }}
+                        title={`Remove keyword "${kw}"`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+
+                {/* Add keyword input */}
+                <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+                  <input
+                    ref={keywordInputRef}
+                    type="text"
+                    className={styles.input}
+                    value={keywordInput}
+                    onChange={(e) => setKeywordInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addKeyword();
+                      }
+                    }}
+                    placeholder="Add a keyword..."
+                    style={{ flex: 1, fontSize: "0.875rem" }}
+                  />
                   <button
                     type="button"
-                    onClick={() => removeKeyword(kw)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: "0 0 0 2px",
-                      lineHeight: 1,
-                      color: "inherit",
-                      opacity: 0.7,
-                      fontSize: "0.875rem",
-                    }}
-                    title={`Remove keyword "${kw}"`}
+                    onClick={addKeyword}
+                    className={styles.addButton}
+                    disabled={!keywordInput.trim()}
+                    style={{ fontSize: "0.875rem" }}
                   >
-                    ×
+                    + Add
                   </button>
-                </span>
-              ))}
-            </div>
+                </div>
 
-            {/* Add keyword input */}
-            <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
-              <input
-                ref={keywordInputRef}
-                type="text"
-                className={styles.input}
-                value={keywordInput}
-                onChange={(e) => setKeywordInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addKeyword();
-                  }
-                }}
-                placeholder={
-                  keywords.length === 0
-                    ? "First keyword = filename (e.g. login-screen-step-1)"
-                    : "Add another keyword..."
-                }
-                style={{ flex: 1, fontSize: "0.875rem" }}
-              />
-              <button
-                type="button"
-                onClick={addKeyword}
-                className={styles.addButton}
-                disabled={!keywordInput.trim()}
-                style={{ fontSize: "0.875rem" }}
-              >
-                + Add
-              </button>
-            </div>
-
-            {/* Save keywords button (shown when image is already uploaded) */}
-            {item.content && item.content.startsWith("http") && (
-              <div style={{ marginTop: "var(--space-2)", display: "flex", justifyContent: "flex-end" }}>
-                <button
-                  type="button"
-                  onClick={handleSaveKeywords}
-                  className={styles.addButton}
-                  disabled={isSavingKeywords}
-                  style={{ fontSize: "0.8125rem" }}
-                >
-                  {isSavingKeywords ? "Saving..." : "💾 Save Keywords"}
-                </button>
+                {/* Save keywords button (shown when image is already uploaded) */}
+                {item.content && item.content.startsWith("http") && (
+                  <div style={{ marginTop: "var(--space-2)", display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      type="button"
+                      onClick={handleSaveKeywords}
+                      className={styles.addButton}
+                      disabled={isSavingKeywords}
+                      style={{ fontSize: "0.8125rem" }}
+                    >
+                      {isSavingKeywords ? "Saving..." : "💾 Save Keywords"}
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          {/* ── End Keywords UI ─────────────────────────────────────── */}
+              {/* ── End Keywords UI ─────────────────────────────────────── */}
+            </>
+          )}
 
           <div className={styles.formGroup} style={{ marginTop: "var(--space-3)" }}>
             <label className={styles.label}>Upload New Image or Select from Library</label>
@@ -933,9 +954,7 @@ function ExplanationContentItem({
               <div style={{ marginTop: "var(--space-2)" }}>
                 <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
                   <div style={{ flex: 1, fontSize: "0.8125rem", color: "var(--color-neutral-11)" }}>
-                    Will upload as:{" "}
-                    <strong style={{ fontFamily: "var(--font-code)" }}>{imageName || "(auto-generated name)"}</strong>
-                    {!imageName && " — add a keyword above to set a custom filename"}
+                    Image ready to upload
                   </div>
                   <button type="button" onClick={handleImageUpload} className={styles.addButton}>
                     Upload to Supabase
