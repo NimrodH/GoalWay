@@ -515,6 +515,10 @@ function ExplanationContentItem({
   const [showImageLibrary, setShowImageLibrary] = useState(false);
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  // Hide upload source panel if the image is already set (loaded from DB)
+  const [showUploadSource, setShowUploadSource] = useState(
+    !(item.type === "image" && item.content && item.content.startsWith("http")),
+  );
   // Keywords state
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
@@ -710,6 +714,7 @@ function ExplanationContentItem({
       setImagePreview(result.url);
       onUpdate(index, result.url);
       onImageFileChange(index, null, result.url);
+      setShowUploadSource(false);
       // Save keywords to Supabase after successful upload
       const kwsToSave = updatedKeywords.length > 0 ? updatedKeywords : [trimmedName];
       await saveImageKeywords(result.path, kwsToSave);
@@ -720,6 +725,7 @@ function ExplanationContentItem({
     setImagePreview(url);
     onUpdate(index, url);
     onImageFileChange(index, null, url);
+    setShowUploadSource(false);
   };
 
   return (
@@ -781,6 +787,16 @@ function ExplanationContentItem({
             >
               {showAdvanced ? "▲ Hide Advanced" : "▼ Advanced"}
             </button>
+            {!showUploadSource && !showAdvanced && (
+              <button
+                type="button"
+                onClick={() => setShowUploadSource(true)}
+                className={styles.addButton}
+                style={{ fontSize: "0.8125rem" }}
+              >
+                🔄 Change Image
+              </button>
+            )}
           </div>
 
           {showAdvanced && (
@@ -916,6 +932,7 @@ function ExplanationContentItem({
             </>
           )}
 
+          {(showUploadSource || showAdvanced) && (
           <div className={styles.formGroup} style={{ marginTop: "var(--space-3)" }}>
             <label className={styles.label}>Upload New Image or Select from Library</label>
             <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
@@ -966,6 +983,7 @@ function ExplanationContentItem({
               <p style={{ marginTop: "var(--space-2)", color: "var(--color-accent-11)" }}>Uploading...</p>
             )}
           </div>
+          )}
           {item.content && (
             <div style={{ marginTop: "var(--space-3)", display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
               <button
