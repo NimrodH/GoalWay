@@ -25,6 +25,7 @@ export default function AdminMissionsPage() {
           clearActionData={clearActionData}
           instructions={loaderData.instructions}
           missions={loaderData.missions}
+          allMissionsHe={loaderData.allMissionsHe}
           allMissionIds={loaderData.allMissionIds}
           allInstructionIds={loaderData.allInstructionIds}
           instructionsEn={loaderData.instructionsEn}
@@ -81,6 +82,7 @@ function EditMissionForm({
   clearActionData,
   instructions,
   missions,
+  allMissionsHe,
   allMissionIds,
   allInstructionIds,
   instructionsEn,
@@ -101,6 +103,7 @@ function EditMissionForm({
   clearActionData: () => void;
   instructions: Instruction[];
   missions: Mission[];
+  allMissionsHe: Mission[];
   allMissionIds: string[];
   allInstructionIds: string[];
   instructionsEn: Instruction[];
@@ -975,15 +978,30 @@ function EditMissionForm({
       isExample,
     };
 
+    // Include the Hebrew version of the mission from the DB (data_he column)
+    const heVersionOfMission = allMissionsHe.find((m) => m.id === selectedMissionId);
+    const missionHeData = heVersionOfMission
+      ? {
+          id: heVersionOfMission.id,
+          title: heVersionOfMission.title,
+          description: heVersionOfMission.description,
+          instructions: heVersionOfMission.instructions,
+          status: heVersionOfMission.status,
+        }
+      : undefined;
+
     const enInstructions = instructionsEn.filter((i) => realIds.includes(i.id));
     const heInstructions = instructionsHe.filter((i) => realIds.includes(i.id));
 
-    const bundle = {
+    const bundle: Record<string, unknown> = {
       exportedAt: new Date().toISOString(),
       mission: missionData,
       instructionsEn: enInstructions,
       instructionsHe: heInstructions,
     };
+    if (missionHeData) {
+      bundle.missionHe = missionHeData;
+    }
 
     const json = JSON.stringify(bundle, null, 2);
     const blob = new Blob([json], { type: "application/json" });

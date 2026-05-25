@@ -29,6 +29,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     instructions,
     missions,
     allMissions,
+    allMissionsHe,
     allInstructionIds,
     allMissionIds,
     instructionsEn,
@@ -41,6 +42,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     language === "he" ? getAllInstructionsHe() : getAllInstructions(),
     language === "he" ? getAllMissionsHe() : getAllMissions(),
     getAllMissions(),
+    getAllMissionsHe(),
     getAllInstructionIds(),
     getAllMissionIds(),
     getAllInstructions(),
@@ -77,6 +79,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     supabaseKey: process.env.SUPABASE_API_KEY!,
     instructions,
     missions,
+    allMissionsHe,
     allInstructionIds,
     allMissionIds,
     instructionsEn,
@@ -592,6 +595,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
 
     let bundle: {
       mission: { id: string; title: string; description: string; instructions: Array<[string, string?]>; status?: string; isExample?: boolean };
+      missionHe?: { id: string; title: string; description: string; instructions: Array<[string, string?]>; status?: string };
       instructionsEn: Array<{ id: string; [key: string]: unknown }>;
       instructionsHe: Array<{ id: string; [key: string]: unknown }>;
     };
@@ -648,8 +652,19 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
         status: bundle.mission.status,
       };
 
+      const missionHePayload = bundle.missionHe
+        ? {
+            id: bundle.missionHe.id,
+            title: bundle.missionHe.title,
+            description: bundle.missionHe.description,
+            instructions: bundle.missionHe.instructions,
+            status: bundle.missionHe.status,
+          }
+        : undefined;
+
       if (existingMission) {
         const updateData: Record<string, unknown> = { data_en: missionPayload, updated_at: new Date().toISOString() };
+        if (missionHePayload) updateData.data_he = missionHePayload;
         if (bundle.mission.isExample !== undefined) updateData.is_example = bundle.mission.isExample;
         const { error } = await supabase.from("missions").update(updateData).eq("id", missionId);
         if (error) return { success: false, error: error.message };
@@ -657,7 +672,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
         const insertData: Record<string, unknown> = {
           id: missionId,
           data_en: missionPayload,
-          data_he: null,
+          data_he: missionHePayload ?? null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
