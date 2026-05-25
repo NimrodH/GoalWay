@@ -154,6 +154,7 @@ function EditMissionForm({
   const [codeEditorValue, setCodeEditorValue] = useState("");
   const [codeEditorError, setCodeEditorError] = useState<string | null>(null);
   const [showDrawioDialog, setShowDrawioDialog] = useState(false);
+  const [collapsedIfIds, setCollapsedIfIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (selectedMissionId) {
@@ -1383,7 +1384,66 @@ function EditMissionForm({
                       }
                     }
 
+                    // Build a map: instructionId → owning if- id (for collapse logic)
+                    // Also track which else- belongs to which if-
+                    const ownerIfMap = new Map<string, string>(); // rowId → ifId that owns/hides it
+                    const elseOwnerMap = new Map<string, string>(); // elseId → ifId
+                    const stack2: string[] = [];
+                    for (const [id] of selectedInstructions) {
+                      if (id.startsWith("if-")) {
+                        stack2.push(id);
+                      } else if (id.startsWith("end-if-")) {
+                        const topIf = stack2.pop();
+                        if (topIf) ownerIfMap.set(id, topIf);
+                      } else if (id.startsWith("else-")) {
+                        const suffix = id.replace(/^else-/, "");
+                        const matchingIf = `if-${suffix}`;
+                        elseOwnerMap.set(id, matchingIf);
+                        ownerIfMap.set(id, matchingIf);
+                      } else {
+                        // Owned by the innermost enclosing IF
+                        const topIf = stack2[stack2.length - 1];
+                        if (topIf) ownerIfMap.set(id, topIf);
+                      }
+                    }
+
+                    // Determine which rows are hidden:
+                    // A row is hidden when its owning IF is collapsed.
+                    // ELSE rows: also hidden when the IF is collapsed.
+                    // Rows after ELSE (before END-IF): hidden when ELSE is collapsed.
+                    const collapsedElseIds = new Set(
+                      [...collapsedIfIds].flatMap((ifId) => {
+                        const suffix = ifId.replace(/^if-/, "");
+                        const elseId = `else-${suffix}`;
+                        return selectedInstructions.some(([id]) => id === elseId) ? [elseId] : [];
+                      }),
+                    );
+
+                    // Determine rows between ELSE and END-IF for each collapsed IF
+                    const hiddenDueToIfCollapse = new Set<string>();
+                    for (const ifId of collapsedIfIds) {
+                      const suffix = ifId.replace(/^if-/, "");
+                      const endIfId = `end-if-${suffix}`;
+                      let inside = false;
+                      for (const [id] of selectedInstructions) {
+                        if (id === ifId) { inside = true; continue; }
+                        if (id === endIfId) { inside = false; break; }
+                        if (inside) hiddenDueToIfCollapse.add(id);
+                      }
+                    }
+
+                    const toggleCollapse = (ifId: string) => {
+                      setCollapsedIfIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(ifId)) next.delete(ifId);
+                        else next.add(ifId);
+                        return next;
+                      });
+                    };
+
                     return selectedInstructions.map(([instructionId, customTitle]) => {
+                      // Hide rows that are inside a collapsed IF block
+                      if (hiddenDueToIfCollapse.has(instructionId)) return null;
                     const isComment = instructionId.startsWith("comment-") || instructionId === "0";
                     const isIf = instructionId.startsWith("if-");
                     const isEndIf = instructionId.startsWith("end-if-");
@@ -1402,6 +1462,19 @@ function EditMissionForm({
                     const displayTitle =
                       isComment || isIf || isEndIf || isElse || isTemp ? customTitle : customTitle || instruction?.title || "";
                     const indentLevel = depthMap.get(instructionId) ?? 0;
+                    const isCollapsed = isIf && collapsedIfIds.has(instructionId);
+                    // Count hidden children for collapsed IF
+                    let hiddenCount = 0;
+                    if (isCollapsed) {
+                      const suffix = instructionId.replace(/^if-/, "");
+                      const endIfId = `end-if-${suffix}`;
+                      let counting = false;
+                      for (const [id] of selectedInstructions) {
+                        if (id === instructionId) { counting = true; continue; }
+                        if (id === endIfId) break;
+                        if (counting) hiddenCount++;
+                      }
+                    }
                     return (
                       <label
                         key={instructionId}
@@ -1430,11 +1503,30 @@ function EditMissionForm({
                           checked={selectedMissionInstruction === instructionId}
                           onChange={() => setSelectedMissionInstruction(instructionId)}
                         />
-                        <span>
+                        <span style={{ display: "flex", alignItems: "center", gap: "4px", flex: 1 }}>
                           {isComment ? (
                             <span style={{ color: "var(--color-accent-11)", fontStyle: "italic" }}>💬 Comment:</span>
                           ) : isIf ? (
-                            <span style={{ color: "var(--color-success-11)", fontWeight: 700 }}>🔀 IF:</span>
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleCollapse(instructionId); }}
+                                title={isCollapsed ? "Expand IF block" : "Collapse IF block"}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  padding: "0 2px",
+                                  fontSize: "0.75rem",
+                                  lineHeight: 1,
+                                  color: "var(--color-success-11)",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {isCollapsed ? "▶" : "▼"}
+                              </button>
+                              <span style={{ color: "var(--color-success-11)", fontWeight: 700 }}>🔀 IF:</span>
+                            </>
                           ) : isEndIf ? (
                             <span style={{ color: "var(--color-neutral-10)", fontWeight: 600, opacity: 0.7 }}>
                               🔁 END-IF{customTitle && customTitle !== "END-IF" ? `: ${customTitle}` : ""}
@@ -1472,6 +1564,11 @@ function EditMissionForm({
                           )}
                           {!isComment && !isEndIf && !isElse && " "}
                           {!isEndIf && !isElse && displayTitle}
+                          {isCollapsed && hiddenCount > 0 && (
+                            <span style={{ fontSize: "0.75rem", color: "var(--color-neutral-9)", marginLeft: "4px", fontStyle: "italic" }}>
+                              ({hiddenCount} hidden)
+                            </span>
+                          )}
                           {!isComment && !isIf && !isEndIf && !isElse && !isTemp && customTitle && (
                             <span
                               style={{
