@@ -646,8 +646,8 @@
 }
 
 .elseBranchActive .ifBlockIcon {
-  background-color: var(--color-amber-9);
-  color: white;
+  background-color: var(--color-accent-9);
+  color: var(--color-accent-contrast);
   padding: 2px;
 }
 
@@ -716,14 +716,14 @@
 }
 
 .elseBlockButton .ifBlockIcon {
-  color: var(--color-amber-9);
+  color: var(--color-accent-9);
 }
 
 /* Three-class selector wins over the two-class override above */
 .elseBlockButton.elseBranchActive .ifBlockIcon,
 .ifBlockButton.elseBranchActive .ifBlockIcon {
-  background-color: var(--color-amber-9);
-  color: white;
+  background-color: var(--color-accent-9);
+  color: var(--color-accent-contrast);
   padding: 2px;
 }
 
@@ -734,8 +734,8 @@
 }
 
 .elseBranchActive {
-  background: var(--color-amber-4);
-  border-color: var(--color-amber-8);
+  background: var(--color-accent-4);
+  border-color: var(--color-accent-8);
 }
 
 /* Comment Markdown — renders inline, strips block spacing */
