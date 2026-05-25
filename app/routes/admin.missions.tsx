@@ -978,17 +978,17 @@ function EditMissionForm({
       isExample,
     };
 
-    // Include the Hebrew version of the mission from the DB (data_he column)
+    // Include the Hebrew version of the mission from the DB (data_he column).
+    // Always include missionHe in the bundle — fall back to English values when
+    // no Hebrew record has been saved yet so the import side always has a node.
     const heVersionOfMission = allMissionsHe.find((m) => m.id === selectedMissionId);
-    const missionHeData = heVersionOfMission
-      ? {
-          id: heVersionOfMission.id,
-          title: heVersionOfMission.title,
-          description: heVersionOfMission.description,
-          instructions: heVersionOfMission.instructions,
-          status: heVersionOfMission.status,
-        }
-      : undefined;
+    const missionHeData = {
+      id: heVersionOfMission?.id ?? id,
+      title: heVersionOfMission?.title ?? title,
+      description: heVersionOfMission?.description ?? description,
+      instructions: heVersionOfMission?.instructions ?? selectedInstructions,
+      status: heVersionOfMission?.status ?? status,
+    };
 
     const enInstructions = instructionsEn.filter((i) => realIds.includes(i.id));
     const heInstructions = instructionsHe.filter((i) => realIds.includes(i.id));
@@ -996,12 +996,10 @@ function EditMissionForm({
     const bundle: Record<string, unknown> = {
       exportedAt: new Date().toISOString(),
       mission: missionData,
+      missionHe: missionHeData,
       instructionsEn: enInstructions,
       instructionsHe: heInstructions,
     };
-    if (missionHeData) {
-      bundle.missionHe = missionHeData;
-    }
 
     const json = JSON.stringify(bundle, null, 2);
     const blob = new Blob([json], { type: "application/json" });
