@@ -504,6 +504,53 @@ function EditMissionForm({
     }
   };
 
+  /**
+   * Scan the instructions array in the current JSON editor value and assign
+   * #2, #3 … suffixes to any duplicate base IDs — purely in local state.
+   * The user must click "Apply JSON" and then "Save to Database" to persist.
+   */
+  const handleFixDuplicateIds = () => {
+    try {
+      const parsed = JSON.parse(codeEditorValue);
+      const instructions: Array<[string, string?]> = parsed.instructions || [];
+      const allocatedKeys: string[] = [];
+      const fixed = instructions.map(([id, title]: [string, string?]) => {
+        // Only deduplicate real instruction IDs (not temp, comment, if, end-if, else)
+        const isSpecial =
+          id.startsWith("T") && /^T\d+$/.test(id) ||
+          id.startsWith("comment-") ||
+          id.startsWith("if-") ||
+          id.startsWith("end-if-") ||
+          id.startsWith("else-") ||
+          id === "0";
+        if (isSpecial) {
+          allocatedKeys.push(id);
+          return title !== undefined ? [id, title] : [id];
+        }
+        // Strip any existing #N suffix to get the canonical base ID
+        const baseId = id.includes("#") ? id.split("#")[0] : id;
+        const alreadyPresent = allocatedKeys.some(
+          (k) => k === baseId || k.startsWith(`${baseId}#`),
+        );
+        let newKey: string;
+        if (!alreadyPresent) {
+          newKey = baseId;
+        } else {
+          let suffix = 2;
+          while (allocatedKeys.includes(`${baseId}#${suffix}`)) suffix++;
+          newKey = `${baseId}#${suffix}`;
+        }
+        allocatedKeys.push(newKey);
+        return title !== undefined ? [newKey, title] : [newKey];
+      });
+      const fixedMission = { ...parsed, instructions: fixed };
+      setCodeEditorValue(JSON.stringify(fixedMission, null, 2));
+      setCodeEditorError(null);
+    } catch {
+      setCodeEditorError("Invalid JSON — fix syntax errors before running the deduplication");
+    }
+  };
+
   useEffect(() => {
     if (missionFetcher.data && missionFetcher.state === "idle") {
       if (missionFetcher.data.success && missionFetcher.data.newMissionId) {
@@ -1922,14 +1969,25 @@ function EditMissionForm({
               >
                 Updated Code
               </h2>
-              <button
-                type="button"
-                onClick={handleApplyCodeEditor}
-                className={styles.submitButton}
-                style={{ fontSize: "0.8125rem", padding: "var(--space-1) var(--space-3)" }}
-              >
-                Apply JSON
-              </button>
+              <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                <button
+                  type="button"
+                  onClick={handleFixDuplicateIds}
+                  className={styles.addButton}
+                  style={{ fontSize: "0.8125rem", padding: "var(--space-1) var(--space-3)" }}
+                  title="Scan the instructions array and assign #2, #3 … suffixes to any duplicate IDs. Does not save — click Apply JSON then Save to persist."
+                >
+                  🔧 Fix Duplicate IDs
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyCodeEditor}
+                  className={styles.submitButton}
+                  style={{ fontSize: "0.8125rem", padding: "var(--space-1) var(--space-3)" }}
+                >
+                  Apply JSON
+                </button>
+              </div>
             </div>
             {codeEditorError && (
               <p style={{ margin: "0 0 var(--space-2)", fontSize: "0.8125rem", color: "var(--color-error-11)" }}>
