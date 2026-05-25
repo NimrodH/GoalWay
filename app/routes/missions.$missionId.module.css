@@ -719,7 +719,9 @@
   color: var(--color-amber-9);
 }
 
-.elseBlockButton.elseBranchActive .ifBlockIcon {
+/* Three-class selector wins over the two-class override above */
+.elseBlockButton.elseBranchActive .ifBlockIcon,
+.ifBlockButton.elseBranchActive .ifBlockIcon {
   background-color: var(--color-amber-9);
   color: white;
   padding: 2px;
