@@ -54,6 +54,21 @@ html {
   --color-error-12: var(--red-12);
   --color-error-contrast: var(--red-contrast);
 
+  /* Amber colors - for ELSE branch UI */
+  --color-amber-1: var(--amber-1);
+  --color-amber-2: var(--amber-2);
+  --color-amber-3: var(--amber-3);
+  --color-amber-4: var(--amber-4);
+  --color-amber-5: var(--amber-5);
+  --color-amber-6: var(--amber-6);
+  --color-amber-7: var(--amber-7);
+  --color-amber-8: var(--amber-8);
+  --color-amber-9: var(--amber-9);
+  --color-amber-10: var(--amber-10);
+  --color-amber-11: var(--amber-11);
+  --color-amber-12: var(--amber-12);
+  --color-amber-contrast: var(--amber-contrast);
+
   /* Success colors - complementary teal/green */
   --color-success-1: var(--teal-1);
   --color-success-2: var(--teal-2);
