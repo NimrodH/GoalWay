@@ -151,6 +151,7 @@ function EditMissionForm({
   const jsonFetcher = useFetcher<typeof action>();
   const duplicateMissionFetcher = useFetcher<typeof action>();
   const drawioImportFetcher = useFetcher<typeof action>();
+  const importBundleFetcher = useFetcher<typeof action>();
   const [codeEditorValue, setCodeEditorValue] = useState("");
   const [codeEditorError, setCodeEditorError] = useState<string | null>(null);
   const [showDrawioDialog, setShowDrawioDialog] = useState(false);
@@ -583,6 +584,18 @@ function EditMissionForm({
   }, [duplicateMissionFetcher.data, duplicateMissionFetcher.state, language]);
 
   useEffect(() => {
+    if (importBundleFetcher.data && importBundleFetcher.state === "idle") {
+      if (importBundleFetcher.data.success) {
+        const missionId = importBundleFetcher.data.importedMissionId;
+        alert(importBundleFetcher.data.message || "Import successful!");
+        window.location.href = `/admin/missions?lang=${language}${missionId ? `&missionId=${missionId}` : ""}`;
+      } else if (importBundleFetcher.data.error) {
+        alert(`Import failed: ${importBundleFetcher.data.error}`);
+      }
+    }
+  }, [importBundleFetcher.data, importBundleFetcher.state, language]);
+
+  useEffect(() => {
     if (drawioImportFetcher.data && drawioImportFetcher.state === "idle") {
       if (drawioImportFetcher.data.success && drawioImportFetcher.data.newMissionId) {
         window.location.href = `/admin/missions?lang=${language}&missionId=${drawioImportFetcher.data.newMissionId}`;
@@ -925,6 +938,124 @@ function EditMissionForm({
     }
   };
 
+  /**
+   * Export — bundles the selected mission + all its real instructions (EN & HE)
+   * into a JSON file and triggers the browser's Save dialog.
+   */
+  const handleExportMission = async () => {
+    if (!selectedMissionId) {
+      alert("Please select a mission first");
+      return;
+    }
+
+    // Collect real instruction IDs (strip #N suffixes, skip specials)
+    const realIds = Array.from(
+      new Set(
+        selectedInstructions
+          .map(([instrId]) => instrId)
+          .filter(
+            (instrId) =>
+              !instrId.startsWith("comment-") &&
+              !instrId.startsWith("if-") &&
+              !instrId.startsWith("end-if-") &&
+              !instrId.startsWith("else-") &&
+              !/^T\d+$/.test(instrId) &&
+              instrId !== "0",
+          )
+          .map((instrId) => (instrId.includes("#") ? instrId.split("#")[0] : instrId)),
+      ),
+    );
+
+    const missionData = {
+      id,
+      title,
+      description,
+      instructions: selectedInstructions,
+      status,
+      isExample,
+    };
+
+    const enInstructions = instructionsEn.filter((i) => realIds.includes(i.id));
+    const heInstructions = instructionsHe.filter((i) => realIds.includes(i.id));
+
+    const bundle = {
+      exportedAt: new Date().toISOString(),
+      mission: missionData,
+      instructionsEn: enInstructions,
+      instructionsHe: heInstructions,
+    };
+
+    const json = JSON.stringify(bundle, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const fileName = `mission-${id}-${new Date().toISOString().slice(0, 10)}.json`;
+
+    // Try File System Access API (Chromium) for a real "Save As" dialog
+    if ("showSaveFilePicker" in window) {
+      try {
+        const fileHandle = await (window as any).showSaveFilePicker({
+          suggestedName: fileName,
+          types: [{ description: "JSON file", accept: { "application/json": [".json"] } }],
+        });
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
+      } catch (err: unknown) {
+        // User cancelled or API failed — fall through to classic download
+        if ((err as Error)?.name === "AbortError") return;
+      }
+    }
+
+    // Classic fallback
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  /**
+   * Import — opens a file picker, reads the JSON bundle, and submits it to
+   * the server to upsert the mission and all its instructions by their IDs.
+   */
+  const handleImportMission = () => {
+    if (!session) {
+      alert("You must be logged in to import");
+      return;
+    }
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        // Validate it's parseable JSON before sending
+        JSON.parse(text);
+
+        const confirm = window.confirm(
+          `Import bundle from "${file.name}"?\n\nThis will OVERWRITE the mission and all its instructions in the database using the IDs from the file. Continue?`,
+        );
+        if (!confirm) return;
+
+        const formData = new FormData();
+        formData.append("actionType", "importMissionBundle");
+        formData.append("bundle", text);
+        formData.append("accessToken", session.access_token || "");
+        importBundleFetcher.submit(formData, { method: "post" });
+      } catch {
+        alert("Failed to read file — make sure it is a valid JSON export bundle");
+      }
+    };
+    input.click();
+  };
+
   const handleDuplicateMission = () => {
     if (!selectedMissionId) {
       alert("Please select a mission first");
@@ -1002,6 +1133,26 @@ function EditMissionForm({
               style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
             >
               {drawioImportFetcher.state !== "idle" ? "Creating..." : "📊 draw.io"}
+            </button>
+            <button
+              type="button"
+              onClick={handleExportMission}
+              className={styles.addButton}
+              disabled={!selectedMissionId}
+              title="Export this mission and all its instructions to a JSON file"
+              style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+            >
+              ⬇ Export
+            </button>
+            <button
+              type="button"
+              onClick={handleImportMission}
+              className={styles.addButton}
+              disabled={importBundleFetcher.state !== "idle" || !session}
+              title="Import a previously exported mission bundle JSON file — overwrites existing records by ID"
+              style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+            >
+              {importBundleFetcher.state !== "idle" ? "Importing..." : "⬆ Import"}
             </button>
           </div>
         </div>

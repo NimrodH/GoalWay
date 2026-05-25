@@ -101,6 +101,8 @@ export type ActionResult = {
   deletedInstructionId?: string;
   deletedMissionId?: string;
   missionsUpdated?: number;
+  importedMissionId?: string;
+  importedInstructionCount?: number;
 };
 
 export async function action({ request }: Route.ActionArgs): Promise<ActionResult> {
@@ -573,6 +575,105 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
       };
     } catch (error) {
       console.error("Error in duplicateMission:", error);
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
+  if (actionType === "importMissionBundle") {
+    const accessToken = formData.get("accessToken") as string | null;
+    const bundleJson = formData.get("bundle") as string | null;
+
+    if (!accessToken) {
+      return { success: false, error: "Unauthorized: Authentication required" };
+    }
+    if (!bundleJson) {
+      return { success: false, error: "No bundle data provided" };
+    }
+
+    let bundle: {
+      mission: { id: string; title: string; description: string; instructions: Array<[string, string?]>; status?: string; isExample?: boolean };
+      instructionsEn: Array<{ id: string; [key: string]: unknown }>;
+      instructionsHe: Array<{ id: string; [key: string]: unknown }>;
+    };
+
+    try {
+      bundle = JSON.parse(bundleJson);
+    } catch {
+      return { success: false, error: "Invalid JSON in bundle file" };
+    }
+
+    if (!bundle.mission?.id) {
+      return { success: false, error: "Bundle is missing mission data" };
+    }
+
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+        global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      });
+
+      const missionId = bundle.mission.id;
+
+      // Upsert instructions (EN)
+      for (const instrEn of bundle.instructionsEn || []) {
+        const instrId = instrEn.id;
+        const { data: existing } = await supabase.from("instructions").select("id").eq("id", instrId).single();
+        if (existing) {
+          await supabase.from("instructions").update({ data_en: instrEn, updated_at: new Date().toISOString() }).eq("id", instrId);
+        } else {
+          await supabase.from("instructions").insert({ id: instrId, data_en: instrEn, data_he: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+        }
+      }
+
+      // Upsert instructions (HE) — only update data_he on rows that already exist
+      for (const instrHe of bundle.instructionsHe || []) {
+        const instrId = instrHe.id;
+        const { data: existing } = await supabase.from("instructions").select("id").eq("id", instrId).single();
+        if (existing) {
+          await supabase.from("instructions").update({ data_he: instrHe, updated_at: new Date().toISOString() }).eq("id", instrId);
+        } else {
+          await supabase.from("instructions").insert({ id: instrId, data_en: null, data_he: instrHe, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+        }
+      }
+
+      const importedInstructionCount = (bundle.instructionsEn || []).length;
+
+      // Upsert mission
+      const { data: existingMission } = await supabase.from("missions").select("id").eq("id", missionId).single();
+      const missionPayload = {
+        id: bundle.mission.id,
+        title: bundle.mission.title,
+        description: bundle.mission.description,
+        instructions: bundle.mission.instructions,
+        status: bundle.mission.status,
+      };
+
+      if (existingMission) {
+        const updateData: Record<string, unknown> = { data_en: missionPayload, updated_at: new Date().toISOString() };
+        if (bundle.mission.isExample !== undefined) updateData.is_example = bundle.mission.isExample;
+        const { error } = await supabase.from("missions").update(updateData).eq("id", missionId);
+        if (error) return { success: false, error: error.message };
+      } else {
+        const insertData: Record<string, unknown> = {
+          id: missionId,
+          data_en: missionPayload,
+          data_he: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        if (bundle.mission.isExample !== undefined) insertData.is_example = bundle.mission.isExample;
+        const { error } = await supabase.from("missions").insert(insertData);
+        if (error) return { success: false, error: error.message };
+      }
+
+      return {
+        success: true,
+        message: `Imported mission "${missionId}" with ${importedInstructionCount} instruction(s) successfully!`,
+        importedMissionId: missionId,
+        importedInstructionCount,
+      };
+    } catch (error) {
+      console.error("Error in importMissionBundle:", error);
       return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
   }
