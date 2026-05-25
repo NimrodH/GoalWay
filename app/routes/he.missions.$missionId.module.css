@@ -14,6 +14,43 @@
   direction: rtl;
 }
 
+.statusForm {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-right: auto;
+}
+
+.statusLabel {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-accent-11);
+  white-space: nowrap;
+}
+
+.statusSelect {
+  appearance: none;
+  padding: var(--space-1) var(--space-3);
+  background: var(--color-accent-3);
+  color: var(--color-accent-12);
+  border: 1px solid var(--color-accent-7);
+  border-radius: var(--radius-2);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+  min-width: 110px;
+}
+
+.statusSelect:hover,
+.statusSelect:focus {
+  background: var(--color-accent-4);
+  border-color: var(--color-accent-8);
+  outline: none;
+}
+
 .menuLink {
   display: inline-flex;
   align-items: center;
@@ -72,7 +109,7 @@
   font-weight: 600;
 }
 
-/* ── Notes panel ── */
+/* ── Notes / Instructions panel ── */
 .notesPanel {
   position: sticky;
   top: 44px;
@@ -250,4 +287,465 @@
   color: var(--color-neutral-9);
   font-style: italic;
   margin: 0;
+}
+
+/* ── Instructions search panel ── */
+.instructionsSearchInput {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--color-neutral-12);
+  background: var(--color-neutral-1);
+  border: 1px solid var(--color-neutral-7);
+  border-radius: var(--radius-2);
+  padding: var(--space-2) var(--space-3);
+  box-sizing: border-box;
+  direction: rtl;
+}
+
+.instructionsSearchInput:focus {
+  outline: none;
+  border-color: var(--color-accent-8);
+  background: var(--color-neutral-2);
+}
+
+.instructionsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.instructionsListItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-2);
+  transition: background 0.12s var(--ease-out);
+}
+
+.instructionsListItem:hover {
+  background: var(--color-neutral-3);
+}
+
+.instructionsListTitle {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--color-accent-11);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.12s var(--ease-out);
+}
+
+.instructionsListTitle:hover {
+  color: var(--color-accent-12);
+  text-decoration: underline;
+}
+
+/* ── Main content container ── */
+.container {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  padding: var(--space-4);
+  background: linear-gradient(135deg, var(--color-neutral-1) 0%, var(--color-neutral-2) 100%);
+  max-width: 500px;
+  margin: 0 auto var(--space-3);
+  width: 100%;
+}
+
+.instructionListSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.headerWrapper {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin: 0 calc(-1 * var(--space-4)) var(--space-3);
+  background: light-dark(rgba(255,255,255,0.88), rgba(18,18,18,0.88));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-neutral-4);
+}
+
+.sectionHeader {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-neutral-12);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.missionDescription {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--color-neutral-11);
+  line-height: 1.6;
+  margin-bottom: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-neutral-2);
+  border-right: 3px solid var(--color-accent-9);
+  border-radius: var(--radius-2);
+}
+
+/* Markdown reset inside mission description */
+.missionDescription p { margin: 0 0 var(--space-2) 0; }
+.missionDescription p:last-child { margin-bottom: 0; }
+.missionDescription strong { font-weight: 700; }
+.missionDescription em { font-style: italic; }
+.missionDescription ul, .missionDescription ol {
+  padding-right: var(--space-5);
+  margin: var(--space-2) 0;
+}
+.missionDescription li { margin-bottom: var(--space-1); }
+.missionDescription code {
+  font-family: var(--font-code);
+  font-size: 0.9em;
+  background: var(--color-neutral-3);
+  padding: 0.1em 0.4em;
+  border-radius: var(--radius-1);
+}
+
+@media (max-width: 768px) {
+  .missionDescription {
+    font-size: 1.2rem;
+  }
+}
+
+/* Caption toggle group */
+.captionToggleGroup {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.captionToggleButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 26px;
+  border: none;
+  background: var(--color-neutral-2);
+  color: var(--color-neutral-8);
+  cursor: pointer;
+  transition: all 0.15s var(--ease-out);
+  flex-shrink: 0;
+}
+
+.captionToggleButton:not(:last-child) {
+  border-left: 1px solid var(--color-neutral-6);
+}
+
+.captionToggleButton:hover {
+  color: var(--color-neutral-11);
+  background: var(--color-neutral-3);
+}
+
+.captionToggleActive {
+  background: var(--color-accent-3);
+  color: var(--color-accent-11);
+}
+
+.captionToggleActive:hover {
+  background: var(--color-accent-4) !important;
+  color: var(--color-accent-11);
+}
+
+/* Instruction list */
+.instructionList {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-neutral-2);
+  border-radius: var(--radius-3);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-1);
+}
+
+.instructionItem {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Preview-only instruction ID badge */
+.instructionIdBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  background: var(--color-neutral-3);
+  color: var(--color-neutral-11);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-1);
+  font-family: var(--font-code);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  user-select: all;
+  white-space: nowrap;
+}
+
+.editInstructionRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  margin-top: var(--space-1);
+  margin-bottom: var(--space-1);
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.editInstructionButton {
+  padding: var(--space-1) var(--space-3);
+  background: var(--color-accent-3);
+  color: var(--color-accent-11);
+  border: 1px solid var(--color-accent-6);
+  border-radius: var(--radius-2);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+  white-space: nowrap;
+}
+
+.editInstructionButton:hover {
+  background: var(--color-accent-4);
+  border-color: var(--color-accent-8);
+}
+
+.instrStatusForm {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.instrStatusLabel {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-accent-11);
+  white-space: nowrap;
+}
+
+.instrStatusSelect {
+  appearance: none;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-accent-3);
+  color: var(--color-accent-12);
+  border: 1px solid var(--color-accent-7);
+  border-radius: var(--radius-2);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+  min-width: 130px;
+}
+
+.instrStatusSelect:hover,
+.instrStatusSelect:focus {
+  background: var(--color-accent-4);
+  border-color: var(--color-accent-8);
+  outline: none;
+}
+
+/* Mobile inline explanation */
+.mobileExplanation {
+  display: block;
+  background-color: var(--color-neutral-1);
+  border-radius: var(--radius-3);
+  padding: var(--space-5);
+  margin-top: var(--space-3);
+  border: solid;
+  border-color: var(--color-accent-9);
+  box-shadow: var(--inner-shadow-1);
+  margin-bottom: var(--space-3);
+}
+
+.explanationSection {
+  display: none;
+}
+
+.explanationContainer {
+  background-color: var(--color-neutral-1);
+  border-radius: var(--radius-3);
+  padding: var(--space-7);
+  box-shadow: var(--shadow-2);
+  min-height: 500px;
+}
+
+/* IF Block button */
+.ifBlockButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-success-3);
+  border: 1px solid var(--color-success-7);
+  border-radius: var(--radius-2);
+  color: var(--color-success-11);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+  text-align: right;
+  margin-bottom: var(--space-1);
+}
+
+.ifBlockButton:hover {
+  background: var(--color-success-4);
+  border-color: var(--color-success-8);
+}
+
+.ifBlockButton[aria-expanded="true"] {
+  background: var(--color-success-4);
+  border-color: var(--color-success-8);
+}
+
+.ifBlockIcon {
+  flex-shrink: 0;
+  color: var(--color-success-9);
+  border-radius: var(--radius-1);
+  transition: background-color 0.15s var(--ease-out), color 0.15s var(--ease-out);
+}
+
+.ifBranchActive .ifBlockIcon {
+  background-color: var(--color-accent-9);
+  color: var(--color-accent-contrast);
+  padding: 2px;
+}
+
+.elseBranchActive .ifBlockIcon {
+  background-color: var(--color-accent-9);
+  color: var(--color-accent-contrast);
+  padding: 2px;
+}
+
+.ifBlockButtonNested {
+  font-size: 0.875rem;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-success-2);
+  border-color: var(--color-success-6);
+  opacity: 0.92;
+}
+
+.ifBlockButtonNested:hover {
+  background: var(--color-success-3);
+  border-color: var(--color-success-7);
+}
+
+.ifBlockButtonNested[aria-expanded="true"] {
+  background: var(--color-success-3);
+  border-color: var(--color-success-7);
+}
+
+.ifBlockTitle {
+  flex: 1;
+}
+
+/* END-IF thin green divider */
+.endIfDivider {
+  height: 2px;
+  background: linear-gradient(
+    to left,
+    transparent,
+    var(--color-success-8) 20%,
+    var(--color-success-8) 80%,
+    transparent
+  );
+  border-radius: 9999px;
+  margin: var(--space-2) var(--space-3);
+  opacity: 0.7;
+}
+
+/* IF + ELSE side-by-side row */
+.ifElseRow {
+  display: flex;
+  gap: 4px;
+  margin-bottom: var(--space-1);
+}
+
+.ifElseHalf {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+/* ELSE button */
+.elseBlockButton {
+  background: var(--color-success-3);
+  border-color: var(--color-success-7);
+  color: var(--color-success-11);
+}
+
+.elseBlockButton:hover {
+  background: var(--color-success-4);
+  border-color: var(--color-success-8);
+  color: var(--color-success-11);
+}
+
+.elseBlockButton .ifBlockIcon {
+  color: var(--color-accent-9);
+}
+
+.elseBlockButton.elseBranchActive .ifBlockIcon,
+.ifBlockButton.elseBranchActive .ifBlockIcon {
+  background-color: var(--color-accent-9);
+  color: var(--color-accent-contrast);
+  padding: 2px;
+}
+
+.ifBranchActive {
+  background: var(--color-success-4);
+  border-color: var(--color-success-8);
+}
+
+.elseBranchActive {
+  background: var(--color-accent-4);
+  border-color: var(--color-accent-8);
+}
+
+/* Comment Markdown — renders inline, strips block spacing */
+.commentMarkdown p {
+  margin: 0;
+  font-style: italic;
+  color: inherit;
+}
+.commentMarkdown strong { font-weight: 700; }
+.commentMarkdown em { font-style: italic; }
+.commentMarkdown code {
+  font-family: var(--font-code);
+  font-size: 0.9em;
+  background: var(--color-accent-3);
+  padding: 0.1em 0.3em;
+  border-radius: var(--radius-1);
 }

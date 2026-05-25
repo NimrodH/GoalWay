@@ -1,30 +1,31 @@
 import { useState, useEffect, useRef } from "react";
-import { data, redirect, Link, useNavigate, useLocation, useFetcher } from "react-router";
+import { data, redirect, Link, useNavigate, useLocation, useSearchParams, useFetcher } from "react-router";
+import Markdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/he.missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
-import { BookOpen, ArrowLeft, ChevronUp, ChevronDown, GitBranch, StickyNote, Plus, Pencil, Trash2, Check, X } from "lucide-react";
-import homeStyles from "./home.module.css";
-import previewStyles from "./he.missions.$missionId.module.css";
+import {
+  BookOpen, ArrowLeft, ChevronUp, ChevronDown, List, ListX, GitBranch,
+  StickyNote, Plus, Pencil, Trash2, Check, X, BookMarked,
+} from "lucide-react";
+import styles from "./he.missions.$missionId.module.css";
 import { getMissionByIdHe, getAllMissionsHe, checkMissionAccess } from "~/services/missions.server";
 import { getInstructionsByIdsHe } from "~/services/instructions.server";
 import { getUserProfile, isAdmin } from "~/lib/auth.server";
+import { useAuth } from "~/hooks/use-auth";
 import type { Instruction } from "~/data/instructions-he";
 
 export function meta({ data }: Route.MetaArgs) {
   const mission = data?.mission;
   return [
     { title: mission ? `${mission.title} - משימות` : "משימה לא נמצאה" },
-    {
-      name: "description",
-      content: mission?.description || "פרטי משימה",
-    },
+    { name: "description", content: mission?.description || "פרטי משימה" },
   ];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const mission = await getMissionByIdHe(params.missionId);
-  const allMissions = await getAllMissionsHe();
 
   if (!mission) {
     throw data("משימה לא נמצאה", { status: 404 });
@@ -44,26 +45,37 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     }
   }
 
-  // Strip duplicate-occurrence suffixes (#2, #3, …) and de-duplicate before querying the DB.
+  const allMissions = await getAllMissionsHe();
   const rawIds = mission.instructions.map(([id]) => id);
   const uniqueBaseIds = [...new Set(rawIds.map((id) => (id.includes("#") ? id.split("#")[0] : id)))];
   const instructions = await getInstructionsByIdsHe(uniqueBaseIds);
 
-  // Load admin notes only in preview mode (admin context)
   let adminNotes: string[] = [];
+  let allInstructionIds: string[] = [];
+  let allInstructionsList: { id: string; title: string }[] = [];
+
   if (isPreview) {
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
-    const { data: row } = await supabase
-      .from("missions")
-      .select("admin_notes")
-      .eq("id", params.missionId)
-      .single();
-    adminNotes = Array.isArray(row?.admin_notes) ? row.admin_notes : [];
+    const [notesResult, instrResult] = await Promise.all([
+      supabase.from("missions").select("admin_notes").eq("id", params.missionId).single(),
+      supabase.from("instructions").select("id, data_he").order("created_at", { ascending: true }),
+    ]);
+    adminNotes = Array.isArray(notesResult.data?.admin_notes) ? notesResult.data.admin_notes : [];
+    allInstructionIds = (instrResult.data || []).map((r: { id: string }) => r.id);
+    allInstructionsList = (instrResult.data || []).map(
+      (r: { id: string; data_he?: { title?: string } }) => ({
+        id: r.id,
+        title: r.data_he?.title || r.id,
+      })
+    );
   }
 
-  return { mission, instructions, allMissions, isPreview, adminNotes };
+  return { mission, instructions, allMissions, isPreview, adminNotes, allInstructionIds, allInstructionsList };
 }
+
+type MissionStatus = "Hide" | "For all" | "Only Adama" | "Only Bazn";
+type InstructionStatus = "only title" | "partial explanation" | "full explanation";
 
 export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
@@ -71,6 +83,12 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   if (actionType === "saveMissionAdminNote") {
     const notesJson = formData.get("notes") as string;
+    const accessToken = formData.get("accessToken") as string | null;
+
+    if (!accessToken) {
+      return { success: false, error: "Unauthorized: Authentication required" };
+    }
+
     let notes: string[];
     try {
       const parsed = JSON.parse(notesJson);
@@ -84,10 +102,44 @@ export async function action({ request, params }: Route.ActionArgs) {
       const supabase = createClient(
         process.env.SUPABASE_PROJECT_URL!,
         process.env.SUPABASE_API_KEY!,
+        { global: { headers: { Authorization: `Bearer ${accessToken}` } } },
       );
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("missions")
         .update({ admin_notes: notes })
+        .eq("id", params.missionId)
+        .select("id");
+      if (error) return { success: false, error: error.message };
+      if (!updated || updated.length === 0) {
+        return { success: false, error: `No mission row matched id=${params.missionId}` };
+      }
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
+    }
+  }
+
+  if (actionType === "updateStatus") {
+    const newStatus = formData.get("status") as MissionStatus;
+    const validStatuses: MissionStatus[] = ["Hide", "For all", "Only Adama", "Only Bazn"];
+    if (!validStatuses.includes(newStatus)) {
+      return { success: false, error: "Invalid status value" };
+    }
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
+      const { data: row, error: fetchError } = await supabase
+        .from("missions")
+        .select("data_en")
+        .eq("id", params.missionId)
+        .single();
+      if (fetchError || !row?.data_en) {
+        return { success: false, error: fetchError?.message || "Mission not found" };
+      }
+      const updatedDataEn = { ...row.data_en, status: newStatus };
+      const { error } = await supabase
+        .from("missions")
+        .update({ data_en: updatedDataEn, updated_at: new Date().toISOString() })
         .eq("id", params.missionId);
       if (error) return { success: false, error: error.message };
       return { success: true };
@@ -96,45 +148,109 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
   }
 
+  if (actionType === "updateInstructionStatus") {
+    const instructionId = formData.get("instructionId") as string;
+    const newStatus = formData.get("status") as InstructionStatus;
+    const validStatuses: InstructionStatus[] = ["only title", "partial explanation", "full explanation"];
+    if (!instructionId || !validStatuses.includes(newStatus)) {
+      return { success: false, error: "Invalid instructionId or status value" };
+    }
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
+      const { data: row, error: fetchError } = await supabase
+        .from("instructions")
+        .select("data_en")
+        .eq("id", instructionId)
+        .single();
+      if (fetchError || !row?.data_en) {
+        return { success: false, instructionId, error: fetchError?.message || "Instruction not found" };
+      }
+      const updatedDataEn = { ...row.data_en, status: newStatus };
+      const { error } = await supabase
+        .from("instructions")
+        .update({ data_en: updatedDataEn, updated_at: new Date().toISOString() })
+        .eq("id", instructionId);
+      if (error) return { success: false, instructionId, error: error.message };
+      return { success: true, instructionId };
+    } catch (err) {
+      return { success: false, instructionId: instructionId as string, error: err instanceof Error ? err.message : "Unknown error" };
+    }
+  }
+
   return { success: false, error: "Unknown action" };
 }
 
-export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
-  const { mission, instructions, allMissions, isPreview, adminNotes: initialAdminNotes } = loaderData;
+type CommentEntry = { id: string; title: string; description: string; status: "comment"; type: "comment"; explanation: [] };
+type IfEntry = { id: string; title: string; description: string; status: "if"; type: "if"; explanation: [] };
+type EndIfEntry = { id: string; title: string; description: string; status: "end-if"; type: "end-if"; explanation: [] };
+type ElseEntry = { id: string; title: string; description: string; status: "else"; type: "else"; explanation: [] };
+type TempEntry = { id: string; title: string; description: string; status: "temp"; type: "temp"; explanation: [] };
 
-  // Map instructions to maintain order from mission.instructions and apply custom titles
-  // IF entries are special conditional blocks; END-IF and ELSE are structural markers
-  const missionInstructions = mission.instructions.map(([id, customTitle]) => {
-    if (id.startsWith("comment-") || id === "0") {
-      return { id, title: customTitle || "", description: "", status: "comment" as const, type: "comment" as const, explanation: [] as [] };
-    }
-    if (id.startsWith("if-")) {
-      return { id, title: customTitle || "IF", description: "", status: "if" as const, type: "if" as const, explanation: [] as [] };
-    }
-    if (id.startsWith("end-if-")) {
-      return { id, title: "", description: "", status: "end-if" as const, type: "end-if" as const, explanation: [] as [] };
-    }
-    if (id.startsWith("else-")) {
-      return { id, title: customTitle || "ELSE", description: "", status: "else" as const, type: "else" as const, explanation: [] as [] };
-    }
-    // Strip the duplicate-occurrence suffix (#2, #3, …) for DB lookup,
-    // but keep the full entry key as `id` for independent selection state.
-    const baseId = id.includes("#") ? id.split("#")[0] : id;
-    const instruction = instructions.find(inst => inst.id === baseId);
-    if (!instruction) return null;
-    const resolved = customTitle ? { ...instruction, title: customTitle } : instruction;
-    return id !== baseId ? { ...resolved, id } : resolved;
-  }).filter(Boolean) as (typeof instructions[number] | { id: string; title: string; description: string; status: "comment"; type: "comment"; explanation: [] } | { id: string; title: string; description: string; status: "if"; type: "if"; explanation: [] } | { id: string; title: string; description: string; status: "end-if"; type: "end-if"; explanation: [] } | { id: string; title: string; description: string; status: "else"; type: "else"; explanation: [] })[];
+export default function HeMissionPage({ loaderData, params }: Route.ComponentProps) {
+  const {
+    mission, instructions, allMissions, isPreview,
+    adminNotes: initialAdminNotes, allInstructionIds, allInstructionsList,
+  } = loaderData;
+  const { session } = useAuth();
+  const statusFetcher = useFetcher();
 
-  const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
-  // Map<ifId, 'if' | 'else'> — tracks which branch is active (missing = collapsed)
-  const [expandedIfBlocks, setExpandedIfBlocks] = useState<Map<string, "if" | "else">>(new Map());
+  // Optimistic status
+  const currentStatus = (statusFetcher.formData?.get("status") as MissionStatus | undefined) ?? mission.status ?? "For all";
+
+  // Single shared fetcher for all instruction status updates
+  const instrStatusFetcher = useFetcher<{ success: boolean; instructionId?: string; error?: string }>();
+  const optimisticInstrStatus: Record<string, InstructionStatus> = {};
+  if (instrStatusFetcher.formData?.get("actionType") === "updateInstructionStatus") {
+    const id = instrStatusFetcher.formData.get("instructionId") as string;
+    const st = instrStatusFetcher.formData.get("status") as InstructionStatus;
+    if (id && st) optimisticInstrStatus[id] = st;
+  }
+
+  const getInstrStatus = (instruction: { id: string; status?: string }): InstructionStatus =>
+    optimisticInstrStatus[instruction.id] ??
+    (instruction.status as InstructionStatus | undefined) ??
+    "only title";
+
+  const submitInstrStatus = (instructionId: string, newStatus: InstructionStatus) => {
+    const fd = new FormData();
+    fd.set("actionType", "updateInstructionStatus");
+    fd.set("instructionId", instructionId);
+    fd.set("status", newStatus);
+    instrStatusFetcher.submit(fd, { method: "post" });
+  };
+
+  // Build flat mission instruction list with special entries
+  const missionInstructions = mission.instructions
+    .map(([id, customTitle]) => {
+      if (id.startsWith("comment-") || id === "0") {
+        return { id, title: customTitle || "", description: "", status: "comment" as const, type: "comment" as const, explanation: [] as [] };
+      }
+      if (id.startsWith("if-")) {
+        return { id, title: customTitle || "IF", description: "", status: "if" as const, type: "if" as const, explanation: [] as [] };
+      }
+      if (id.startsWith("end-if-")) {
+        return { id, title: "", description: "", status: "end-if" as const, type: "end-if" as const, explanation: [] as [] };
+      }
+      if (id.startsWith("else-")) {
+        return { id, title: customTitle || "ELSE", description: "", status: "else" as const, type: "else" as const, explanation: [] as [] };
+      }
+      if (/^T\d+$/.test(id)) {
+        return { id, title: customTitle || id, description: "", status: "temp" as const, type: "temp" as const, explanation: [] as [] };
+      }
+      const baseId = id.includes("#") ? id.split("#")[0] : id;
+      const instruction = instructions.find((inst) => inst.id === baseId);
+      if (!instruction) return null;
+      const resolved = customTitle ? { ...instruction, title: customTitle } : instruction;
+      return id !== baseId ? { ...resolved, id } : resolved;
+    })
+    .filter(Boolean) as (NonNullable<ReturnType<typeof instructions["find"]>> | CommentEntry | IfEntry | EndIfEntry | ElseEntry | TempEntry)[];
 
   // Build nested IF/ELSE structure using a stack-based parser.
   const parentOf = new Map<string, string>();
   const childrenOf = new Map<string, string[]>();
   const elseChildrenOf = new Map<string, string[]>();
-  const elseIdOf = new Map<string, string>(); // ifId -> elseId
+  const elseIdOf = new Map<string, string>();
   const depthOf = new Map<string, number>();
   (() => {
     const stack: string[] = [];
@@ -188,72 +304,13 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
     }
   })();
 
-  /**
-   * Collect all nested IF IDs (direct and transitive) inside a given IF block,
-   * across both its IF-branch children and ELSE-branch children.
-   */
-  const collectDescendantIfIds = (ifId: string): string[] => {
-    const result: string[] = [];
-    const queue = [
-      ...(childrenOf.get(ifId) ?? []),
-      ...(elseChildrenOf.get(ifId) ?? []),
-    ];
-    while (queue.length > 0) {
-      const id = queue.shift()!;
-      if (id.startsWith("if-")) {
-        result.push(id);
-        queue.push(...(childrenOf.get(id) ?? []));
-        queue.push(...(elseChildrenOf.get(id) ?? []));
-      }
-    }
-    return result;
-  };
+  const insideIfBlock = new Set<string>(parentOf.keys());
 
-  /**
-   * Toggle IF block. branch = 'if' | 'else'.
-   * Clicking the active branch collapses it; clicking the other switches to it.
-   * In both cases, any nested IF blocks that were previously expanded are collapsed.
-   */
-  const toggleIfBlock = (ifId: string, branch: "if" | "else" = "if") => {
-    setExpandedIfBlocks(prev => {
-      const next = new Map(prev);
-      const isCollapsing = next.get(ifId) === branch;
+  // Instructions panel state (preview mode only)
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
+  const [instructionSearch, setInstructionSearch] = useState("");
 
-      if (isCollapsing) {
-        next.delete(ifId);
-      } else {
-        next.set(ifId, branch);
-      }
-
-      // In either case, collapse all nested IF blocks inside this one
-      for (const descendantId of collectDescendantIfIds(ifId)) {
-        next.delete(descendantId);
-      }
-
-      return next;
-    });
-  };
-
-  // An item is hidden when its parent IF is collapsed or it's in the non-active branch.
-  const hiddenByIf = new Set<string>();
-  for (const [ifId, children] of childrenOf) {
-    const activeBranch = expandedIfBlocks.get(ifId);
-    if (!activeBranch) {
-      for (const id of children) hiddenByIf.add(id);
-      for (const id of elseChildrenOf.get(ifId) ?? []) hiddenByIf.add(id);
-    } else if (activeBranch === "if") {
-      for (const id of elseChildrenOf.get(ifId) ?? []) hiddenByIf.add(id);
-    } else {
-      for (const id of children) {
-        const elseId = elseIdOf.get(ifId);
-        if (id !== elseId) hiddenByIf.add(id);
-      }
-    }
-  }
-  const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
-  const [loadingLinkInstructions, setLoadingLinkInstructions] = useState<Set<string>>(new Set());
-
-  // ── Admin notes panel state (preview mode only) ──────────────────────────
+  // Admin notes panel state
   const [notesOpen, setNotesOpen] = useState(false);
   const [adminNotes, setAdminNotes] = useState<string[]>(initialAdminNotes ?? []);
   const [newNoteText, setNewNoteText] = useState("");
@@ -263,8 +320,6 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
   const newNoteInputRef = useRef<HTMLTextAreaElement>(null);
   const pendingSaveRef = useRef<string[] | null>(null);
 
-  // Sync local adminNotes from loader data after each route revalidation,
-  // but only when there is no in-flight save (to avoid overwriting optimistic state).
   useEffect(() => {
     if (adminNotesFetcher.state === "idle" && pendingSaveRef.current === null) {
       setAdminNotes(initialAdminNotes ?? []);
@@ -282,6 +337,7 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
     const fd = new FormData();
     fd.set("actionType", "saveMissionAdminNote");
     fd.set("notes", JSON.stringify(notes));
+    fd.set("accessToken", session?.access_token || "");
     adminNotesFetcher.submit(fd, { method: "post", action: `/he/missions/${params.missionId}` });
   };
 
@@ -320,15 +376,66 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
     setEditingNoteIndex(null);
     setEditingNoteText("");
   };
-  // ─────────────────────────────────────────────────────────────────────────
+
+  const [captionVisible, setCaptionVisible] = useState(true);
+  const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
+  const [selectedLinkedInstructionId, setSelectedLinkedInstructionId] = useState<Map<string, string | null>>(new Map());
+  const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
+  const [loadingLinkInstructions, setLoadingLinkInstructions] = useState<Set<string>>(new Set());
+  const [completedInstructions, setCompletedInstructions] = useState<Set<string>>(new Set());
+  const [expandedIfBlocks, setExpandedIfBlocks] = useState<Map<string, "if" | "else">>(new Map());
+
+  // hiddenByIf — items inside collapsed or non-active IF branch
+  const hiddenByIf = new Set<string>();
+  for (const [ifId, children] of childrenOf) {
+    const activeBranch = expandedIfBlocks.get(ifId);
+    if (!activeBranch) {
+      for (const id of children) hiddenByIf.add(id);
+      for (const id of elseChildrenOf.get(ifId) ?? []) hiddenByIf.add(id);
+    } else if (activeBranch === "if") {
+      for (const id of elseChildrenOf.get(ifId) ?? []) hiddenByIf.add(id);
+    } else {
+      for (const id of children) {
+        const elseId = elseIdOf.get(ifId);
+        if (id !== elseId) hiddenByIf.add(id);
+      }
+    }
+  }
+
+  const collectDescendantIfIds = (ifId: string): string[] => {
+    const result: string[] = [];
+    const queue = [...(childrenOf.get(ifId) ?? []), ...(elseChildrenOf.get(ifId) ?? [])];
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      if (id.startsWith("if-")) {
+        result.push(id);
+        queue.push(...(childrenOf.get(id) ?? []));
+        queue.push(...(elseChildrenOf.get(id) ?? []));
+      }
+    }
+    return result;
+  };
+
+  const toggleIfBlock = (ifId: string, branch: "if" | "else" = "if") => {
+    setExpandedIfBlocks((prev) => {
+      const next = new Map(prev);
+      const isCollapsing = next.get(ifId) === branch;
+      if (isCollapsing) {
+        next.delete(ifId);
+      } else {
+        next.set(ifId, branch);
+      }
+      for (const descendantId of collectDescendantIfIds(ifId)) {
+        next.delete(descendantId);
+      }
+      return next;
+    });
+  };
 
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
-  // Access params from loaderData (missionId is available via mission)
-  const params = { missionId: mission.id };
-
-  // Get the previous mission from location state or default to home
   const previousMissionId = (location.state as { from?: string })?.from;
 
   const handleLinkInstructionClick = async (instructionId: string, linkedMissionId: string) => {
@@ -340,18 +447,17 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
       setLoadingLinkInstructions(new Set([...loadingLinkInstructions, instructionId]));
       try {
         const response = await fetch(`/api/he/missions/${linkedMissionId}`);
-        if (!response.ok) {
-          console.error("Failed to fetch linked mission");
-          return;
-        }
+        if (!response.ok) { console.error("Failed to fetch linked mission"); return; }
         const linkedMissionData = await response.json();
         const linkedMission = linkedMissionData.mission;
         const linkedInstructions = linkedMissionData.instructions;
-        const linkedMissionInstructions = linkedMission.instructions.map(([id, customTitle]: [string, string?]) => {
-          const instruction = linkedInstructions.find((inst: Instruction) => inst.id === id);
-          if (!instruction) return null;
-          return customTitle ? { ...instruction, title: customTitle } : instruction;
-        }).filter(Boolean) as Instruction[];
+        const linkedMissionInstructions = linkedMission.instructions
+          .map(([id, customTitle]: [string, string?]) => {
+            const instruction = linkedInstructions.find((inst: Instruction) => inst.id === id);
+            if (!instruction) return null;
+            return customTitle ? { ...instruction, title: customTitle } : instruction;
+          })
+          .filter(Boolean) as Instruction[];
         const newMap = new Map(expandedLinkInstructions);
         newMap.set(instructionId, linkedMissionInstructions);
         setExpandedLinkInstructions(newMap);
@@ -365,6 +471,29 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
     }
   };
 
+  const handleLinkedInstructionClick = (parentLinkId: string, linkedInstruction: Instruction, event?: React.MouseEvent) => {
+    if (event?.shiftKey) {
+      navigate(`/admin/instructions?instructionId=${linkedInstruction.id}`);
+      return;
+    }
+    if (selectedInstructionId) {
+      setCompletedInstructions((c) => new Set([...c, selectedInstructionId]));
+      setSelectedInstructionId(null);
+    }
+    setSelectedLinkedInstructionId((prev) => {
+      const newMap = new Map(prev);
+      const current = newMap.get(parentLinkId);
+      if (current === linkedInstruction.id) {
+        newMap.set(parentLinkId, null);
+        setCompletedInstructions((c) => new Set([...c, linkedInstruction.id]));
+      } else {
+        if (current) setCompletedInstructions((c) => new Set([...c, current]));
+        newMap.set(parentLinkId, linkedInstruction.id);
+      }
+      return newMap;
+    });
+  };
+
   const handleInstructionClick = (instructionId: string, event?: React.MouseEvent) => {
     const instruction = missionInstructions.find((inst) => inst?.id === instructionId);
 
@@ -373,7 +502,6 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
       return;
     }
 
-    // IF block toggle
     if (instruction && "type" in instruction && instruction.type === "if") {
       toggleIfBlock(instructionId, "if");
       return;
@@ -386,7 +514,21 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
 
     if (selectedInstructionId === instructionId) {
       setSelectedInstructionId(null);
+      setCompletedInstructions((prev) => new Set([...prev, instructionId]));
     } else {
+      if (selectedInstructionId) {
+        setCompletedInstructions((prev) => new Set([...prev, selectedInstructionId]));
+      }
+      setSelectedLinkedInstructionId((prev) => {
+        const newMap = new Map(prev);
+        for (const [key, val] of newMap) {
+          if (val) {
+            setCompletedInstructions((c) => new Set([...c, val]));
+            newMap.set(key, null);
+          }
+        }
+        return newMap;
+      });
       setSelectedInstructionId(instructionId);
     }
   };
@@ -401,28 +543,72 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
 
   const selectedInstruction = missionInstructions.find((inst) => inst?.id === selectedInstructionId) || null;
 
+  const instructionToDisplay =
+    selectedInstruction &&
+    "type" in selectedInstruction &&
+    (selectedInstruction.type === "comment" || selectedInstruction.type === "if" || selectedInstruction.type === "else" || selectedInstruction.type === "temp")
+      ? null
+      : selectedInstruction;
+
+  // Scroll selected instruction to top
+  useEffect(() => {
+    if (selectedInstructionId) {
+      requestAnimationFrame(() => {
+        const element = document.querySelector(`[data-instruction-id="${selectedInstructionId}"]`);
+        if (element) element.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [selectedInstructionId]);
+
+  useEffect(() => {
+    for (const [parentId, linkedId] of selectedLinkedInstructionId) {
+      if (linkedId) {
+        requestAnimationFrame(() => {
+          const element = document.querySelector(`[data-instruction-id="linked-${parentId}-${linkedId}"]`);
+          if (element) element.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+        break;
+      }
+    }
+  }, [selectedLinkedInstructionId]);
+
   return (
     <>
       {isPreview && (
         <>
-          {/* Preview bar */}
-          <div className={previewStyles.previewBar}>
+          <div className={styles.previewBar}>
             <button
-              onClick={() => navigate(`/admin/missions?missionId=${mission.id}`)}
-              className={previewStyles.menuLink}
+              onClick={() => navigate(`/admin/missions?missionId=${params.missionId}`)}
+              className={styles.menuLink}
             >
               <ArrowLeft size={18} />
               חזור לניהול
             </button>
 
+            {/* Instructions toggle button */}
+            <button
+              className={`${styles.menuLink} ${instructionsOpen ? styles.menuLinkActive : ""}`}
+              onClick={() => {
+                setInstructionsOpen((v) => !v);
+                if (notesOpen) setNotesOpen(false);
+              }}
+              aria-pressed={instructionsOpen}
+              title="הצג / הסתר את כל ההוראות הזמינות"
+            >
+              <BookMarked size={15} />
+              הוראות
+              {allInstructionsList && allInstructionsList.length > 0 && (
+                <span className={styles.notesBadge}>{allInstructionsList.length}</span>
+              )}
+            </button>
+
             {/* Notes toggle button */}
             <button
-              className={`${previewStyles.menuLink} ${notesOpen ? previewStyles.menuLinkActive : ""}`}
+              className={`${styles.menuLink} ${notesOpen ? styles.menuLinkActive : ""}`}
               onClick={() => {
                 setNotesOpen((v) => !v);
-                if (!notesOpen) {
-                  setTimeout(() => newNoteInputRef.current?.focus(), 80);
-                }
+                if (instructionsOpen) setInstructionsOpen(false);
+                if (!notesOpen) setTimeout(() => newNoteInputRef.current?.focus(), 80);
               }}
               aria-pressed={notesOpen}
               title="הצג / הסתר הערות מחבר למשימה זו"
@@ -430,36 +616,116 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
               <StickyNote size={15} />
               הערות
               {adminNotes.length > 0 && (
-                <span className={previewStyles.notesBadge}>{adminNotes.length}</span>
+                <span className={styles.notesBadge}>{adminNotes.length}</span>
               )}
             </button>
+
+            {/* Status select */}
+            <statusFetcher.Form method="post" className={styles.statusForm}>
+              <input type="hidden" name="actionType" value="updateStatus" />
+              <label className={styles.statusLabel} htmlFor="he-mission-status-select">
+                סטטוס:
+              </label>
+              <select
+                id="he-mission-status-select"
+                name="status"
+                className={styles.statusSelect}
+                value={currentStatus}
+                onChange={(e) => {
+                  const fd = new FormData();
+                  fd.set("actionType", "updateStatus");
+                  fd.set("status", e.target.value);
+                  statusFetcher.submit(fd, { method: "post" });
+                }}
+              >
+                <option value="Hide">Hide</option>
+                <option value="For all">For all</option>
+                <option value="Only Adama">Only Adama</option>
+                <option value="Only Bazn">Only Bazn</option>
+              </select>
+              {statusFetcher.state !== "idle" && (
+                <span className={styles.statusSaving}>שומר…</span>
+              )}
+              {statusFetcher.state === "idle" && statusFetcher.data?.success === true && (
+                <span className={styles.statusSaved}>✓ נשמר</span>
+              )}
+            </statusFetcher.Form>
           </div>
 
-          {/* Admin notes panel — shown below the preview bar */}
+          {/* Instructions panel */}
+          {instructionsOpen && (
+            <div className={styles.notesPanel}>
+              <div className={styles.notesPanelHeader}>
+                <span className={styles.notesPanelTitle}>
+                  <BookMarked size={14} /> כל ההוראות
+                  {allInstructionsList && allInstructionsList.length > 0 && ` (${allInstructionsList.length})`}
+                </span>
+              </div>
+              <input
+                className={styles.instructionsSearchInput}
+                type="text"
+                placeholder="חיפוש לפי מזהה או כותרת…"
+                value={instructionSearch}
+                onChange={(e) => setInstructionSearch(e.target.value)}
+                autoFocus
+              />
+              <ul className={styles.instructionsList}>
+                {(allInstructionsList ?? [])
+                  .filter((instr) => {
+                    const q = instructionSearch.toLowerCase();
+                    return !q || instr.id.toLowerCase().includes(q) || instr.title.toLowerCase().includes(q);
+                  })
+                  .map((instr) => (
+                    <li key={instr.id} className={styles.instructionsListItem}>
+                      <span className={styles.instructionIdBadge}>{instr.id}</span>
+                      <button
+                        className={styles.instructionsListTitle}
+                        onClick={() => navigate(`/admin/instructions?instructionId=${instr.id}`)}
+                        title={`פתח הוראה ${instr.id} בניהול`}
+                      >
+                        {instr.title}
+                      </button>
+                    </li>
+                  ))}
+                {(allInstructionsList ?? []).filter((instr) => {
+                  const q = instructionSearch.toLowerCase();
+                  return !q || instr.id.toLowerCase().includes(q) || instr.title.toLowerCase().includes(q);
+                }).length === 0 && (
+                  <li className={styles.notesEmpty}>אין הוראות התואמות את החיפוש.</li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          {/* Admin notes panel */}
           {notesOpen && (
-            <div className={previewStyles.notesPanel}>
-              <div className={previewStyles.notesPanelHeader}>
-                <span className={previewStyles.notesPanelTitle}>
+            <div className={styles.notesPanel}>
+              <div className={styles.notesPanelHeader}>
+                <span className={styles.notesPanelTitle}>
                   <StickyNote size={14} /> הערות מחבר
                   {adminNotes.length > 0 && ` (${adminNotes.length})`}
                 </span>
                 {adminNotesFetcher.state !== "idle" && (
-                  <span className={previewStyles.statusSaving}>שומר…</span>
+                  <span className={styles.statusSaving}>שומר…</span>
                 )}
                 {adminNotesFetcher.state === "idle" && adminNotesFetcher.data?.success === true && (
-                  <span className={previewStyles.statusSaved}>✓ נשמר</span>
+                  <span className={styles.statusSaved}>✓ נשמר</span>
+                )}
+                {adminNotesFetcher.state === "idle" && adminNotesFetcher.data?.success === false && (
+                  <span className={styles.statusSaving} style={{ color: "var(--color-error-11)" }}>
+                    ⚠ {adminNotesFetcher.data.error || "שמירה נכשלה"}
+                  </span>
                 )}
               </div>
 
-              {/* Existing notes */}
               {adminNotes.length > 0 && (
-                <ul className={previewStyles.notesList}>
+                <ul className={styles.notesList}>
                   {adminNotes.map((note, idx) => (
-                    <li key={idx} className={previewStyles.noteItem}>
+                    <li key={idx} className={styles.noteItem}>
                       {editingNoteIndex === idx ? (
-                        <div className={previewStyles.noteEditRow}>
+                        <div className={styles.noteEditRow}>
                           <textarea
-                            className={previewStyles.noteTextarea}
+                            className={styles.noteTextarea}
                             value={editingNoteText}
                             onChange={(e) => setEditingNoteText(e.target.value)}
                             autoFocus
@@ -468,40 +734,23 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
                               if (e.key === "Escape") handleCancelEdit();
                             }}
                           />
-                          <div className={previewStyles.noteEditActions}>
-                            <button
-                              className={previewStyles.noteActionBtn}
-                              onClick={handleSaveEdit}
-                              disabled={!editingNoteText.trim()}
-                              title="שמור"
-                            >
+                          <div className={styles.noteEditActions}>
+                            <button className={styles.noteActionBtn} onClick={handleSaveEdit} disabled={!editingNoteText.trim()} title="שמור">
                               <Check size={14} />
                             </button>
-                            <button
-                              className={previewStyles.noteActionBtn}
-                              onClick={handleCancelEdit}
-                              title="בטל"
-                            >
+                            <button className={styles.noteActionBtn} onClick={handleCancelEdit} title="בטל">
                               <X size={14} />
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <div className={previewStyles.noteViewRow}>
-                          <span className={previewStyles.noteText}>{note}</span>
-                          <div className={previewStyles.noteViewActions}>
-                            <button
-                              className={previewStyles.noteActionBtn}
-                              onClick={() => handleStartEdit(idx)}
-                              title="ערוך הערה"
-                            >
+                        <div className={styles.noteViewRow}>
+                          <span className={styles.noteText}>{note}</span>
+                          <div className={styles.noteViewActions}>
+                            <button className={styles.noteActionBtn} onClick={() => handleStartEdit(idx)} title="ערוך הערה">
                               <Pencil size={13} />
                             </button>
-                            <button
-                              className={`${previewStyles.noteActionBtn} ${previewStyles.noteDeleteBtn}`}
-                              onClick={() => handleRemoveNote(idx)}
-                              title="מחק הערה"
-                            >
+                            <button className={`${styles.noteActionBtn} ${styles.noteDeleteBtn}`} onClick={() => handleRemoveNote(idx)} title="מחק הערה">
                               <Trash2 size={13} />
                             </button>
                           </div>
@@ -513,14 +762,13 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
               )}
 
               {adminNotes.length === 0 && (
-                <p className={previewStyles.notesEmpty}>אין הערות עדיין. הוסף את הראשונה למטה.</p>
+                <p className={styles.notesEmpty}>אין הערות עדיין. הוסף את הראשונה למטה.</p>
               )}
 
-              {/* New note input */}
-              <div className={previewStyles.notesAddRow}>
+              <div className={styles.notesAddRow}>
                 <textarea
                   ref={newNoteInputRef}
-                  className={previewStyles.noteTextarea}
+                  className={styles.noteTextarea}
                   value={newNoteText}
                   onChange={(e) => setNewNoteText(e.target.value)}
                   placeholder="הוסף הערה… (Ctrl+Enter לשמירה)"
@@ -532,12 +780,7 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
                     }
                   }}
                 />
-                <button
-                  className={previewStyles.notesAddBtn}
-                  onClick={handleAddNote}
-                  disabled={!newNoteText.trim()}
-                  title="הוסף הערה"
-                >
+                <button className={styles.notesAddBtn} onClick={handleAddNote} disabled={!newNoteText.trim()} title="הוסף הערה">
                   <Plus size={16} />
                   הוסף
                 </button>
@@ -547,64 +790,90 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
         </>
       )}
 
-      <div className={homeStyles.container} dir="rtl">
-        <section className={homeStyles.instructionListSection}>
-          <div className={homeStyles.headerWrapper}>
-            {previousMissionId && (
-              <button onClick={handleBackClick} className={homeStyles.menuLink}>
+      <div className={styles.container} dir="rtl">
+        <section className={styles.instructionListSection}>
+          <div className={styles.headerWrapper}>
+            {!isPreview && (
+              <Link to="/he" className={styles.menuLink}>
+                <BookOpen size={18} />
+                צפה בכל המשימות
+              </Link>
+            )}
+            {!isPreview && previousMissionId && (
+              <button onClick={handleBackClick} className={styles.menuLink}>
                 <ArrowLeft size={18} />
                 חזור למשימה הקודמת
               </button>
             )}
-            <h1 className={homeStyles.sectionHeader}>{mission.title}</h1>
-            <Link to="/he" className={homeStyles.menuLink}>
-              <BookOpen size={18} />
-              צפה בכל המשימות
-            </Link>
+            <h1 className={styles.sectionHeader}>{mission.title}</h1>
+            <div className={styles.captionToggleGroup}>
+              <button
+                className={`${styles.captionToggleButton} ${captionVisible ? styles.captionToggleActive : ""}`}
+                onClick={() => setCaptionVisible(true)}
+                title="הצג כיתובים"
+                aria-pressed={captionVisible}
+              >
+                <List size={16} />
+              </button>
+              <button
+                className={`${styles.captionToggleButton} ${!captionVisible ? styles.captionToggleActive : ""}`}
+                onClick={() => setCaptionVisible(false)}
+                title="הסתר כיתובים"
+                aria-pressed={!captionVisible}
+              >
+                <ListX size={16} />
+              </button>
+            </div>
           </div>
-          <p className={homeStyles.missionDescription}>{mission.description}</p>
-          <div className={homeStyles.instructionList}>
-            {missionInstructions.map((instruction) => {
-              if (hiddenByIf.has(instruction.id)) return null;
 
+          <div className={styles.missionDescription}>
+            <Markdown remarkPlugins={[remarkBreaks]}>{mission.description}</Markdown>
+          </div>
+
+          <div className={styles.instructionList}>
+            {missionInstructions.map((instruction, index) => {
               const isComment = "type" in instruction && instruction.type === "comment";
               const isIf = "type" in instruction && instruction.type === "if";
               const isEndIf = "type" in instruction && instruction.type === "end-if";
               const isElse = "type" in instruction && instruction.type === "else";
+              const isTemp = "type" in instruction && instruction.type === "temp";
               const activeBranch = isIf ? expandedIfBlocks.get(instruction.id) : undefined;
               const isIfExpanded = isIf && activeBranch !== undefined;
               const isLinkExpanded = expandedLinkInstructions.has(instruction.id);
               const isLoading = loadingLinkInstructions.has(instruction.id);
               const expandedInstructions = expandedLinkInstructions.get(instruction.id);
 
-              // ELSE separator rows are rendered inline within the IF row, not standalone
               if (isElse) return null;
+              if (hiddenByIf.has(instruction.id)) return null;
 
-              // Render END-IF divider only when its matching IF block is expanded
-              if (isEndIf) {
-                const matchingIfId = instruction.id.replace(/^end-if-/, "if-");
-                if (!expandedIfBlocks.get(matchingIfId)) return null;
-                return (
-                  <div
-                    key={instruction.id}
-                    style={{
-                      height: "2px",
-                      background: "linear-gradient(to left, transparent, var(--color-success-8) 20%, var(--color-success-8) 80%, transparent)",
-                      borderRadius: "9999px",
-                      margin: "var(--space-2) var(--space-3)",
-                      opacity: 0.7,
-                    }}
-                    aria-hidden="true"
-                  />
-                );
-              }
+              // Order number (excluding structural entries)
+              const orderNumber = missionInstructions
+                .slice(0, index + 1)
+                .filter((inst) => {
+                  if (!inst) return false;
+                  if ("type" in inst) return inst.type !== "comment" && inst.type !== "if" && inst.type !== "end-if" && inst.type !== "else";
+                  return true;
+                }).length;
 
               if (isComment) {
                 return (
-                  <div key={instruction.id} className={homeStyles.instructionItem}>
-                    <div style={{ display: "flex", alignItems: "center", padding: "var(--space-3) var(--space-4)", color: "var(--color-accent-11)", fontStyle: "italic", fontSize: "0.9rem", opacity: 0.8 }}>
+                  <div key={instruction.id} className={styles.instructionItem}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "var(--space-3) var(--space-4)",
+                        color: "var(--color-accent-11)",
+                        fontStyle: "italic",
+                        fontSize: "0.9rem",
+                        cursor: "default",
+                        opacity: 0.8,
+                      }}
+                    >
                       <span style={{ marginLeft: "var(--space-2)", flexShrink: 0 }}>💬</span>
-                      {instruction.title}
+                      <div className={styles.commentMarkdown}>
+                        <Markdown remarkPlugins={[remarkBreaks]}>{instruction.title}</Markdown>
+                      </div>
                     </div>
                   </div>
                 );
@@ -619,77 +888,53 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
                   : null;
                 const elseTitle = elseEntry && "title" in elseEntry ? elseEntry.title : "ELSE";
 
-                const ifBtnStyle = {
-                  display: "flex", alignItems: "center", gap: "var(--space-2)",
-                  flex: hasElse ? 1 : undefined,
-                  width: hasElse ? undefined : "100%",
-                  minWidth: 0,
-                  padding: depth > 0 ? "var(--space-2) var(--space-3)" : "var(--space-3) var(--space-4)",
-                  background: activeBranch === "if" ? "var(--color-success-4)" : (depth > 0 ? "var(--color-success-2)" : "var(--color-success-3)"),
-                  border: `1px solid ${activeBranch === "if" ? "var(--color-success-8)" : (depth > 0 ? "var(--color-success-6)" : "var(--color-success-7)")}`,
-                  borderRadius: "var(--radius-2)", color: "var(--color-success-11)",
-                  fontFamily: "var(--font-body)",
-                  fontSize: depth > 0 ? "0.875rem" : "0.9375rem",
-                  fontWeight: 600,
-                  cursor: "pointer", textAlign: "right" as const, marginBottom: hasElse ? 0 : "var(--space-1)",
-                  opacity: depth > 0 ? 0.92 : 1,
-                };
-
-                const elseBtnStyle = {
-                  display: "flex", alignItems: "center", gap: "var(--space-2)",
-                  flex: 1,
-                  minWidth: 0,
-                  padding: depth > 0 ? "var(--space-2) var(--space-3)" : "var(--space-3) var(--space-4)",
-                  background: activeBranch === "else" ? "var(--color-amber-4)" : (depth > 0 ? "var(--color-amber-2)" : "var(--color-amber-3)"),
-                  border: `1px solid ${activeBranch === "else" ? "var(--color-amber-8)" : (depth > 0 ? "var(--color-amber-6)" : "var(--color-amber-7)")}`,
-                  borderRadius: "var(--radius-2)", color: "var(--color-amber-11)",
-                  fontFamily: "var(--font-body)",
-                  fontSize: depth > 0 ? "0.875rem" : "0.9375rem",
-                  fontWeight: 600,
-                  cursor: "pointer", textAlign: "right" as const, marginBottom: 0,
-                  opacity: depth > 0 ? 0.92 : 1,
-                };
-
                 return (
                   <div
                     key={instruction.id}
-                    className={homeStyles.instructionItem}
+                    className={styles.instructionItem}
+                    data-instruction-id={instruction.id}
                     style={depth > 0 ? { paddingRight: `calc(${depth} * var(--space-5))` } : undefined}
                   >
                     {hasElse ? (
-                      <div style={{ display: "flex", gap: "4px", marginBottom: "var(--space-1)" }}>
+                      <div className={styles.ifElseRow}>
                         <button
                           onClick={() => toggleIfBlock(instruction.id, "if")}
-                          style={ifBtnStyle}
+                          className={`${styles.ifBlockButton} ${styles.ifElseHalf} ${depth > 0 ? styles.ifBlockButtonNested : ""} ${activeBranch === "if" ? styles.ifBranchActive : ""}`}
                           aria-expanded={activeBranch === "if"}
                         >
-                          <GitBranch size={depth > 0 ? 15 : 18} style={{ flexShrink: 0, color: "var(--color-success-9)" }} />
-                          <span style={{ flex: 1 }}>{instruction.title}</span>
+                          <GitBranch size={depth > 0 ? 15 : 18} className={styles.ifBlockIcon} />
+                          <span className={styles.ifBlockTitle}>{instruction.title}</span>
                           {activeBranch === "if" ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </button>
                         <button
                           onClick={() => toggleIfBlock(instruction.id, "else")}
-                          style={elseBtnStyle}
+                          className={`${styles.ifBlockButton} ${styles.ifElseHalf} ${styles.elseBlockButton} ${depth > 0 ? styles.ifBlockButtonNested : ""} ${activeBranch === "else" ? styles.elseBranchActive : ""}`}
                           aria-expanded={activeBranch === "else"}
                         >
-                          <GitBranch size={depth > 0 ? 15 : 18} style={{ flexShrink: 0, color: "var(--color-amber-9)" }} />
-                          <span style={{ flex: 1 }}>{elseTitle}</span>
+                          <GitBranch size={depth > 0 ? 15 : 18} className={styles.ifBlockIcon} />
+                          <span className={styles.ifBlockTitle}>{elseTitle}</span>
                           {activeBranch === "else" ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </button>
                       </div>
                     ) : (
                       <button
                         onClick={() => toggleIfBlock(instruction.id, "if")}
-                        style={ifBtnStyle}
+                        className={`${styles.ifBlockButton} ${depth > 0 ? styles.ifBlockButtonNested : ""}`}
                         aria-expanded={isIfExpanded}
                       >
-                        <GitBranch size={depth > 0 ? 15 : 18} style={{ flexShrink: 0, color: "var(--color-success-9)" }} />
-                        <span style={{ flex: 1 }}>{instruction.title}</span>
+                        <GitBranch size={depth > 0 ? 15 : 18} className={styles.ifBlockIcon} />
+                        <span className={styles.ifBlockTitle}>{instruction.title}</span>
                         {isIfExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                       </button>
                     )}
                   </div>
                 );
+              }
+
+              if (isEndIf) {
+                const matchingIfId = instruction.id.replace(/^end-if-/, "if-");
+                if (!expandedIfBlocks.has(matchingIfId)) return null;
+                return <div key={instruction.id} className={styles.endIfDivider} aria-hidden="true" />;
               }
 
               const instrDepth = (() => {
@@ -704,52 +949,112 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
                   key={instruction.id}
                   style={instrDepth > 0 ? { paddingRight: `calc(${instrDepth} * var(--space-5))` } : undefined}
                 >
-                  <div className={homeStyles.instructionItem}>
+                  <div className={styles.instructionItem} data-instruction-id={instruction.id}>
                     <InstructionListItem
                       title={instruction.title}
                       description={instruction.description}
                       selected={selectedInstructionId === instruction.id}
                       onClick={(event) => handleInstructionClick(instruction.id, event)}
+                      instructionType={"type" in instruction && instruction.type !== "temp" ? instruction.type : undefined}
+                      explanation={"explanation" in instruction ? instruction.explanation : []}
+                      className={styles.instructionListItem}
+                      orderNumber={orderNumber}
+                      isCompleted={completedInstructions.has(instruction.id)}
+                      isInsideIfBlock={insideIfBlock.has(instruction.id)}
                     />
-                    {"type" in instruction && instruction.type === "link" && (
+                    {isPreview && (
+                      <div className={styles.editInstructionRow}>
+                        <span className={styles.instructionIdBadge} title="Instruction ID" style={{ marginRight: "auto" }}>
+                          ID: {instruction.id}
+                        </span>
+                        <button
+                          className={styles.editInstructionButton}
+                          onClick={() => {
+                            const editId = instruction.id.includes("#") ? instruction.id.split("#")[0] : instruction.id;
+                            navigate(`/admin/instructions?instructionId=${editId}`);
+                          }}
+                          title={`ערוך הוראה ${instruction.id}`}
+                          disabled={isTemp}
+                        >
+                          ✏️ ערוך ^
+                        </button>
+                        {!isTemp && (
+                          <instrStatusFetcher.Form method="post" className={styles.instrStatusForm}>
+                            <input type="hidden" name="actionType" value="updateInstructionStatus" />
+                            <input type="hidden" name="instructionId" value={instruction.id.includes("#") ? instruction.id.split("#")[0] : instruction.id} />
+                            <label className={styles.instrStatusLabel} htmlFor={`he-instr-status-${instruction.id}`}>
+                              סטטוס:
+                            </label>
+                            <select
+                              id={`he-instr-status-${instruction.id}`}
+                              name="status"
+                              className={styles.instrStatusSelect}
+                              value={getInstrStatus(instruction as { id: string; status?: string })}
+                              onChange={(e) => submitInstrStatus(instruction.id, e.target.value as InstructionStatus)}
+                            >
+                              <option value="only title">only title</option>
+                              <option value="partial explanation">partial explanation</option>
+                              <option value="full explanation">full explanation</option>
+                            </select>
+                            {instrStatusFetcher.state !== "idle" &&
+                              instrStatusFetcher.formData?.get("instructionId") === instruction.id && (
+                                <span className={styles.statusSaving}>שומר…</span>
+                              )}
+                            {instrStatusFetcher.state === "idle" &&
+                              instrStatusFetcher.data?.success === true &&
+                              instrStatusFetcher.data.instructionId === instruction.id && (
+                                <span className={styles.statusSaved}>✓</span>
+                              )}
+                          </instrStatusFetcher.Form>
+                        )}
+                      </div>
+                    )}
+                    {"type" in instruction && instruction.type === "link" && "missionId" in instruction && (
                       <div style={{ marginRight: "1rem", fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
-                        {isLoading ? "טוען..." : (isLinkExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
+                        {isLoading ? "טוען..." : isLinkExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                       </div>
                     )}
-                    {selectedInstructionId === instruction.id && (
-                      <div className={homeStyles.mobileExplanation}>
-                        <ExplanationDisplay instruction={instruction as Instruction} />
-                      </div>
-                    )}
+                    {selectedInstructionId === instruction.id &&
+                      ("type" in instruction ? instruction.type !== "link" && instruction.type !== "temp" : true) &&
+                      !isComment &&
+                      "explanation" in instruction &&
+                      Array.isArray(instruction.explanation) &&
+                      instruction.explanation.length > 0 && (
+                        <div className={styles.mobileExplanation}>
+                          <ExplanationDisplay instruction={instruction as Instruction} captionVisible={captionVisible} />
+                        </div>
+                      )}
                   </div>
 
+                  {/* Render expanded linked mission instructions */}
                   {isLinkExpanded && expandedInstructions && (
                     <div style={{ marginRight: "2rem", marginTop: "0.5rem", marginBottom: "1rem" }}>
-                      {expandedInstructions.map((linkedInstruction) => (
-                        <div key={linkedInstruction.id} className={homeStyles.instructionItem}>
-                          <InstructionListItem
-                            title={linkedInstruction.title}
-                            description={linkedInstruction.description}
-                            selected={selectedInstructionId === linkedInstruction.id}
-                            onClick={(event) => {
-                              if (event?.shiftKey) {
-                                navigate(`/admin/instructions?instructionId=${linkedInstruction.id}`);
-                                return;
-                              }
-                              if (selectedInstructionId === linkedInstruction.id) {
-                                setSelectedInstructionId(null);
-                              } else {
-                                setSelectedInstructionId(linkedInstruction.id);
-                              }
-                            }}
-                          />
-                          {selectedInstructionId === linkedInstruction.id && linkedInstruction.type !== "link" && (
-                            <div className={homeStyles.mobileExplanation}>
-                              <ExplanationDisplay instruction={linkedInstruction} />
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                      {expandedInstructions.map((linkedInstruction, linkedIndex) => {
+                        const linkedSelected = selectedLinkedInstructionId.get(instruction.id) === linkedInstruction.id;
+                        return (
+                          <div
+                            key={`${instruction.id}-${linkedInstruction.id}`}
+                            className={styles.instructionItem}
+                            data-instruction-id={`linked-${instruction.id}-${linkedInstruction.id}`}
+                          >
+                            <InstructionListItem
+                              title={linkedInstruction.title}
+                              description={linkedInstruction.description}
+                              selected={linkedSelected}
+                              instructionType={linkedInstruction.type}
+                              explanation={linkedInstruction.explanation}
+                              orderNumber={linkedIndex + 1}
+                              isCompleted={completedInstructions.has(`${instruction.id}-${linkedInstruction.id}`)}
+                              onClick={(event) => handleLinkedInstructionClick(instruction.id, linkedInstruction, event)}
+                            />
+                            {linkedSelected && linkedInstruction.type !== "link" && (
+                              <div className={styles.mobileExplanation}>
+                                <ExplanationDisplay instruction={linkedInstruction} captionVisible={captionVisible} />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -758,16 +1063,11 @@ export default function HeMissionPage({ loaderData }: Route.ComponentProps) {
           </div>
         </section>
 
-        <section className={homeStyles.explanationSection}>
+        <section className={styles.explanationSection}>
           <ExplanationDisplay
-            instruction={
-              selectedInstruction &&
-              "status" in selectedInstruction &&
-              (selectedInstruction.status === "comment" || selectedInstruction.status === "if" || selectedInstruction.status === "else")
-                ? null
-                : (selectedInstruction as Instruction | null)
-            }
-            className={homeStyles.explanationContainer}
+            instruction={instructionToDisplay as Instruction | null}
+            className={styles.explanationContainer}
+            captionVisible={captionVisible}
           />
         </section>
       </div>
