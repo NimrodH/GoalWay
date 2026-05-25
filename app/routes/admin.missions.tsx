@@ -1143,13 +1143,21 @@ function EditMissionForm({
                     // Duplicate entries get a "#N" suffix (e.g. "42#2", "42#3") so that each
                     // occurrence has an independent key while the renderer strips the suffix to
                     // resolve the underlying instruction from the database.
+                    // We accumulate allocated keys across the batch so that selecting the same
+                    // instruction twice in one Add → click also gets distinct suffixes.
+                    const allocatedKeys = selectedInstructions.map(([k]) => k);
                     const newEntries: Array<[string, string?]> = selectedAvailableInstructions.map((baseId) => {
-                      const existingKeys = selectedInstructions.map(([k]) => k);
-                      const alreadyPresent = existingKeys.some((k) => k === baseId || k.startsWith(`${baseId}#`));
-                      if (!alreadyPresent) return [baseId] as [string];
-                      let suffix = 2;
-                      while (existingKeys.includes(`${baseId}#${suffix}`)) suffix++;
-                      return [`${baseId}#${suffix}`] as [string];
+                      const alreadyPresent = allocatedKeys.some((k) => k === baseId || k.startsWith(`${baseId}#`));
+                      let key: string;
+                      if (!alreadyPresent) {
+                        key = baseId;
+                      } else {
+                        let suffix = 2;
+                        while (allocatedKeys.includes(`${baseId}#${suffix}`)) suffix++;
+                        key = `${baseId}#${suffix}`;
+                      }
+                      allocatedKeys.push(key);
+                      return [key] as [string];
                     });
 
                     let newInstructions;
@@ -1178,7 +1186,21 @@ function EditMissionForm({
                     if (!selectedMissionInstruction || !selectedAvailableInstructions.length) return;
                     const isTemp = /^T\d+$/.test(selectedMissionInstruction);
                     if (!isTemp) return;
-                    const replacementId = selectedAvailableInstructions[0];
+                    const baseReplacementId = selectedAvailableInstructions[0];
+                    // Check if this instruction ID is already present elsewhere in the list
+                    // (excluding the temp entry being replaced). If so, assign a #N suffix.
+                    const otherKeys = selectedInstructions
+                      .filter(([id]) => id !== selectedMissionInstruction)
+                      .map(([id]) => id);
+                    const alreadyPresent = otherKeys.some(
+                      (k) => k === baseReplacementId || k.startsWith(`${baseReplacementId}#`),
+                    );
+                    let replacementId = baseReplacementId;
+                    if (alreadyPresent) {
+                      let suffix = 2;
+                      while (otherKeys.includes(`${baseReplacementId}#${suffix}`)) suffix++;
+                      replacementId = `${baseReplacementId}#${suffix}`;
+                    }
                     setSelectedInstructions(
                       selectedInstructions.map(([id, title]) =>
                         id === selectedMissionInstruction
