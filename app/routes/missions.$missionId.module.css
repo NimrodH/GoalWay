@@ -634,6 +634,21 @@
 .ifBlockIcon {
   flex-shrink: 0;
   color: var(--color-success-9);
+  border-radius: var(--radius-1);
+  transition: background-color 0.15s var(--ease-out), color 0.15s var(--ease-out);
+}
+
+/* When the IF branch is active, tint the icon background like the order number */
+.ifBranchActive .ifBlockIcon {
+  background-color: var(--color-accent-9);
+  color: var(--color-accent-contrast);
+  padding: 2px;
+}
+
+.elseBranchActive .ifBlockIcon {
+  background-color: var(--color-amber-9);
+  color: white;
+  padding: 2px;
 }
 
 /* Nested (inner) IF block button — slightly smaller and lighter */
@@ -702,6 +717,12 @@
 
 .elseBlockButton .ifBlockIcon {
   color: var(--color-amber-9);
+}
+
+.elseBlockButton.elseBranchActive .ifBlockIcon {
+  background-color: var(--color-amber-9);
+  color: white;
+  padding: 2px;
 }
 
 /* Active branch highlight */
