@@ -9,6 +9,7 @@ import { getAllMissions, getExampleMissions, getMissionsForOrganization } from "
 import { getUserProfile, isAdmin } from "~/lib/auth.server";
 import { createServerSupabase } from "~/lib/supabase";
 import { useState } from "react";
+import LanguageSelect from "~/components/language-select/language-select";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -155,6 +156,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             <HelpCircle size={16} />
             Help
           </Link>
+          <LanguageSelect currentLang="en" />
           <input
             type="text"
             value={missionFilter}

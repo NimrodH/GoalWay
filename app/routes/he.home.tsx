@@ -12,6 +12,7 @@ import {
 } from "~/services/missions.server";
 import { getUserProfile, isAdmin } from "~/lib/auth.server";
 import { createServerSupabase } from "~/lib/supabase";
+import LanguageSelect from "~/components/language-select/language-select";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -118,6 +119,10 @@ export default function HeHome({ loaderData }: Route.ComponentProps) {
 
         {/* Admin badge */}
         {adminView && <div className={homeStyles.adminBanner}>👑 תצוגת מנהל — מציג את כל המשימות</div>}
+
+        <div style={{ marginBottom: "var(--space-4)", display: "flex", justifyContent: "flex-end" }}>
+          <LanguageSelect currentLang="he" />
+        </div>
 
         <div className={styles.missionsGrid}>
           {missions.map((mission) => (
