@@ -1441,7 +1441,7 @@ function EditMissionForm({
                       });
                     };
 
-                    return selectedInstructions.map(([instructionId, customTitle]) => {
+                    return selectedInstructions.map(([instructionId, customTitle], rowIndex) => {
                       // Hide rows that are inside a collapsed IF block
                       if (hiddenDueToIfCollapse.has(instructionId)) return null;
                     const isComment = instructionId.startsWith("comment-") || instructionId === "0";
@@ -1477,7 +1477,7 @@ function EditMissionForm({
                     }
                     return (
                       <label
-                        key={instructionId}
+                        key={`${instructionId}-${rowIndex}`}
                         className={styles.checkboxLabel}
                         style={{
                           paddingTop: "var(--space-2)",
