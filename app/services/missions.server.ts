@@ -112,6 +112,68 @@ export async function getMissionByIdHe(missionId: string): Promise<Mission | nul
 }
 
 /**
+ * Fetch Hebrew missions that are flagged as examples (publicly visible to all users).
+ */
+export async function getExampleMissionsHe(): Promise<Mission[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("missions")
+    .select("data_he, is_example")
+    .eq("is_example", true)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching Hebrew example missions:", error);
+    return [];
+  }
+
+  return (data || [])
+    .filter((row: any) => row.data_he !== null)
+    .map((row: any) => ({
+      ...migrateLegacyMission(row.data_he),
+      isExample: true,
+    }));
+}
+
+/**
+ * Fetch Hebrew missions visible to a specific organization.
+ */
+export async function getMissionsForOrganizationHe(organizationId: string): Promise<Mission[]> {
+  const supabase = getSupabase();
+
+  const { data: access, error: accessError } = await supabase
+    .from("mission_organizations")
+    .select("mission_id")
+    .eq("organization_id", organizationId);
+
+  if (accessError) {
+    console.error("Error fetching org mission access (he):", accessError);
+    return [];
+  }
+
+  const allowedIds = (access || []).map((r: any) => r.mission_id);
+  if (allowedIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("missions")
+    .select("data_he, is_example")
+    .in("id", allowedIds)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching org Hebrew missions:", error);
+    return [];
+  }
+
+  return (data || [])
+    .filter((row: any) => row.data_he !== null)
+    .map((row: any) => ({
+      ...migrateLegacyMission(row.data_he),
+      isExample: row.is_example ?? false,
+    }));
+}
+
+/**
  * Fetch missions that are flagged as examples (publicly visible to all users).
  */
 export async function getExampleMissions(): Promise<Mission[]> {
