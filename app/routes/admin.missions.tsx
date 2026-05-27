@@ -433,12 +433,18 @@ function EditMissionForm({
       setIsExample(mission.isExample ?? false);
       setSelectedInstructions(mission.instructions || []);
     } else {
+      // No record for this language yet — fall back to English data (missionsWithAccess
+      // is always built from English missions) so the user sees the mission structure
+      // and can fill in the translation before saving.
+      const enFallback = language === "he"
+        ? missionsWithAccess.find((m) => m.id === missionId)
+        : null;
       setId(missionId);
-      setTitle("");
-      setDescription("");
-      setStatus("For all");
-      setIsExample(false);
-      setSelectedInstructions([]);
+      setTitle((enFallback as Mission | undefined)?.title ?? "");
+      setDescription((enFallback as Mission | undefined)?.description ?? "");
+      setStatus((enFallback as Mission | undefined)?.status || "For all");
+      setIsExample((enFallback as Mission | undefined)?.isExample ?? false);
+      setSelectedInstructions((enFallback as Mission | undefined)?.instructions || []);
     }
     // Load admin notes for this mission
     setAdminNotes(missionAdminNotesMap[missionId] || []);
@@ -2225,7 +2231,7 @@ function EditMissionForm({
               id={id}
               isExample={isExample}
               data={generateCode()}
-              disabled={!id || !title}
+              disabled={!id || (language === "en" && !title)}
               language={language}
             />
 
