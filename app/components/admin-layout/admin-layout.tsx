@@ -125,7 +125,9 @@ export function AdminLayout<TLoaderData extends AdminLayoutLoaderData>({
   };
 
   const switchLanguage = (newLang: string) => {
-    navigate(`${currentPath}?lang=${newLang}`);
+    onNavigationRequest(() => {
+      navigate(`${currentPath}?lang=${newLang}`);
+    });
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
