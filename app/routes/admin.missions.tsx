@@ -34,6 +34,7 @@ export default function AdminMissionsPage() {
           onChangesDetected={onChangesDetected}
           onNavigationRequest={onNavigationRequest}
           missionAdminNotesMap={loaderData.missionAdminNotesMap}
+          missionsWithAccess={loaderData.missionsWithAccess}
         />
       )}
     </AdminLayout>
@@ -91,6 +92,7 @@ function EditMissionForm({
   onChangesDetected,
   onNavigationRequest,
   missionAdminNotesMap,
+  missionsWithAccess,
 }: {
   actionData?: {
     success: boolean;
@@ -112,6 +114,7 @@ function EditMissionForm({
   onChangesDetected: (hasChanges: boolean) => void;
   onNavigationRequest: (navigationFn: () => void) => void;
   missionAdminNotesMap: Record<string, string[]>;
+  missionsWithAccess: Array<{ id: string; allowedOrgIds: string[]; instructions?: Array<[string, string?]>; [key: string]: unknown }>;
 }) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
   const [id, setId] = useState("");
@@ -1172,24 +1175,46 @@ function EditMissionForm({
             </button>
           </div>
         </div>
-        <select
-          className={styles.input}
-          value={selectedMissionId}
-          onChange={(e) => handleSelectMission(e.target.value)}
-        >
-          <option value="">Select a mission...</option>
-          {allMissionIds.map((id) => {
-            const mission = missions.find((m) => m.id === id);
-            const isHidden = mission?.status === "Hide";
-            return (
-              <option key={id} value={id}>
-                {isHidden && "🔴 "}
-                {id}
-                {mission ? ` - ${mission.title}` : " (No data for this language)"}
-              </option>
-            );
-          })}
-        </select>
+        {(() => {
+          // Build a set of mission IDs that are referenced as instructions by other missions
+          const linkedMissionIds = new Set<string>();
+          for (const m of missionsWithAccess) {
+            if (Array.isArray(m.instructions)) {
+              for (const [instrId] of m.instructions) {
+                const baseId = instrId.includes("#") ? instrId.split("#")[0] : instrId;
+                if (allMissionIds.includes(baseId) && baseId !== m.id) {
+                  linkedMissionIds.add(baseId);
+                }
+              }
+            }
+          }
+
+          const orgAssignedIds = new Set<string>(
+            missionsWithAccess.filter((m) => m.allowedOrgIds.length > 0).map((m) => m.id),
+          );
+
+          return (
+            <select
+              className={styles.input}
+              value={selectedMissionId}
+              onChange={(e) => handleSelectMission(e.target.value)}
+            >
+              <option value="">Select a mission...</option>
+              {allMissionIds.map((missionId) => {
+                const mission = missions.find((m) => m.id === missionId);
+                const isHidden = mission?.status === "Hide";
+                const isOrgAssigned = !isHidden && orgAssignedIds.has(missionId);
+                const isLinked = !isHidden && !isOrgAssigned && linkedMissionIds.has(missionId);
+                const prefix = isHidden ? "🔴 " : isOrgAssigned ? "🟢 " : isLinked ? "🟡 " : "";
+                return (
+                  <option key={missionId} value={missionId}>
+                    {prefix}{missionId}{mission ? ` - ${mission.title}` : " (No data for this language)"}
+                  </option>
+                );
+              })}
+            </select>
+          );
+        })()}
       </div>
 
       {selectedMissionId && (
