@@ -234,7 +234,7 @@ const ADMIN_FEATURES: FeatureItem[] = [
     description:
       "Insert conditional branching markers in a mission's instruction list to denote steps that only apply in certain scenarios.",
     usage: [
-      "Click the IF buttonr to insert an IF marker after the selected instruction.",
+      "Click the IF button to insert an IF marker after the selected instruction.",
       "Click END-IF to insert the closing marker.",
       "Edit the IF label text via Rename to describe the condition, e.g. IF using Mac.",
       "IF and END-IF are structural markers — they cannot be opened or edited as instructions.",
