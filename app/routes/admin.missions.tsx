@@ -175,11 +175,12 @@ function EditMissionForm({
   }, [id, title, description, status, selectedInstructions, selectedMissionId]);
 
   useEffect(() => {
-    if (actionData?.success || selectedMissionId) {
+    if (actionData?.success) {
       setOriginalCode(generateCode());
       onChangesDetected(false);
     }
-  }, [actionData, selectedMissionId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionData]);
 
   useEffect(() => {
     const missionIdFromUrl = searchParams.get("missionId");
@@ -423,6 +424,7 @@ function EditMissionForm({
 
   const updateMissionFormFields = (missionId: string) => {
     setSelectedMissionId(missionId);
+    setOriginalCode(""); // Reset so the next generateCode() snapshot becomes the new baseline
     localStorage.setItem("lastSelectedMissionId", missionId);
     const mission = missions.find((m) => m.id === missionId);
     if (mission) {
