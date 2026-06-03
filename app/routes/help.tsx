@@ -19,6 +19,7 @@ import {
   Repeat2,
   Layers,
   Globe,
+  CircleDot,
 } from "lucide-react";
 import styles from "./help.module.css";
 
@@ -281,6 +282,24 @@ const ADMIN_FEATURES: FeatureItem[] = [
       "Click Replace Instruction to open the replacement dialog.",
       "Enter the ID of the new instruction that should take its place.",
       "All missions using the old instruction will be updated automatically.",
+    ],
+  },
+  {
+    icon: <CircleDot size={20} />,
+    title: "Mission List Color Index & ID Reference",
+    badge: "Admin: Missions",
+    badgeVariant: "admin",
+    description:
+      "The mission select dropdown uses colored circle emoji indicators to show each mission's visibility status and how it's used. Mission and instruction IDs are the unique keys that tie the whole system together.",
+    usage: [
+      "🔴 Red circle — Mission status is Hidden; it is not visible to any end users.",
+      "🟢 Green circle — Mission is restricted to specific organizations (has org-level access rules).",
+      "🟡 Yellow circle — Mission is referenced as a linked instruction step inside another mission.",
+      "No circle — Mission is publicly visible to all users (Status: For all).",
+      "Mission IDs: Unique string identifiers for each mission (e.g., 'security-basics', '101'). Used in URLs, in the mission select list, and when a mission is embedded as a Link-type instruction inside another mission.",
+      "Instruction IDs: Numeric string identifiers assigned sequentially (e.g., '42', '43'). Each ID maps to one instruction record in the database. Shown in the available-instructions panel and inside each mission's instruction list.",
+      "Instruction status color in selectors: Red = Only Title (no explanation written yet), default = Partial Explanation, Green = Full Explanation complete.",
+      "Duplicate instruction entries use a #N suffix (e.g., '42#2') to allow the same instruction to appear more than once in one mission without losing its unique key.",
     ],
   },
   {
