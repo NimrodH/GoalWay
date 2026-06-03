@@ -2,7 +2,7 @@ import { Form, Link, redirect, useNavigate } from "react-router";
 import Markdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/home";
-import { BookOpen, HelpCircle, LogIn, LogOut, Star, LayoutGrid, List } from "lucide-react";
+import { BookOpen, HelpCircle, LogIn, LogOut, Star, LayoutGrid, List, PencilRuler } from "lucide-react";
 import styles from "./instructions.module.css";
 import homeStyles from "./home.module.css";
 import { getAllMissions, getExampleMissions, getMissionsForOrganization } from "~/services/missions.server";
@@ -130,6 +130,34 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         {adminView && <div className={homeStyles.adminBanner}>👑 Admin view — showing all missions</div>}
 
         <div style={{ marginBottom: "var(--space-4)", display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+          {adminView && (
+            <Link
+              to="/admin/missions"
+              style={{
+                padding: "var(--space-2) var(--space-3)",
+                border: "1px solid var(--color-neutral-6)",
+                borderRadius: "var(--radius-2)",
+                fontSize: "0.875rem",
+                backgroundColor: "var(--color-neutral-3)",
+                color: "var(--color-neutral-11)",
+                cursor: "pointer",
+                textDecoration: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "var(--space-1)",
+                transition: "background-color 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--color-neutral-4)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--color-neutral-3)";
+              }}
+            >
+              <PencilRuler size={16} />
+              Editor
+            </Link>
+          )}
           <Link
             to="/help"
             style={{
