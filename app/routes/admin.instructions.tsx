@@ -1252,9 +1252,12 @@ function EditInstructionForm({
   const updateFormFields = (instructionId: string) => {
     setSelectedInstructionId(instructionId);
     const instruction = instructions.find((i) => i.id === instructionId);
+    // A title may be passed via URL when opening a freshly-created instruction
+    // that was seeded from a temporary (Tx) entry's wording.
+    const urlTitle = searchParams.get("title") || "";
     if (instruction) {
       setId(instruction.id);
-      setTitle(instruction.title);
+      setTitle(instruction.title || urlTitle);
       setDescription(instruction.description || "");
       setType(instruction.type || "default");
       setStatus(instruction.status || "only title");
@@ -1267,7 +1270,7 @@ function EditInstructionForm({
       setExplanationFiles(new Array(explanationWithKeys.length).fill(null));
     } else {
       setId(instructionId);
-      setTitle("");
+      setTitle(urlTitle);
       setDescription("");
       setType("default");
       setStatus("only title");

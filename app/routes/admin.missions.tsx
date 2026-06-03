@@ -150,6 +150,7 @@ function EditMissionForm({
   const saveMissionAfterCreateFetcher = useFetcher<typeof action>();
   const [pendingTempEdit, setPendingTempEdit] = useState<{ tempId: string; title: string } | null>(null);
   const [pendingNavigateToInstructionId, setPendingNavigateToInstructionId] = useState<string | null>(null);
+  const [pendingTempTitle, setPendingTempTitle] = useState<string>("");
   const [showJsonDialog, setShowJsonDialog] = useState(false);
   const [jsonDialogInstructionId, setJsonDialogInstructionId] = useState<string | null>(null);
   const [jsonEditorValue, setJsonEditorValue] = useState("");
@@ -625,7 +626,8 @@ function EditMissionForm({
       const result = createAndEditFetcher.data;
       if (result.success && result.newInstructionId) {
         const newId = result.newInstructionId;
-        const { tempId } = pendingTempEdit;
+        const { tempId, title: tempTitle } = pendingTempEdit;
+        setPendingTempTitle(tempTitle);
         // Replace the temp ID in the mission's instruction list with the real new ID
         const updatedInstructions = selectedInstructions.map(([id, title]) =>
           id === tempId ? ([newId, title] as [string, string?]) : ([id, title] as [string, string?]),
@@ -656,7 +658,7 @@ function EditMissionForm({
           saveMissionAfterCreateFetcher.submit(formData, { method: "post" });
         } else {
           // No mission to save — navigate immediately
-          window.location.href = `/admin/instructions?lang=${language}&instructionId=${newId}`;
+          window.location.href = `/admin/instructions?lang=${language}&instructionId=${newId}${tempTitle ? `&title=${encodeURIComponent(tempTitle)}` : ""}`;
         }
       } else if (result.error) {
         alert(`Failed to create instruction: ${result.error}`);
@@ -682,18 +684,19 @@ function EditMissionForm({
       if (result.success) {
         const instructionId = pendingNavigateToInstructionId;
         setPendingNavigateToInstructionId(null);
-        window.location.href = `/admin/instructions?lang=${language}&instructionId=${instructionId}`;
+        window.location.href = `/admin/instructions?lang=${language}&instructionId=${instructionId}${pendingTempTitle ? `&title=${encodeURIComponent(pendingTempTitle)}` : ""}`;
       } else if (result.error) {
         alert(`Warning: Instruction created but mission save failed: ${result.error}`);
         const instructionId = pendingNavigateToInstructionId;
         setPendingNavigateToInstructionId(null);
-        window.location.href = `/admin/instructions?lang=${language}&instructionId=${instructionId}`;
+        window.location.href = `/admin/instructions?lang=${language}&instructionId=${instructionId}${pendingTempTitle ? `&title=${encodeURIComponent(pendingTempTitle)}` : ""}`;
       }
     }
   }, [
     saveMissionAfterCreateFetcher.data,
     saveMissionAfterCreateFetcher.state,
     pendingNavigateToInstructionId,
+    pendingTempTitle,
     language,
   ]);
 
