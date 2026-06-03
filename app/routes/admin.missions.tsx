@@ -172,7 +172,7 @@ function EditMissionForm({
         onChangesDetected(currentCode !== originalCode);
       }
     }
-  }, [id, title, description, status, selectedInstructions, selectedMissionId]);
+  }, [id, title, description, status, isExample, selectedInstructions, selectedMissionId]);
 
   useEffect(() => {
     if (actionData?.success) {
@@ -490,6 +490,7 @@ function EditMissionForm({
       description,
       instructions: selectedInstructions,
       status,
+      isExample,
     };
 
     return JSON.stringify(mission, null, 2);
