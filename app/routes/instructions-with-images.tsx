@@ -126,6 +126,121 @@ export async function action({ request }: Route.ActionArgs) {
     }
   }
 
+  if (actionType === "renameImage") {
+    if (!accessToken) {
+      return { success: false, error: "Unauthorized: Authentication required" };
+    }
+
+    const oldStoragePath = formData.get("oldStoragePath") as string;
+    const newName = formData.get("newName") as string;
+    const oldImageUrl = formData.get("oldImageUrl") as string;
+
+    if (!oldStoragePath || !newName) {
+      return { success: false, error: "Storage path and new name are required" };
+    }
+
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+        global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      });
+
+      // Build new path: keep same folder and extension, change filename only
+      const pathParts = oldStoragePath.split("/");
+      const oldFileName = pathParts[pathParts.length - 1];
+      const folder = pathParts.slice(0, -1).join("/");
+      const ext = oldFileName.split(".").pop();
+      const sanitized = newName
+        .trim()
+        .replace(/[^a-zA-Z0-9._\-\u0590-\u05FF]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+
+      if (!sanitized) {
+        return { success: false, error: "Invalid file name after sanitization" };
+      }
+
+      const newFileName = ext ? `${sanitized}.${ext}` : sanitized;
+      const newStoragePath = folder ? `${folder}/${newFileName}` : newFileName;
+
+      // Move (rename) the file in Supabase Storage
+      const { error: moveError } = await supabase.storage
+        .from("mission-images")
+        .move(oldStoragePath, newStoragePath);
+
+      if (moveError) {
+        return { success: false, error: moveError.message };
+      }
+
+      // Get the new public URL
+      const {
+        data: { publicUrl: newImageUrl },
+      } = supabase.storage.from("mission-images").getPublicUrl(newStoragePath);
+
+      // Update all instructions referencing the old URL
+      const { data: instructionsData, error: fetchError } = await supabase
+        .from("instructions")
+        .select("*");
+
+      if (fetchError) {
+        return { success: false, error: fetchError.message };
+      }
+
+      let instructionsUpdated = 0;
+
+      if (instructionsData && instructionsData.length > 0) {
+        const updatePromises = instructionsData.map(async (instructionRow: any) => {
+          let updated = false;
+          const updatedRow: any = { updated_at: new Date().toISOString() };
+
+          if (instructionRow.data_en && Array.isArray(instructionRow.data_en.explanation)) {
+            const updatedExplanation = instructionRow.data_en.explanation.map((item: any) => {
+              if (item.type === "image" && item.content === oldImageUrl) {
+                return { ...item, content: newImageUrl };
+              }
+              return item;
+            });
+            if (JSON.stringify(updatedExplanation) !== JSON.stringify(instructionRow.data_en.explanation)) {
+              updatedRow.data_en = { ...instructionRow.data_en, explanation: updatedExplanation };
+              updated = true;
+            }
+          }
+
+          if (instructionRow.data_he && Array.isArray(instructionRow.data_he.explanation)) {
+            const updatedExplanation = instructionRow.data_he.explanation.map((item: any) => {
+              if (item.type === "image" && item.content === oldImageUrl) {
+                return { ...item, content: newImageUrl };
+              }
+              return item;
+            });
+            if (JSON.stringify(updatedExplanation) !== JSON.stringify(instructionRow.data_he.explanation)) {
+              updatedRow.data_he = { ...instructionRow.data_he, explanation: updatedExplanation };
+              updated = true;
+            }
+          }
+
+          if (updated) {
+            await supabase.from("instructions").update(updatedRow).eq("id", instructionRow.id);
+            instructionsUpdated++;
+          }
+        });
+
+        await Promise.all(updatePromises);
+      }
+
+      return {
+        success: true,
+        actionType: "renameImage" as const,
+        message: `Image renamed successfully! Updated ${instructionsUpdated} instruction(s).`,
+        newImageUrl,
+        instructionsUpdated,
+      };
+    } catch (error) {
+      console.error("Error in renameImage:", error);
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
   return { success: false, error: "Invalid action type" };
 }
 
@@ -525,9 +640,16 @@ function ImageLibraryDialog({
   );
 }
 
+/** Extracts the Supabase Storage path from a full public URL */
+function getStoragePathFromUrl(url: string): string {
+  const marker = "/object/public/mission-images/";
+  const idx = url.indexOf(marker);
+  return idx !== -1 ? url.slice(idx + marker.length) : "";
+}
+
 export default function InstructionsWithImages({ loaderData }: Route.ComponentProps) {
   const { instructions, instructionsHe, supabaseUrl, supabaseKey } = loaderData;
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const imageUrl = searchParams.get("imageUrl");
   const [selectedInstructions, setSelectedInstructions] = useState<Set<string>>(new Set());
   const [newImageUrl, setNewImageUrl] = useState("");
@@ -535,8 +657,11 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
   const [showImageLibrary, setShowImageLibrary] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
   const { session, loading } = useAuth();
   const fetcher = useFetcher<typeof action>();
+  const renameFetcher = useFetcher<typeof action>();
 
   // Initialize Supabase on the client
   useEffect(() => {
@@ -709,18 +834,59 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
     fetcher.submit(formData, { method: "post" });
   };
 
-  // Watch for fetcher completion
+  // Watch for replace fetcher completion
   useEffect(() => {
     if (fetcher.data && fetcher.state === "idle") {
       if (fetcher.data.success) {
         alert(fetcher.data.message || "Image replaced successfully!");
-        // Reload the page to show updated data
         window.location.reload();
       } else if (fetcher.data.error) {
         alert(`Failed to replace image: ${fetcher.data.error}`);
       }
     }
   }, [fetcher.data, fetcher.state]);
+
+  // Watch for rename fetcher completion
+  useEffect(() => {
+    if (renameFetcher.data && renameFetcher.state === "idle") {
+      const data = renameFetcher.data;
+      if (data.success && "newImageUrl" in data && data.newImageUrl) {
+        alert(data.message || "Image renamed successfully!");
+        setIsRenaming(false);
+        // Update the URL param to the new image URL
+        setSearchParams({ imageUrl: data.newImageUrl });
+      } else if (!data.success && "error" in data) {
+        alert(`Failed to rename image: ${data.error}`);
+      }
+    }
+  }, [renameFetcher.data, renameFetcher.state, setSearchParams]);
+
+  const handleRenameImage = () => {
+    if (!imageUrl) return;
+    if (!renameValue.trim()) {
+      alert("Please enter a new file name");
+      return;
+    }
+    if (!session) {
+      alert("Please sign in to rename images");
+      return;
+    }
+
+    const storagePath = getStoragePathFromUrl(imageUrl);
+    if (!storagePath) {
+      alert("Could not determine storage path for this image");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("actionType", "renameImage");
+    formData.append("oldStoragePath", storagePath);
+    formData.append("newName", renameValue.trim());
+    formData.append("oldImageUrl", imageUrl);
+    formData.append("accessToken", session.access_token || "");
+
+    renameFetcher.submit(formData, { method: "post" });
+  };
 
   return (
     <div className={styles.container}>
@@ -738,6 +904,57 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
         <div className={styles.imageContainer}>
           <img src={displayImageUrl} alt="Instructions overview" className={styles.image} />
         </div>
+
+        {/* Rename Image Section */}
+        {imageUrl && (
+          <div className={styles.renameSection}>
+            {!isRenaming ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const currentName = imageUrl.split("/").pop()?.replace(/\.[^.]+$/, "") ?? "";
+                  setRenameValue(currentName);
+                  setIsRenaming(true);
+                }}
+                className={styles.renameButton}
+              >
+                ✏️ Rename Image
+              </button>
+            ) : (
+              <div className={styles.renameForm}>
+                <span className={styles.renameLabel}>New name:</span>
+                <input
+                  type="text"
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  className={styles.renameInput}
+                  placeholder="Enter new file name (no extension)..."
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleRenameImage();
+                    if (e.key === "Escape") setIsRenaming(false);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleRenameImage}
+                  className={styles.renameConfirmButton}
+                  disabled={!renameValue.trim() || renameFetcher.state !== "idle"}
+                >
+                  {renameFetcher.state !== "idle" ? "Renaming..." : "Confirm"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRenaming(false)}
+                  className={styles.renameCancelButton}
+                  disabled={renameFetcher.state !== "idle"}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Image Replacement Section */}
         {imageUrl && (
