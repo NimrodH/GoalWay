@@ -181,9 +181,7 @@ export async function action({ request }: Route.ActionArgs) {
       const newStoragePath = folder ? `${folder}/${newFileName}` : newFileName;
 
       // Move (rename) the file in Supabase Storage
-      const { error: moveError } = await supabase.storage
-        .from("mission-images")
-        .move(oldStoragePath, newStoragePath);
+      const { error: moveError } = await supabase.storage.from("mission-images").move(oldStoragePath, newStoragePath);
 
       if (moveError) {
         return { success: false, error: moveError.message };
@@ -195,9 +193,7 @@ export async function action({ request }: Route.ActionArgs) {
       } = supabase.storage.from("mission-images").getPublicUrl(newStoragePath);
 
       // Update all instructions referencing the old URL
-      const { data: instructionsData, error: fetchError } = await supabase
-        .from("instructions")
-        .select("*");
+      const { data: instructionsData, error: fetchError } = await supabase.from("instructions").select("*");
 
       if (fetchError) {
         return { success: false, error: fetchError.message };
@@ -1007,7 +1003,11 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               type="button"
               onClick={() => {
                 if (!isRenaming) {
-                  const currentName = imageUrl.split("/").pop()?.replace(/\.[^.]+$/, "") ?? "";
+                  const currentName =
+                    imageUrl
+                      .split("/")
+                      .pop()
+                      ?.replace(/\.[^.]+$/, "") ?? "";
                   setRenameValue(currentName);
                 }
                 setIsRenaming((v) => !v);
@@ -1072,7 +1072,9 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
         {imageUrl && showKeywordsSection && (
           <div className={styles.keywordsSection}>
             <div className={styles.keywordsSectionHeader}>
-              <span className={styles.keywordsSectionTitle}>🏷️ Keywords</span>
+              <span className={styles.keywordsSectionTitle}>
+                🏷️ Keywords (module, screen, subforamt, section, functionality)
+              </span>
               <button
                 type="button"
                 onClick={handleSaveKeywords}
@@ -1096,9 +1098,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                   </button>
                 </span>
               ))}
-              {keywords.length === 0 && (
-                <span className={styles.noKeywordsText}>No keywords yet</span>
-              )}
+              {keywords.length === 0 && <span className={styles.noKeywordsText}>No keywords yet</span>}
             </div>
             <div className={styles.keywordInputRow}>
               <input
