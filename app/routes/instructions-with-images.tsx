@@ -700,6 +700,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   const [renameValue, setRenameValue] = useState("");
   const [showReplaceSection, setShowReplaceSection] = useState(false);
   const [showKeywordsSection, setShowKeywordsSection] = useState(false);
+  const [libraryMode, setLibraryMode] = useState<"replace" | "navigate">("replace");
   const { session, loading } = useAuth();
   const fetcher = useFetcher<typeof action>();
   const renameFetcher = useFetcher<typeof action>();
@@ -832,8 +833,12 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   };
 
   const handleSelectFromLibrary = (url: string) => {
-    setImagePreview(url);
-    setNewImageUrl(url);
+    if (libraryMode === "navigate") {
+      setSearchParams({ imageUrl: url });
+    } else {
+      setImagePreview(url);
+      setNewImageUrl(url);
+    }
   };
 
   const handleReplaceImage = () => {
@@ -1002,6 +1007,16 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
             <button
               type="button"
               onClick={() => {
+                setLibraryMode("navigate");
+                setShowImageLibrary(true);
+              }}
+              className={styles.actionBackButton}
+            >
+              ← Back
+            </button>
+            <button
+              type="button"
+              onClick={() => {
                 if (!isRenaming) {
                   const currentName =
                     imageUrl
@@ -1149,7 +1164,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               <div className={styles.formGroup}>
                 <label className={styles.label}>Upload New Image or Select from Library</label>
                 <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-                  <button type="button" onClick={() => setShowImageLibrary(true)} className={styles.libraryButton}>
+                  <button type="button" onClick={() => { setLibraryMode("replace"); setShowImageLibrary(true); }} className={styles.libraryButton}>
                     📚 Select from Library
                   </button>
                   <button type="button" onClick={handlePasteFromClipboard} className={styles.pasteButton}>
@@ -1201,15 +1216,17 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               {!loading && !session && <p className={styles.authWarning}>Please sign in to replace images</p>}
             </div>
 
-            <ImageLibraryDialog
-              isOpen={showImageLibrary}
-              onClose={() => setShowImageLibrary(false)}
-              onSelectImage={handleSelectFromLibrary}
-              instructions={instructions}
-              instructionsHe={instructionsHe}
-            />
           </div>
         )}
+
+        {/* Image Library Dialog — shared between Back navigation and Replace section */}
+        <ImageLibraryDialog
+          isOpen={showImageLibrary}
+          onClose={() => setShowImageLibrary(false)}
+          onSelectImage={handleSelectFromLibrary}
+          instructions={instructions}
+          instructionsHe={instructionsHe}
+        />
 
         {/* List of instruction titles */}
         <div className={styles.instructionsList}>

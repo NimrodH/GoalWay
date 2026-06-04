@@ -166,6 +166,27 @@
   flex-wrap: wrap;
 }
 
+.actionBackButton {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  background: var(--color-neutral-2);
+  color: var(--color-neutral-11);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  margin-right: var(--space-2);
+}
+
+.actionBackButton:hover {
+  background: var(--color-neutral-3);
+  border-color: var(--color-neutral-7);
+  color: var(--color-neutral-12);
+}
+
 .actionToggleButton {
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-neutral-6);
