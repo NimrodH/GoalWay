@@ -702,6 +702,8 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   const [showImageLibrary, setShowImageLibrary] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const [showReplaceSection, setShowReplaceSection] = useState(false);
+  const [showKeywordsSection, setShowKeywordsSection] = useState(false);
   const { session, loading } = useAuth();
   const fetcher = useFetcher<typeof action>();
   const renameFetcher = useFetcher<typeof action>();
@@ -998,59 +1000,76 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
           <img src={displayImageUrl} alt="Instructions overview" className={styles.image} />
         </div>
 
-        {/* Rename Image Section */}
+        {/* Actions Toolbar */}
         {imageUrl && (
-          <div className={styles.renameSection}>
-            {!isRenaming ? (
-              <button
-                type="button"
-                onClick={() => {
+          <div className={styles.actionsToolbar}>
+            <button
+              type="button"
+              onClick={() => {
+                if (!isRenaming) {
                   const currentName = imageUrl.split("/").pop()?.replace(/\.[^.]+$/, "") ?? "";
                   setRenameValue(currentName);
-                  setIsRenaming(true);
-                }}
-                className={styles.renameButton}
-              >
-                ✏️ Rename Image
-              </button>
-            ) : (
-              <div className={styles.renameForm}>
-                <span className={styles.renameLabel}>New name:</span>
-                <input
-                  type="text"
-                  value={renameValue}
-                  onChange={(e) => setRenameValue(e.target.value)}
-                  className={styles.renameInput}
-                  placeholder="Enter new file name (no extension)..."
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleRenameImage();
-                    if (e.key === "Escape") setIsRenaming(false);
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={handleRenameImage}
-                  className={styles.renameConfirmButton}
-                  disabled={!renameValue.trim() || renameFetcher.state !== "idle"}
-                >
-                  {renameFetcher.state !== "idle" ? "Renaming..." : "Confirm"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsRenaming(false)}
-                  className={styles.renameCancelButton}
-                  disabled={renameFetcher.state !== "idle"}
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
+                }
+                setIsRenaming((v) => !v);
+              }}
+              className={`${styles.actionToggleButton} ${isRenaming ? styles.actionToggleActive : ""}`}
+            >
+              ✏️ Rename Image
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowReplaceSection((v) => !v)}
+              className={`${styles.actionToggleButton} ${showReplaceSection ? styles.actionToggleActive : ""}`}
+            >
+              🔄 Replace Image
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowKeywordsSection((v) => !v)}
+              className={`${styles.actionToggleButton} ${showKeywordsSection ? styles.actionToggleActive : ""}`}
+            >
+              🏷️ Keywords
+            </button>
+          </div>
+        )}
+
+        {/* Rename Form (shown when Rename is toggled on) */}
+        {imageUrl && isRenaming && (
+          <div className={styles.renameFormPanel}>
+            <span className={styles.renameLabel}>New name:</span>
+            <input
+              type="text"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              className={styles.renameInput}
+              placeholder="Enter new file name (no extension)..."
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRenameImage();
+                if (e.key === "Escape") setIsRenaming(false);
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleRenameImage}
+              className={styles.renameConfirmButton}
+              disabled={!renameValue.trim() || renameFetcher.state !== "idle"}
+            >
+              {renameFetcher.state !== "idle" ? "Renaming..." : "Confirm"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsRenaming(false)}
+              className={styles.renameCancelButton}
+              disabled={renameFetcher.state !== "idle"}
+            >
+              Cancel
+            </button>
           </div>
         )}
 
         {/* Keywords Section */}
-        {imageUrl && (
+        {imageUrl && showKeywordsSection && (
           <div className={styles.keywordsSection}>
             <div className={styles.keywordsSectionHeader}>
               <span className={styles.keywordsSectionTitle}>🏷️ Keywords</span>
@@ -1108,7 +1127,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
         )}
 
         {/* Image Replacement Section */}
-        {imageUrl && (
+        {imageUrl && showReplaceSection && (
           <div className={styles.imageReplacementSection}>
             <h2 className={styles.sectionTitle}>Replace Image</h2>
             <p className={styles.replacementDescription}>
