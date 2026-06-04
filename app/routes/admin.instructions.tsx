@@ -68,7 +68,6 @@ function ImageLibraryDialog({
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
   const [imageNameFilter, setImageNameFilter] = useState("");
 
   useEffect(() => {
@@ -169,112 +168,122 @@ function ImageLibraryDialog({
   if (!isOpen) return null;
 
   if (previewImage) {
-    const handlePrevImage = () => {
-      if (currentImageIndex > 0) {
-        const prevIndex = currentImageIndex - 1;
-        setCurrentImageIndex(prevIndex);
-        setPreviewImage({ url: images[prevIndex].url, name: images[prevIndex].name });
-      }
-    };
-
-    const handleNextImage = () => {
-      if (currentImageIndex < images.length - 1) {
-        const nextIndex = currentImageIndex + 1;
-        setCurrentImageIndex(nextIndex);
-        setPreviewImage({ url: images[nextIndex].url, name: images[nextIndex].name });
-      }
-    };
+    const enInstructions = instructionsEn.filter((instruction) => {
+      if (!instruction.explanation || !Array.isArray(instruction.explanation)) return false;
+      return instruction.explanation.some((item) => item.type === "image" && item.content === previewImage.url);
+    });
+    const heInstructions = instructionsHe.filter((instruction) => {
+      if (!instruction.explanation || !Array.isArray(instruction.explanation)) return false;
+      return instruction.explanation.some((item) => item.type === "image" && item.content === previewImage.url);
+    });
+    const hasAnyInstructions = enInstructions.length > 0 || heInstructions.length > 0;
 
     return (
       <div className={styles.dialogOverlay} onClick={() => setPreviewImage(null)}>
         <div
           className={styles.dialogContent}
           onClick={(e) => e.stopPropagation()}
-          style={{ maxWidth: "90vw", maxHeight: "90vh", display: "flex", flexDirection: "column", padding: 0 }}
+          style={{ maxWidth: "560px" }}
         >
           <div className={styles.dialogHeader}>
-            <h2 className={styles.dialogTitle}>{previewImage.name}</h2>
+            <h2 className={styles.dialogTitle}>Instructions using this image</h2>
             <button className={styles.dialogClose} onClick={() => setPreviewImage(null)}>
               ✕
             </button>
           </div>
-          <div
-            style={{
-              flex: 1,
-              overflow: "auto",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "var(--space-4)",
-              background: "var(--color-neutral-2)",
-              position: "relative",
-            }}
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelectImage(previewImage.url);
-                onClose();
-              }}
-              className={styles.selectImageButton}
-              title="Select this image"
-            >
-              ✓ Select
-            </button>
+          <div style={{ padding: "var(--space-4)", display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
             <div
               style={{
-                background: "rgba(0, 0, 0, 0.7)",
-                color: "white",
-                padding: "var(--space-2) var(--space-3)",
-                borderRadius: "var(--radius-2)",
-                fontSize: "0.875rem",
-                fontFamily: "var(--font-body)",
-                fontWeight: 600,
-              }}
-              className={styles.div13}
-            >
-              {currentImageIndex + 1} / {images.length}
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePrevImage();
-              }}
-              disabled={currentImageIndex === 0}
-              className={styles.imageNavButton}
-              style={{ position: "absolute", left: "var(--space-4)", top: "50%", transform: "translateY(-50%)" }}
-              title="Previous image"
-            >
-              ←
-            </button>
-            <img
-              src={previewImage.url}
-              alt={previewImage.name}
-              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: "var(--radius-2)" }}
-            />
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleNextImage();
-              }}
-              disabled={currentImageIndex === images.length - 1}
-              className={styles.imageNavButton}
-              style={{ position: "absolute", right: "var(--space-4)", top: "50%", transform: "translateY(-50%)" }}
-              title="Next image"
-            >
-              →
-            </button>
-            <div
-              style={{
-                position: "absolute",
-                bottom: "var(--space-4)",
-                left: "50%",
-                transform: "translateX(-50%)",
                 display: "flex",
-                gap: "var(--space-3)",
-                alignItems: "center",
+                justifyContent: "center",
+                background: "var(--color-neutral-2)",
+                borderRadius: "var(--radius-2)",
+                padding: "var(--space-3)",
               }}
-            />
+            >
+              <img
+                src={previewImage.url}
+                alt={previewImage.name}
+                style={{ maxWidth: "100%", maxHeight: "200px", objectFit: "contain", borderRadius: "var(--radius-2)" }}
+              />
+            </div>
+            <p
+              style={{
+                fontSize: "0.8125rem",
+                color: "var(--color-neutral-10)",
+                margin: 0,
+                wordBreak: "break-all",
+                fontFamily: "var(--font-code)",
+              }}
+            >
+              {previewImage.name}
+            </p>
+
+            {!hasAnyInstructions && (
+              <p style={{ color: "var(--color-neutral-10)", textAlign: "center", fontStyle: "italic", margin: 0 }}>
+                No instructions use this image
+              </p>
+            )}
+
+            {enInstructions.length > 0 && (
+              <div>
+                <h3
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 700,
+                    color: "var(--color-neutral-11)",
+                    marginBottom: "var(--space-2)",
+                  }}
+                >
+                  🇺🇸 English Instructions ({enInstructions.length})
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+                  {enInstructions.map((instruction) => (
+                    <button
+                      key={instruction.id}
+                      type="button"
+                      onClick={() => {
+                        window.location.href = `/admin/instructions?lang=en&instructionId=${instruction.id}`;
+                      }}
+                      className={styles.addButton}
+                      style={{ textAlign: "left", width: "100%", fontSize: "0.875rem" }}
+                    >
+                      {instruction.id} — {instruction.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {heInstructions.length > 0 && (
+              <div>
+                <h3
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 700,
+                    color: "var(--color-neutral-11)",
+                    marginBottom: "var(--space-2)",
+                  }}
+                >
+                  🇮🇱 Hebrew Instructions ({heInstructions.length})
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+                  {heInstructions.map((instruction) => (
+                    <button
+                      key={instruction.id}
+                      type="button"
+                      onClick={() => {
+                        window.location.href = `/admin/instructions?lang=he&instructionId=${instruction.id}`;
+                      }}
+                      className={styles.addButton}
+                      style={{ textAlign: "left", width: "100%", fontSize: "0.875rem" }}
+                    >
+                      {instruction.id} — {instruction.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -394,7 +403,6 @@ function ImageLibraryDialog({
                       key={image.path}
                       className={styles.imageGridItem}
                       onClick={() => {
-                        setCurrentImageIndex(images.indexOf(image));
                         setPreviewImage({ url: image.url, name: image.name });
                       }}
                       style={{
