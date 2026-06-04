@@ -44,3 +44,41 @@ export async function upsertImageKeywords(
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
+
+/**
+ * Rename an image_keywords entry from oldPath to newPath.
+ * Copies keywords to the new path and deletes the old entry.
+ * No-op if no entry exists for oldPath.
+ */
+export async function renameImageKeywords(
+  oldPath: string,
+  newPath: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = getAdminClient();
+
+  const { data } = await supabase
+    .from("image_keywords")
+    .select("keywords")
+    .eq("image_path", oldPath)
+    .maybeSingle();
+
+  if (!data) return { success: true }; // Nothing to rename
+
+  const { error: upsertError } = await supabase
+    .from("image_keywords")
+    .upsert(
+      { image_path: newPath, keywords: data.keywords, updated_at: new Date().toISOString() },
+      { onConflict: "image_path" }
+    );
+
+  if (upsertError) return { success: false, error: upsertError.message };
+
+  const { error: deleteError } = await supabase
+    .from("image_keywords")
+    .delete()
+    .eq("image_path", oldPath);
+
+  if (deleteError) return { success: false, error: deleteError.message };
+
+  return { success: true };
+}

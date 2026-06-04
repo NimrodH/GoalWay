@@ -10,12 +10,29 @@ import { useEffect } from "react";
 import { AppNavigation } from "~/components/app-navigation/app-navigation";
 
 export async function loader({ request }: Route.LoaderArgs) {
+  const url = new URL(request.url);
+  const imageUrl = url.searchParams.get("imageUrl");
+
   const [instructions, instructionsHe] = await Promise.all([getAllInstructions(), getAllInstructionsHe()]);
+
+  let initialKeywords: string[] = [];
+  if (imageUrl) {
+    const marker = "/object/public/mission-images/";
+    const idx = imageUrl.indexOf(marker);
+    if (idx !== -1) {
+      const storagePath = decodeURIComponent(imageUrl.slice(idx + marker.length).split("?")[0]);
+      const { getKeywordsForPaths } = await import("~/services/image-keywords.server");
+      const kwMap = await getKeywordsForPaths([storagePath]);
+      initialKeywords = kwMap[storagePath] ?? [];
+    }
+  }
+
   return {
     instructions,
     instructionsHe,
     supabaseUrl: process.env.SUPABASE_PROJECT_URL!,
     supabaseKey: process.env.SUPABASE_API_KEY!,
+    initialKeywords,
   };
 }
 
@@ -228,6 +245,14 @@ export async function action({ request }: Route.ActionArgs) {
         await Promise.all(updatePromises);
       }
 
+      // Update image_keywords entry for the renamed file (non-fatal)
+      try {
+        const { renameImageKeywords } = await import("~/services/image-keywords.server");
+        await renameImageKeywords(oldStoragePath, newStoragePath);
+      } catch {
+        // Keywords rename failure is non-fatal
+      }
+
       return {
         success: true,
         actionType: "renameImage" as const,
@@ -238,6 +263,24 @@ export async function action({ request }: Route.ActionArgs) {
     } catch (error) {
       console.error("Error in renameImage:", error);
       return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
+  if (actionType === "updateKeywords") {
+    const imagePath = formData.get("imagePath") as string;
+    const keywordsRaw = formData.get("keywords") as string;
+
+    if (!imagePath) return { success: false, error: "Image path is required" };
+
+    try {
+      const keywords = JSON.parse(keywordsRaw) as string[];
+      const { upsertImageKeywords } = await import("~/services/image-keywords.server");
+      const result = await upsertImageKeywords(imagePath, keywords);
+      return result.success
+        ? { success: true, actionType: "updateKeywords" as const, message: "Keywords saved!" }
+        : { success: false, error: result.error ?? "Failed to save keywords" };
+    } catch {
+      return { success: false, error: "Invalid keywords data" };
     }
   }
 
@@ -648,7 +691,7 @@ function getStoragePathFromUrl(url: string): string {
 }
 
 export default function InstructionsWithImages({ loaderData }: Route.ComponentProps) {
-  const { instructions, instructionsHe, supabaseUrl, supabaseKey } = loaderData;
+  const { instructions, instructionsHe, supabaseUrl, supabaseKey, initialKeywords } = loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
   const imageUrl = searchParams.get("imageUrl");
   const [selectedInstructions, setSelectedInstructions] = useState<Set<string>>(new Set());
@@ -662,6 +705,9 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   const { session, loading } = useAuth();
   const fetcher = useFetcher<typeof action>();
   const renameFetcher = useFetcher<typeof action>();
+  const keywordsFetcher = useFetcher<typeof action>();
+  const [keywords, setKeywords] = useState<string[]>(initialKeywords);
+  const [keywordInput, setKeywordInput] = useState("");
 
   // Initialize Supabase on the client
   useEffect(() => {
@@ -861,6 +907,53 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
     }
   }, [renameFetcher.data, renameFetcher.state, setSearchParams]);
 
+  // Sync keywords when loader re-runs (e.g. after rename changes the URL)
+  useEffect(() => {
+    setKeywords(loaderData.initialKeywords);
+  }, [loaderData.initialKeywords]);
+
+  // Watch for keywords fetcher result
+  useEffect(() => {
+    if (keywordsFetcher.data && keywordsFetcher.state === "idle") {
+      const data = keywordsFetcher.data;
+      if (!data.success && "error" in data) {
+        alert(`Failed to save keywords: ${data.error}`);
+      }
+    }
+  }, [keywordsFetcher.data, keywordsFetcher.state]);
+
+  const addKeyword = () => {
+    const trimmed = keywordInput.trim();
+    if (!trimmed || keywords.includes(trimmed)) {
+      setKeywordInput("");
+      return;
+    }
+    setKeywords((prev) => [...prev, trimmed]);
+    setKeywordInput("");
+  };
+
+  const removeKeyword = (kw: string) => {
+    setKeywords((prev) => prev.filter((k) => k !== kw));
+  };
+
+  const handleSaveKeywords = () => {
+    if (!imageUrl) return;
+    if (!session) {
+      alert("Please sign in to save keywords");
+      return;
+    }
+    const storagePath = getStoragePathFromUrl(imageUrl);
+    if (!storagePath) {
+      alert("Could not determine storage path for this image");
+      return;
+    }
+    const formData = new FormData();
+    formData.append("actionType", "updateKeywords");
+    formData.append("imagePath", storagePath);
+    formData.append("keywords", JSON.stringify(keywords));
+    keywordsFetcher.submit(formData, { method: "post" });
+  };
+
   const handleRenameImage = () => {
     if (!imageUrl) return;
     if (!renameValue.trim()) {
@@ -953,6 +1046,64 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Keywords Section */}
+        {imageUrl && (
+          <div className={styles.keywordsSection}>
+            <div className={styles.keywordsSectionHeader}>
+              <span className={styles.keywordsSectionTitle}>🏷️ Keywords</span>
+              <button
+                type="button"
+                onClick={handleSaveKeywords}
+                className={styles.keywordSaveButton}
+                disabled={!session || keywordsFetcher.state !== "idle"}
+              >
+                {keywordsFetcher.state !== "idle" ? "Saving..." : "💾 Save Keywords"}
+              </button>
+            </div>
+            <div className={styles.keywordChips}>
+              {keywords.map((kw) => (
+                <span key={kw} className={styles.keywordChip}>
+                  {kw}
+                  <button
+                    type="button"
+                    onClick={() => removeKeyword(kw)}
+                    className={styles.keywordChipRemove}
+                    title={`Remove "${kw}"`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              {keywords.length === 0 && (
+                <span className={styles.noKeywordsText}>No keywords yet</span>
+              )}
+            </div>
+            <div className={styles.keywordInputRow}>
+              <input
+                type="text"
+                value={keywordInput}
+                onChange={(e) => setKeywordInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addKeyword();
+                  }
+                }}
+                placeholder="Add a keyword..."
+                className={styles.keywordInput}
+              />
+              <button
+                type="button"
+                onClick={addKeyword}
+                className={styles.keywordAddButton}
+                disabled={!keywordInput.trim()}
+              >
+                + Add
+              </button>
+            </div>
           </div>
         )}
 
