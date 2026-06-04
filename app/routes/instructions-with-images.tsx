@@ -701,6 +701,8 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   const [showReplaceSection, setShowReplaceSection] = useState(false);
   const [showKeywordsSection, setShowKeywordsSection] = useState(false);
   const [libraryMode, setLibraryMode] = useState<"replace" | "navigate">("replace");
+  const [libraryImages, setLibraryImages] = useState<Array<{ name: string; url: string; path: string }>>([]);
+  const [libraryImagesLoaded, setLibraryImagesLoaded] = useState(false);
   const { session, loading } = useAuth();
   const fetcher = useFetcher<typeof action>();
   const renameFetcher = useFetcher<typeof action>();
@@ -716,6 +718,16 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
     };
     initSupabase();
   }, [supabaseUrl, supabaseKey]);
+
+  // Load library images for inline prev/next navigation
+  useEffect(() => {
+    listAllImages().then((result) => {
+      if (!result.error) {
+        setLibraryImages(result.images);
+      }
+      setLibraryImagesLoaded(true);
+    });
+  }, []);
 
   // Filter instructions to only show those containing this specific image
   // Note: searchParams.get() automatically decodes the URL, so imageUrl is already decoded
@@ -753,6 +765,21 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
 
   const allSelected = selectedInstructions.size === filteredInstructions.length && filteredInstructions.length > 0;
   const someSelected = selectedInstructions.size > 0 && selectedInstructions.size < filteredInstructions.length;
+
+  // Library inline navigation
+  const libraryIndex = imageUrl ? libraryImages.findIndex((img) => img.url === imageUrl) : -1;
+
+  const handlePrevLibraryImage = () => {
+    if (libraryIndex > 0) {
+      setSearchParams({ imageUrl: libraryImages[libraryIndex - 1].url }, { replace: true });
+    }
+  };
+
+  const handleNextLibraryImage = () => {
+    if (libraryIndex < libraryImages.length - 1) {
+      setSearchParams({ imageUrl: libraryImages[libraryIndex + 1].url }, { replace: true });
+    }
+  };
 
   // Image upload handlers
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -999,6 +1026,62 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
         {/* Single picture at the top */}
         <div className={styles.imageContainer}>
           <img src={displayImageUrl} alt="Instructions overview" className={styles.image} />
+
+          {/* Library inline navigation: prev / next / counter / select */}
+          {libraryImagesLoaded && imageUrl && libraryIndex >= 0 && libraryImages.length > 1 && (
+            <>
+              <button
+                onClick={handlePrevLibraryImage}
+                disabled={libraryIndex === 0}
+                className={styles.imageNavButton}
+                style={{ position: "absolute", left: "var(--space-4)", top: "50%", transform: "translateY(-50%)" }}
+                title="Previous image"
+              >
+                ←
+              </button>
+              <button
+                onClick={handleNextLibraryImage}
+                disabled={libraryIndex === libraryImages.length - 1}
+                className={styles.imageNavButton}
+                style={{ position: "absolute", right: "var(--space-4)", top: "50%", transform: "translateY(-50%)" }}
+                title="Next image"
+              >
+                →
+              </button>
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "var(--space-4)",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  display: "flex",
+                  gap: "var(--space-3)",
+                  alignItems: "center",
+                }}
+              >
+                <div
+                  style={{
+                    background: "rgba(0, 0, 0, 0.7)",
+                    color: "white",
+                    padding: "var(--space-2) var(--space-3)",
+                    borderRadius: "var(--radius-2)",
+                    fontSize: "0.875rem",
+                    fontFamily: "var(--font-body)",
+                    fontWeight: 600,
+                  }}
+                >
+                  {libraryIndex + 1} / {libraryImages.length}
+                </div>
+                <button
+                  onClick={() => setSearchParams({ imageUrl: libraryImages[libraryIndex].url })}
+                  className={styles.selectImageButton}
+                  title="Select this image"
+                >
+                  ✓ Select
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Actions Toolbar */}
