@@ -52,6 +52,9 @@ function ImageLibraryDialog({
   instructionsEn,
   instructionsHe,
   preSelectImageUrl,
+  returnInstructionId,
+  returnContentIndex,
+  returnLang,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -60,6 +63,9 @@ function ImageLibraryDialog({
   instructionsEn: Instruction[];
   instructionsHe: Instruction[];
   preSelectImageUrl?: string;
+  returnInstructionId?: string;
+  returnContentIndex?: number;
+  returnLang?: string;
 }) {
   const [images, setImages] = useState<Array<{ name: string; url: string; path: string }>>([]);
   const [imageKeywordsMap, setImageKeywordsMap] = useState<Record<string, string[]>>({});
@@ -355,7 +361,10 @@ function ImageLibraryDialog({
                       const selectedImagePath = Array.from(selectedImages)[0];
                       const selectedImage = images.find((img) => img.path === selectedImagePath);
                       if (selectedImage) {
-                        window.location.href = `/instructions-with-images?imageUrl=${encodeURIComponent(selectedImage.url)}`;
+                        const returnParams = returnInstructionId !== undefined && returnContentIndex !== undefined
+                      ? `&returnInstructionId=${encodeURIComponent(returnInstructionId)}&returnContentIndex=${returnContentIndex}&returnLang=${returnLang ?? "en"}`
+                      : "";
+                    window.location.href = `/instructions-with-images?imageUrl=${encodeURIComponent(selectedImage.url)}${returnParams}`;
                       }
                     }}
                     className={styles.addButton}
@@ -1034,6 +1043,9 @@ function ExplanationContentItem({
             instructionsEn={instructionsEn}
             instructionsHe={instructionsHe}
             preSelectImageUrl={item.content}
+            returnInstructionId={instructionId}
+            returnContentIndex={index}
+            returnLang={language}
           />
         </div>
       ) : (
