@@ -300,12 +300,14 @@ function ImageLibraryDialog({
   onSelectImage,
   instructions,
   instructionsHe,
+  mode = "replace",
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSelectImage: (url: string) => void;
   instructions: any[];
   instructionsHe: any[];
+  mode?: "navigate" | "replace";
 }) {
   const [images, setImages] = useState<Array<{ name: string; url: string; path: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -622,8 +624,13 @@ function ImageLibraryDialog({
                     key={image.path}
                     className={styles.imageGridItem}
                     onClick={() => {
-                      setCurrentImageIndex(images.indexOf(image));
-                      setPreviewImage({ url: image.url, name: image.name });
+                      if (mode === "navigate") {
+                        onSelectImage(image.url);
+                        onClose();
+                      } else {
+                        setCurrentImageIndex(images.indexOf(image));
+                        setPreviewImage({ url: image.url, name: image.name });
+                      }
                     }}
                     style={{
                       position: "relative",
@@ -873,7 +880,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
 
   const handleSelectFromLibrary = (url: string) => {
     if (libraryMode === "navigate") {
-      setSearchParams({ imageUrl: url });
+      setSearchParams(buildNavParams(url));
     } else {
       setImagePreview(url);
       setNewImageUrl(url);
@@ -1333,6 +1340,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
           onSelectImage={handleSelectFromLibrary}
           instructions={instructions}
           instructionsHe={instructionsHe}
+          mode={libraryMode}
         />
 
         {/* List of instruction titles */}
