@@ -403,8 +403,8 @@ function ImageLibraryDialog({
                       key={image.path}
                       className={styles.imageGridItem}
                       onClick={() => {
-                        setCurrentImageIndex(images.indexOf(image));
-                        setPreviewImage({ url: image.url, name: image.name });
+                        onSelectImage(image.url);
+                        onClose();
                       }}
                       style={{
                         position: "relative",
