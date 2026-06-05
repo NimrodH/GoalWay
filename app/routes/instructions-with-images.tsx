@@ -941,13 +941,21 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
       if (data.success && "newImageUrl" in data && data.newImageUrl) {
         alert(data.message || "Image renamed successfully!");
         setIsRenaming(false);
-        // Update the URL param to the new image URL
-        setSearchParams({ imageUrl: data.newImageUrl });
+        // Update the URL param to the new image URL, preserving return context
+        setSearchParams(buildNavParams(data.newImageUrl));
       } else if (!data.success && "error" in data) {
         alert(`Failed to rename image: ${data.error}`);
       }
     }
   }, [renameFetcher.data, renameFetcher.state, setSearchParams]);
+
+  // Sync renameValue whenever the displayed image changes (browse prev/next)
+  useEffect(() => {
+    if (imageUrl) {
+      const currentName = imageUrl.split("/").pop()?.replace(/\.[^.]+$/, "") ?? "";
+      setRenameValue(currentName);
+    }
+  }, [imageUrl]);
 
   // Sync keywords when loader re-runs (e.g. after rename changes the URL)
   useEffect(() => {
@@ -1125,17 +1133,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (!isRenaming) {
-                  const currentName =
-                    imageUrl
-                      .split("/")
-                      .pop()
-                      ?.replace(/\.[^.]+$/, "") ?? "";
-                  setRenameValue(currentName);
-                }
-                setIsRenaming((v) => !v);
-              }}
+              onClick={() => setIsRenaming((v) => !v)}
               className={`${styles.actionToggleButton} ${isRenaming ? styles.actionToggleActive : ""}`}
             >
               ✏️ Rename Image
