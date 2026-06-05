@@ -487,6 +487,8 @@ function ExplanationContentItem({
   instructions,
   instructionsEn,
   instructionsHe,
+  instructionId,
+  language,
   onNavigationRequest,
   imageFile,
   onImageFileChange,
@@ -505,6 +507,8 @@ function ExplanationContentItem({
   instructions: Instruction[];
   instructionsEn: Instruction[];
   instructionsHe: Instruction[];
+  instructionId: string;
+  language: string;
   onNavigationRequest: (navigationFn: () => void) => void;
   imageFile: File | null;
   onImageFileChange: (index: number, file: File | null, preview: string) => void;
@@ -1004,7 +1008,7 @@ function ExplanationContentItem({
                 type="button"
                 onClick={() => {
                   onNavigationRequest(() => {
-                    window.location.href = `/instructions-with-images?imageUrl=${encodeURIComponent(item.content)}`;
+                    window.location.href = `/instructions-with-images?imageUrl=${encodeURIComponent(item.content)}&returnInstructionId=${encodeURIComponent(instructionId)}&returnContentIndex=${index}&returnLang=${language}`;
                   });
                 }}
                 className={styles.addButton}
@@ -1079,7 +1083,7 @@ function EditInstructionForm({
   onNavigationRequest: (navigationFn: () => void) => void;
   adminNotesMap: Record<string, string[]>;
 }) {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -1151,12 +1155,23 @@ function EditInstructionForm({
 
   useEffect(() => {
     const instructionIdFromUrl = searchParams.get("instructionId");
-    if (
-      instructionIdFromUrl &&
-      allInstructionIds.includes(instructionIdFromUrl) &&
-      selectedInstructionId !== instructionIdFromUrl
-    ) {
-      updateFormFields(instructionIdFromUrl);
+    const selectImage = searchParams.get("selectImage");
+    const contentIndexParam = searchParams.get("contentIndex");
+
+    if (instructionIdFromUrl && allInstructionIds.includes(instructionIdFromUrl) && selectedInstructionId !== instructionIdFromUrl) {
+      const imageOverride =
+        selectImage !== null && contentIndexParam !== null && !isNaN(parseInt(contentIndexParam, 10))
+          ? { index: parseInt(contentIndexParam, 10), url: selectImage }
+          : undefined;
+
+      updateFormFields(instructionIdFromUrl, imageOverride);
+
+      if (selectImage) {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete("selectImage");
+        newParams.delete("contentIndex");
+        setSearchParams(newParams, { replace: true });
+      }
     }
   }, [searchParams, allInstructionIds, selectedInstructionId]);
 
@@ -1249,7 +1264,7 @@ function EditInstructionForm({
     replaceInstructionFetcher.submit(formData, { method: "post" });
   };
 
-  const updateFormFields = (instructionId: string) => {
+  const updateFormFields = (instructionId: string, imageOverride?: { index: number; url: string }) => {
     setSelectedInstructionId(instructionId);
     const instruction = instructions.find((i) => i.id === instructionId);
     // A title may be passed via URL when opening a freshly-created instruction
@@ -1264,6 +1279,7 @@ function EditInstructionForm({
       setMissionId(instruction.missionId || "");
       const explanationWithKeys: InstructionContentWithKey[] = (instruction.explanation || []).map((item, idx) => ({
         ...item,
+        content: imageOverride && idx === imageOverride.index && item.type === "image" ? imageOverride.url : item.content,
         _key: `content-${Date.now()}-${idx}-${Math.random()}`,
       }));
       setExplanation(explanationWithKeys);
@@ -1796,6 +1812,8 @@ function EditInstructionForm({
                   instructions={instructions}
                   instructionsEn={instructionsEn}
                   instructionsHe={instructionsHe}
+                  instructionId={selectedInstructionId}
+                  language={language}
                   onNavigationRequest={onNavigationRequest}
                   imageFile={explanationFiles[index] ?? null}
                   onImageFileChange={handleImageFileChange}

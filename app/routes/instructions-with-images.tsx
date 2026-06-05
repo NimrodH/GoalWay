@@ -690,6 +690,10 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   const { instructions, instructionsHe, supabaseUrl, supabaseKey, initialKeywords } = loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
   const imageUrl = searchParams.get("imageUrl");
+  const returnInstructionId = searchParams.get("returnInstructionId");
+  const returnContentIndex = searchParams.get("returnContentIndex");
+  const returnLang = searchParams.get("returnLang") || "en";
+  const hasReturnContext = !!(returnInstructionId && returnContentIndex !== null);
   const [selectedInstructions, setSelectedInstructions] = useState<Set<string>>(new Set());
   const [newImageUrl, setNewImageUrl] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -1017,9 +1021,11 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
       <div className={styles.content}>
         <header className={styles.header}>
           <p className={styles.subtitle}>
-            {imageUrl
-              ? `Instructions using this image (${filteredInstructions.length} found)`
-              : "Follow these step-by-step instructions to complete your task"}
+            {imageUrl && hasReturnContext
+              ? `Browse and click "Select & Return" to insert into instruction ${returnInstructionId}`
+              : imageUrl
+                ? `Instructions using this image (${filteredInstructions.length} found)`
+                : "Follow these step-by-step instructions to complete your task"}
           </p>
         </header>
 
@@ -1027,7 +1033,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
         <div className={styles.imageContainer}>
           <img src={displayImageUrl} alt="Instructions overview" className={styles.image} />
 
-          {/* Library inline navigation: prev / next / counter / select */}
+          {/* Library inline navigation: prev / next */}
           {libraryImagesLoaded && imageUrl && libraryIndex >= 0 && libraryImages.length > 1 && (
             <>
               <button
@@ -1048,17 +1054,22 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               >
                 →
               </button>
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: "var(--space-4)",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  display: "flex",
-                  gap: "var(--space-3)",
-                  alignItems: "center",
-                }}
-              >
+            </>
+          )}
+          {/* Counter + Select shown when library browsing OR when returning to admin */}
+          {libraryImagesLoaded && imageUrl && ((libraryIndex >= 0 && libraryImages.length > 1) || hasReturnContext) && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: "var(--space-4)",
+                left: "50%",
+                transform: "translateX(-50%)",
+                display: "flex",
+                gap: "var(--space-3)",
+                alignItems: "center",
+              }}
+            >
+              {libraryIndex >= 0 && libraryImages.length > 1 && (
                 <div
                   style={{
                     background: "rgba(0, 0, 0, 0.7)",
@@ -1072,15 +1083,22 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                 >
                   {libraryIndex + 1} / {libraryImages.length}
                 </div>
-                <button
-                  onClick={() => setSearchParams({ imageUrl: libraryImages[libraryIndex].url })}
-                  className={styles.selectImageButton}
-                  title="Select this image"
-                >
-                  ✓ Select
-                </button>
-              </div>
-            </>
+              )}
+              <button
+                onClick={() => {
+                  const selectedUrl = libraryIndex >= 0 ? libraryImages[libraryIndex].url : imageUrl ?? "";
+                  if (hasReturnContext && returnInstructionId && returnContentIndex !== null) {
+                    window.location.href = `/admin/instructions?lang=${returnLang}&instructionId=${encodeURIComponent(returnInstructionId)}&selectImage=${encodeURIComponent(selectedUrl)}&contentIndex=${returnContentIndex}`;
+                  } else {
+                    setSearchParams({ imageUrl: selectedUrl });
+                  }
+                }}
+                className={styles.selectImageButton}
+                title={hasReturnContext ? "Select this image and insert into instruction" : "Select this image"}
+              >
+                {hasReturnContext ? "Select & Return" : "Select"}
+              </button>
+            </div>
           )}
         </div>
 
