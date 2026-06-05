@@ -403,8 +403,11 @@ function ImageLibraryDialog({
                       key={image.path}
                       className={styles.imageGridItem}
                       onClick={() => {
-                        onSelectImage(image.url);
-                        onClose();
+                        const returnParams =
+                          returnInstructionId !== undefined && returnContentIndex !== undefined
+                            ? `&returnInstructionId=${encodeURIComponent(returnInstructionId)}&returnContentIndex=${returnContentIndex}&returnLang=${returnLang ?? "en"}`
+                            : "";
+                        window.location.href = `/instructions-with-images?imageUrl=${encodeURIComponent(image.url)}${returnParams}`;
                       }}
                       style={{
                         position: "relative",
