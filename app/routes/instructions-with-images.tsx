@@ -773,15 +773,23 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   // Library inline navigation
   const libraryIndex = imageUrl ? libraryImages.findIndex((img) => img.url === imageUrl) : -1;
 
+  const buildNavParams = (newImageUrl: string): Record<string, string> => {
+    const params: Record<string, string> = { imageUrl: newImageUrl };
+    if (returnInstructionId) params.returnInstructionId = returnInstructionId;
+    if (returnContentIndex !== null) params.returnContentIndex = returnContentIndex;
+    if (returnLang) params.returnLang = returnLang;
+    return params;
+  };
+
   const handlePrevLibraryImage = () => {
     if (libraryIndex > 0) {
-      setSearchParams({ imageUrl: libraryImages[libraryIndex - 1].url }, { replace: true });
+      setSearchParams(buildNavParams(libraryImages[libraryIndex - 1].url), { replace: true });
     }
   };
 
   const handleNextLibraryImage = () => {
     if (libraryIndex < libraryImages.length - 1) {
-      setSearchParams({ imageUrl: libraryImages[libraryIndex + 1].url }, { replace: true });
+      setSearchParams(buildNavParams(libraryImages[libraryIndex + 1].url), { replace: true });
     }
   };
 
