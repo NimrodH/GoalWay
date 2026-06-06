@@ -127,7 +127,7 @@ function EditMissionForm({
   const [isTranslating, setIsTranslating] = useState(false);
   const { session } = useAuth();
   const [originalCode, setOriginalCode] = useState("");
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const missionFetcher = useFetcher<typeof action>();
   const deleteMissionFetcher = useFetcher<typeof action>();
   const [showNewInstructionDialog, setShowNewInstructionDialog] = useState(false);
@@ -185,9 +185,12 @@ function EditMissionForm({
 
   useEffect(() => {
     const missionIdFromUrl = searchParams.get("missionId");
-    if (missionIdFromUrl && allMissionIds.includes(missionIdFromUrl)) {
+    if (missionIdFromUrl && allMissionIds.includes(missionIdFromUrl) && missionIdFromUrl !== selectedMissionId) {
+      // Only load when the URL changed externally (e.g. browser back/forward, direct link)
+      // — skip when we ourselves just pushed a new missionId via setSearchParams after
+      // the user picked from the dropdown (selectedMissionId is already up-to-date).
       updateMissionFormFields(missionIdFromUrl);
-    } else if (!missionIdFromUrl && allMissionIds.length > 0) {
+    } else if (!missionIdFromUrl && allMissionIds.length > 0 && !selectedMissionId) {
       const lastMissionId = localStorage.getItem("lastSelectedMissionId");
       if (lastMissionId && allMissionIds.includes(lastMissionId)) {
         updateMissionFormFields(lastMissionId);
@@ -458,6 +461,17 @@ function EditMissionForm({
   const handleSelectMission = (missionId: string) => {
     clearActionData();
     updateMissionFormFields(missionId);
+    // Keep the URL ?missionId= in sync so AppNavigation's "Open Preview" button
+    // always reflects the currently selected mission without a stale value.
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (missionId) {
+        next.set("missionId", missionId);
+      } else {
+        next.delete("missionId");
+      }
+      return next;
+    }, { replace: true });
   };
 
   const moveInstructionUp = (e: React.MouseEvent) => {
