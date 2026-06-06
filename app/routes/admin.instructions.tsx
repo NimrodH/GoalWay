@@ -506,6 +506,7 @@ function ExplanationContentItem({
   imageFile,
   onImageFileChange,
   onUpdateAnnotations,
+  hasUnsavedChanges,
 }: {
   item: InstructionContentWithKey;
   index: number;
@@ -526,6 +527,7 @@ function ExplanationContentItem({
   imageFile: File | null;
   onImageFileChange: (index: number, file: File | null, preview: string) => void;
   onUpdateAnnotations: (index: number, annotations: Annotation[]) => void;
+  hasUnsavedChanges: boolean;
 }) {
   const [imagePreview, setImagePreview] = useState<string>(item.type === "image" ? item.content : "");
   const [isUploading, setIsUploading] = useState(false);
@@ -984,7 +986,19 @@ function ExplanationContentItem({
             <div className={styles.formGroup} style={{ marginTop: "var(--space-3)" }}>
               <label className={styles.label}>Upload New Image or Select from Library</label>
               <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-                <button type="button" onClick={() => setShowImageLibrary(true)} className={styles.addButton}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (hasUnsavedChanges) {
+                      const proceed = window.confirm(
+                        "You have unsaved changes to this instruction.\n\nOpening the library will navigate away from this page and your changes will be lost.\n\nDo you want to continue without saving?",
+                      );
+                      if (!proceed) return;
+                    }
+                    setShowImageLibrary(true);
+                  }}
+                  className={styles.addButton}
+                >
                   📚 Select from Library
                 </button>
                 <button type="button" onClick={handlePasteFromClipboard} className={styles.addButton} data-paste-button>
@@ -1842,6 +1856,7 @@ function EditInstructionForm({
                   imageFile={explanationFiles[index] ?? null}
                   onImageFileChange={handleImageFileChange}
                   onUpdateAnnotations={handleUpdateAnnotations}
+                  hasUnsavedChanges={!!hasUnsavedChanges}
                 />
               ))}
               <div className={styles.addContentButtons}>
