@@ -361,10 +361,11 @@ function ImageLibraryDialog({
                       const selectedImagePath = Array.from(selectedImages)[0];
                       const selectedImage = images.find((img) => img.path === selectedImagePath);
                       if (selectedImage) {
-                        const returnParams = returnInstructionId !== undefined && returnContentIndex !== undefined
-                      ? `&returnInstructionId=${encodeURIComponent(returnInstructionId)}&returnContentIndex=${returnContentIndex}&returnLang=${returnLang ?? "en"}`
-                      : "";
-                    window.location.href = `/instructions-with-images?imageUrl=${encodeURIComponent(selectedImage.url)}${returnParams}`;
+                        const returnParams =
+                          returnInstructionId !== undefined && returnContentIndex !== undefined
+                            ? `&returnInstructionId=${encodeURIComponent(returnInstructionId)}&returnContentIndex=${returnContentIndex}&returnLang=${returnLang ?? "en"}`
+                            : "";
+                        window.location.href = `/instructions-with-images?imageUrl=${encodeURIComponent(selectedImage.url)}${returnParams}`;
                       }
                     }}
                     className={styles.addButton}
@@ -717,7 +718,10 @@ function ExplanationContentItem({
       return;
     }
     // Set as first keyword (replace or prepend)
-    const updatedKeywords = [trimmedName, ...keywords.filter((k) => k !== trimmedName).slice(keywords[0] === imageName ? 1 : 0)];
+    const updatedKeywords = [
+      trimmedName,
+      ...keywords.filter((k) => k !== trimmedName).slice(keywords[0] === imageName ? 1 : 0),
+    ];
     setKeywords(updatedKeywords);
 
     setIsUploading(true);
@@ -849,7 +853,7 @@ function ExplanationContentItem({
                       marginLeft: "var(--space-2)",
                     }}
                   >
-                    First keyword = filename when uploading
+                    (module, screen, subforamt, section, functionality)
                   </span>
                 </label>
 
@@ -1173,7 +1177,11 @@ function EditInstructionForm({
     const selectImage = searchParams.get("selectImage");
     const contentIndexParam = searchParams.get("contentIndex");
 
-    if (instructionIdFromUrl && allInstructionIds.includes(instructionIdFromUrl) && selectedInstructionId !== instructionIdFromUrl) {
+    if (
+      instructionIdFromUrl &&
+      allInstructionIds.includes(instructionIdFromUrl) &&
+      selectedInstructionId !== instructionIdFromUrl
+    ) {
       const imageOverride =
         selectImage !== null && contentIndexParam !== null && !isNaN(parseInt(contentIndexParam, 10))
           ? { index: parseInt(contentIndexParam, 10), url: selectImage }
@@ -1294,7 +1302,8 @@ function EditInstructionForm({
       setMissionId(instruction.missionId || "");
       const explanationWithKeys: InstructionContentWithKey[] = (instruction.explanation || []).map((item, idx) => ({
         ...item,
-        content: imageOverride && idx === imageOverride.index && item.type === "image" ? imageOverride.url : item.content,
+        content:
+          imageOverride && idx === imageOverride.index && item.type === "image" ? imageOverride.url : item.content,
         _key: `content-${Date.now()}-${idx}-${Math.random()}`,
       }));
       setExplanation(explanationWithKeys);
