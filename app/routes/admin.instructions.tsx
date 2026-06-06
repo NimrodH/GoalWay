@@ -812,7 +812,15 @@ function ExplanationContentItem({
             {!showUploadSource && !showAdvanced && (
               <button
                 type="button"
-                onClick={() => setShowUploadSource(true)}
+                onClick={() => {
+                  if (hasUnsavedChanges) {
+                    const proceed = window.confirm(
+                      "You have unsaved changes to this instruction.\n\nChanging the image will reset the upload panel and your changes may be lost.\n\nDo you want to continue without saving?",
+                    );
+                    if (!proceed) return;
+                  }
+                  setShowUploadSource(true);
+                }}
                 className={styles.addButton}
                 style={{ fontSize: "0.8125rem" }}
               >
