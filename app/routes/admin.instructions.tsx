@@ -1037,6 +1037,12 @@ function ExplanationContentItem({
               <button
                 type="button"
                 onClick={() => {
+                  if (hasUnsavedChanges) {
+                    const proceed = window.confirm(
+                      "You have unsaved changes to this instruction.\n\nNavigating away will lose your changes.\n\nDo you want to continue without saving?",
+                    );
+                    if (!proceed) return;
+                  }
                   onNavigationRequest(() => {
                     window.location.href = `/instructions-with-images?imageUrl=${encodeURIComponent(item.content)}&returnInstructionId=${encodeURIComponent(instructionId)}&returnContentIndex=${index}&returnLang=${language}`;
                   });
