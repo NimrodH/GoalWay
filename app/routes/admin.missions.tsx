@@ -1212,8 +1212,11 @@ function EditMissionForm({
             }
           }
 
-          // Build a set of mission IDs that are linked from other missions via link instructions
+          // Build:
+          // 1. linkedMissionIds — set of missions that are targeted by a link instruction
+          // 2. reverseLinkedMap — targetMissionId → [sourceMissionIds that link to it]
           const linkedMissionIds = new Set<string>();
+          const reverseLinkedMap = new Map<string, string[]>();
           for (const m of missionsWithAccess) {
             if (Array.isArray(m.instructions)) {
               for (const [instrId] of m.instructions) {
@@ -1221,6 +1224,9 @@ function EditMissionForm({
                 const linkedMissionId = linkInstructionMap.get(baseId);
                 if (linkedMissionId && allMissionIds.includes(linkedMissionId) && linkedMissionId !== m.id) {
                   linkedMissionIds.add(linkedMissionId);
+                  const sources = reverseLinkedMap.get(linkedMissionId) ?? [];
+                  if (!sources.includes(m.id)) sources.push(m.id);
+                  reverseLinkedMap.set(linkedMissionId, sources);
                 }
               }
             }
@@ -1230,26 +1236,80 @@ function EditMissionForm({
             missionsWithAccess.filter((m) => m.allowedOrgIds.length > 0).map((m) => m.id),
           );
 
+          // Linker missions for the currently selected mission (shown in the info banner)
+          const selectedLinkers = selectedMissionId ? (reverseLinkedMap.get(selectedMissionId) ?? []) : [];
+          const selectedMission = missions.find((m) => m.id === selectedMissionId);
+          const isSelectedLinked =
+            selectedLinkers.length > 0 &&
+            selectedMission?.status !== "Hide" &&
+            !orgAssignedIds.has(selectedMissionId);
+
           return (
-            <select
-              className={styles.input}
-              value={selectedMissionId}
-              onChange={(e) => handleSelectMission(e.target.value)}
-            >
-              <option value="">Select a mission...</option>
-              {allMissionIds.map((missionId) => {
-                const mission = missions.find((m) => m.id === missionId);
-                const isHidden = mission?.status === "Hide";
-                const isOrgAssigned = !isHidden && orgAssignedIds.has(missionId);
-                const isLinked = !isHidden && !isOrgAssigned && linkedMissionIds.has(missionId);
-                const prefix = isHidden ? "🔴 " : isOrgAssigned ? "🟢 " : isLinked ? "🟡 " : "";
-                return (
-                  <option key={missionId} value={missionId}>
-                    {prefix}{missionId}{mission ? ` - ${mission.title}` : " (No data for this language)"}
-                  </option>
-                );
-              })}
-            </select>
+            <>
+              <select
+                className={styles.input}
+                value={selectedMissionId}
+                onChange={(e) => handleSelectMission(e.target.value)}
+              >
+                <option value="">Select a mission...</option>
+                {allMissionIds.map((missionId) => {
+                  const mission = missions.find((m) => m.id === missionId);
+                  const isHidden = mission?.status === "Hide";
+                  const isOrgAssigned = !isHidden && orgAssignedIds.has(missionId);
+                  const isLinked = !isHidden && !isOrgAssigned && linkedMissionIds.has(missionId);
+                  const prefix = isHidden ? "🔴 " : isOrgAssigned ? "🟢 " : isLinked ? "🟡 " : "";
+                  const linkers = reverseLinkedMap.get(missionId) ?? [];
+                  const optionTitle = isLinked && linkers.length > 0
+                    ? `Linked from: ${linkers.map((id) => {
+                        const m = missions.find((m) => m.id === id);
+                        return m ? `${id} - ${m.title}` : id;
+                      }).join(" | ")}`
+                    : undefined;
+                  return (
+                    <option key={missionId} value={missionId} title={optionTitle}>
+                      {prefix}{missionId}{mission ? ` - ${mission.title}` : " (No data for this language)"}
+                    </option>
+                  );
+                })}
+              </select>
+              {isSelectedLinked && (
+                <div
+                  style={{
+                    marginTop: "var(--space-2)",
+                    padding: "var(--space-2) var(--space-3)",
+                    background: "var(--amber-3)",
+                    border: "1px solid var(--amber-7)",
+                    borderRadius: "var(--radius-2)",
+                    fontSize: "0.8125rem",
+                    color: "var(--amber-11)",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "var(--space-2)",
+                  }}
+                >
+                  <span style={{ flexShrink: 0 }}>🟡</span>
+                  <span>
+                    <strong>Used as a linked mission by:</strong>{" "}
+                    {selectedLinkers.map((sourceId, idx) => {
+                      const sourceMission = missions.find((m) => m.id === sourceId);
+                      return (
+                        <span key={sourceId}>
+                          {idx > 0 && ", "}
+                          <strong
+                            style={{ cursor: "pointer", textDecoration: "underline" }}
+                            onClick={() => handleSelectMission(sourceId)}
+                            title={`Go to mission ${sourceId}`}
+                          >
+                            {sourceId}
+                          </strong>
+                          {sourceMission ? ` – ${sourceMission.title}` : ""}
+                        </span>
+                      );
+                    })}
+                  </span>
+                </div>
+              )}
+            </>
           );
         })()}
       </div>
