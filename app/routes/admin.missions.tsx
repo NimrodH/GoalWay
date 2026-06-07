@@ -1202,14 +1202,25 @@ function EditMissionForm({
           </div>
         </div>
         {(() => {
-          // Build a set of mission IDs that are referenced as instructions by other missions
+          // Build a map: instruction ID → linked mission ID, for all link-type instructions.
+          // A "link instruction" is an instruction with type="link" and a missionId field stored
+          // inside its data — the instruction has its own normal numeric ID, NOT the mission ID.
+          const linkInstructionMap = new Map<string, string>();
+          for (const instr of instructionsEn) {
+            if (instr.type === "link" && instr.missionId) {
+              linkInstructionMap.set(instr.id, instr.missionId);
+            }
+          }
+
+          // Build a set of mission IDs that are linked from other missions via link instructions
           const linkedMissionIds = new Set<string>();
           for (const m of missionsWithAccess) {
             if (Array.isArray(m.instructions)) {
               for (const [instrId] of m.instructions) {
                 const baseId = instrId.includes("#") ? instrId.split("#")[0] : instrId;
-                if (allMissionIds.includes(baseId) && baseId !== m.id) {
-                  linkedMissionIds.add(baseId);
+                const linkedMissionId = linkInstructionMap.get(baseId);
+                if (linkedMissionId && allMissionIds.includes(linkedMissionId) && linkedMissionId !== m.id) {
+                  linkedMissionIds.add(linkedMissionId);
                 }
               }
             }
