@@ -5,11 +5,7 @@ import type { Route } from "./+types/he.home";
 import { BookOpen, LogIn, LogOut, Star } from "lucide-react";
 import styles from "./instructions.module.css";
 import homeStyles from "./home.module.css";
-import {
-  getAllMissionsHe,
-  getExampleMissionsHe,
-  getMissionsForOrganizationHe,
-} from "~/services/missions.server";
+import { getAllMissionsHe, getExampleMissionsHe, getMissionsForOrganizationHe } from "~/services/missions.server";
 import { getUserProfile, isAdmin } from "~/lib/auth.server";
 import { createServerSupabase } from "~/lib/supabase";
 import LanguageSelect from "~/components/language-select/language-select";
@@ -72,10 +68,10 @@ export default function HeHome({ loaderData }: Route.ComponentProps) {
     <div className={styles.menuContainer} dir="rtl">
       <div className={styles.menuContent}>
         <div style={{ marginBottom: "var(--space-4)" }}>
-          <h1 className={styles.menuTitle}>מרכז הבקרה</h1>
+          <h1 className={styles.menuTitle}>משימות והנחיות - כיצד לבצע משימה</h1>
           <p className={styles.menuDescription}>
-            ברוכים הבאים למרכז הבקרה. כל משימה מכילה סט מאורגן של הוראות שנועדו לעזור לכם לשלוט בהיבטים ספציפיים
-            של הפלטפורמה. בחרו משימה למטה כדי להתחיל את מסע הלמידה שלכם.
+            הקלדה על משימה תפתח רצף הנחיות מה לבצע. הקלקה על הנחייה תפתח הסבר עם צילומי מסך כיצד לבצע. שורה ירוקה היא
+            תנאי - יש ללחוץ עליו לקבלת הנחיות שיש לבצע רק אם התנאי נכון
           </p>
         </div>
 
@@ -97,8 +93,8 @@ export default function HeHome({ loaderData }: Route.ComponentProps) {
               </>
             ) : (
               <span>
-                חשבונכם <strong>ממתין לאישור</strong>. מנהל המערכת יקצה את הארגון שלכם בקרוב. בינתיים, משימות
-                לדוגמה זמינות לצפייה.
+                חשבונכם <strong>ממתין לאישור</strong>. מנהל המערכת יקצה את הארגון שלכם בקרוב. בינתיים, משימות לדוגמה
+                זמינות לצפייה.
               </span>
             )}
           </div>
@@ -132,17 +128,17 @@ export default function HeHome({ loaderData }: Route.ComponentProps) {
                 <div className={styles.missionTitle}>
                   <Markdown
                     remarkPlugins={[remarkBreaks]}
-                    components={{ p: ({ children }) => <span>{children}</span>, a: ({ children }) => <span>{children}</span> }}
+                    components={{
+                      p: ({ children }) => <span>{children}</span>,
+                      a: ({ children }) => <span>{children}</span>,
+                    }}
                   >
                     {mission.title}
                   </Markdown>
                 </div>
               </div>
               <div className={styles.missionDescription}>
-                <Markdown
-                  remarkPlugins={[remarkBreaks]}
-                  components={{ a: ({ children }) => <span>{children}</span> }}
-                >
+                <Markdown remarkPlugins={[remarkBreaks]} components={{ a: ({ children }) => <span>{children}</span> }}>
                   {mission.description}
                 </Markdown>
               </div>
