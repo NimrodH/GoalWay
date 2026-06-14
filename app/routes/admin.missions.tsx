@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Form, useActionData, useFetcher, useLoaderData, useSearchParams } from "react-router";
 import { AdminLayout } from "~/components/admin-layout/admin-layout";
 import { useAuth } from "~/hooks/use-auth";
@@ -198,6 +198,20 @@ function EditMissionForm({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, allMissionIds]);
+
+  // Re-load form data when language changes while a mission is already selected.
+  // The searchParams effect above skips reload when missionId hasn't changed —
+  // but the whole point here is that the language (and therefore `missions` data) changed.
+  const prevLanguageRef = useRef(language);
+  useEffect(() => {
+    if (prevLanguageRef.current !== language) {
+      prevLanguageRef.current = language;
+      if (selectedMissionId) {
+        updateMissionFormFields(selectedMissionId);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language]);
 
   useEffect(() => {
     const shouldScroll = localStorage.getItem("scrollToInstructions");
