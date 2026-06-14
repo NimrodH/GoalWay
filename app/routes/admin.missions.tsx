@@ -1809,10 +1809,19 @@ function EditMissionForm({
                     const isTemp = instructionId.startsWith("T") && /^T\d+$/.test(instructionId);
                     // Strip the duplicate suffix (#2, #3, …) to get the real instruction ID for lookup
                     const baseInstructionId = instructionId.includes("#") ? instructionId.split("#")[0] : instructionId;
-                    const instruction =
+                    // Prefer the current-language instruction; in Hebrew mode fall back to English
+                    // so that instructions without Hebrew data are still visible in the panel.
+                    const primaryInstruction =
                       !isComment && !isIf && !isEndIf && !isElse && !isTemp
                         ? instructions.find((i) => i.id === baseInstructionId)
                         : null;
+                    const fallbackInstruction =
+                      !isComment && !isIf && !isEndIf && !isElse && !isTemp && !primaryInstruction && language === "he"
+                        ? instructionsEn.find((i) => i.id === baseInstructionId)
+                        : null;
+                    const instruction = primaryInstruction ?? fallbackInstruction;
+                    // True when displayed using English data because no Hebrew version exists yet
+                    const isEnFallback = language === "he" && !!fallbackInstruction;
 
                     // Non-special entries must resolve to a real instruction (or be filtered out)
                     if (!isComment && !isIf && !isEndIf && !isElse && !isTemp && !instruction) return null;
@@ -1916,6 +1925,23 @@ function EditMissionForm({
                               {instructionId.includes("#") && (
                                 <span style={{ color: "var(--color-accent-9)", fontSize: "0.8em", marginLeft: "2px" }}>
                                   ×{instructionId.split("#")[1]}
+                                </span>
+                              )}
+                              {isEnFallback && (
+                                <span
+                                  title="No Hebrew translation yet — showing English title as fallback"
+                                  style={{
+                                    marginLeft: "4px",
+                                    fontSize: "0.65em",
+                                    background: "var(--amber-4)",
+                                    color: "var(--amber-11)",
+                                    padding: "0 3px",
+                                    borderRadius: "2px",
+                                    fontWeight: 700,
+                                    verticalAlign: "middle",
+                                  }}
+                                >
+                                  EN
                                 </span>
                               )}
                             </span>
