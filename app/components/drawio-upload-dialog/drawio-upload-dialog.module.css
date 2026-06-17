@@ -112,6 +112,9 @@
   border: 1px solid var(--color-neutral-6);
   border-radius: var(--radius-2);
   padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .previewLabel {
@@ -119,19 +122,45 @@
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--color-neutral-10);
-  margin: 0 0 var(--space-2);
+  margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
-.previewText {
+.previewHint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.75rem;
+  color: var(--color-neutral-9);
+}
+
+.previewTextarea {
   font-family: var(--font-code);
   font-size: 0.8125rem;
   color: var(--color-neutral-12);
+  background: var(--color-neutral-1);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-1);
+  padding: var(--space-2);
+  width: 100%;
+  min-height: 180px;
+  max-height: 280px;
+  resize: vertical;
+  line-height: 1.6;
   white-space: pre;
   overflow: auto;
-  max-height: 220px;
   margin: 0;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.previewTextarea:focus {
+  border-color: var(--color-accent-7);
 }
 
 .instructionCount {

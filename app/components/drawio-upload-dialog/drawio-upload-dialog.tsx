@@ -1,6 +1,59 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { drawioToMissionInstructions } from "~/lib/flowchart2goalway";
 import styles from "./drawio-upload-dialog.module.css";
+
+/**
+ * Parse a human-readable linear preview text back into mission instruction
+ * tuples. Inverse of the linearText output produced by drawioToMissionInstructions.
+ *
+ * Recognised syntax (same as the generated preview):
+ *   START           — begin content (required)
+ *   IF <condition>  — open an IF block
+ *   ELSE            — else branch of the enclosing IF block
+ *   END IF          — close the innermost IF block
+ *   END             — stop parsing
+ *   -- <text>       — ignored comment / cycle-detection note
+ *   <any other non-empty line> — treated as a temp instruction (T1, T2, …)
+ */
+function parseLinearTextToInstructions(text: string): Array<[string, string?]> {
+  const lines = text.split("\n");
+  const instructions: Array<[string, string?]> = [];
+  let tempCounter = 1;
+  const ifStack: string[] = [];
+  let inContent = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (line === "START") { inContent = true; continue; }
+    if (line === "END") break;
+    if (!inContent) continue;
+
+    if (line.startsWith("IF ")) {
+      const conditionText = line.slice(3).trim();
+      const suffix = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      ifStack.push(suffix);
+      instructions.push([`if-${suffix}`, conditionText]);
+    } else if (line === "ELSE") {
+      const suffix = ifStack[ifStack.length - 1];
+      if (suffix) instructions.push([`else-${suffix}`]);
+    } else if (line === "END IF") {
+      const suffix = ifStack.pop();
+      if (suffix) instructions.push([`end-if-${suffix}`]);
+    } else if (!line.startsWith("--")) {
+      // Regular step — becomes a temporary instruction placeholder
+      instructions.push([`T${tempCounter++}`, line]);
+    }
+  }
+
+  // Safety: close any IF blocks the user forgot to close
+  while (ifStack.length > 0) {
+    const suffix = ifStack.pop()!;
+    instructions.push([`end-if-${suffix}`]);
+  }
+
+  return instructions;
+}
 
 interface DrawioUploadDialogProps {
   onClose: () => void;
@@ -16,24 +69,36 @@ interface DrawioUploadDialogProps {
 export function DrawioUploadDialog({ onClose, onImport }: DrawioUploadDialogProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [linearPreview, setLinearPreview] = useState<string | null>(null);
+  /** Editable text representation of the instruction list. Editing it re-parses on the fly. */
+  const [editedPreview, setEditedPreview] = useState<string>("");
   const [parsed, setParsed] = useState<Array<[string, string?]> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Re-parse `parsed` from the editable text on every change so that stats
+  // and the final import both reflect the user's edits.
+  useEffect(() => {
+    if (!editedPreview) {
+      setParsed(null);
+      return;
+    }
+    const result = parseLinearTextToInstructions(editedPreview);
+    setParsed(result.length > 0 ? result : null);
+  }, [editedPreview]);
 
   const processFile = (file: File) => {
     setError(null);
     setFileName(file.name);
     setParsed(null);
-    setLinearPreview(null);
+    setEditedPreview("");
 
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
       try {
         const result = drawioToMissionInstructions(text);
-        setParsed(result.instructions);
-        setLinearPreview(result.linearText);
+        // Setting editedPreview triggers the useEffect which updates `parsed`.
+        setEditedPreview(result.linearText);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to parse draw.io file.");
       }
@@ -105,7 +170,7 @@ export function DrawioUploadDialog({ onClose, onImport }: DrawioUploadDialogProp
           {/* Error */}
           {error && <div className={styles.errorBox}>⚠️ {error}</div>}
 
-          {/* Stats */}
+          {/* Live stats — update as the user edits the preview */}
           {parsed && (
             <div className={styles.instructionCount}>
               ✅ Parsed <strong>{instructionCount}</strong> step{instructionCount !== 1 ? "s" : ""}
@@ -118,11 +183,22 @@ export function DrawioUploadDialog({ onClose, onImport }: DrawioUploadDialogProp
             </div>
           )}
 
-          {/* Linear preview */}
-          {linearPreview && (
+          {/* Editable preview — every keystroke re-parses the instruction list */}
+          {editedPreview && (
             <div className={styles.previewBox}>
-              <p className={styles.previewLabel}>Preview</p>
-              <pre className={styles.previewText}>{linearPreview}</pre>
+              <p className={styles.previewLabel}>
+                Preview
+                <span className={styles.previewHint}>
+                  Edit to adjust steps · use IF / ELSE / END IF for branches
+                </span>
+              </p>
+              <textarea
+                className={styles.previewTextarea}
+                value={editedPreview}
+                onChange={(e) => setEditedPreview(e.target.value)}
+                spellCheck={false}
+                aria-label="Editable instruction preview"
+              />
             </div>
           )}
         </div>
