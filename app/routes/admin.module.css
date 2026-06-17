@@ -149,8 +149,16 @@
   margin-top: 0px;
 }
 
-.addButton:hover {
+.addButton:hover:not(:disabled) {
   background: var(--color-accent-5);
+}
+
+.addButton:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+  background: var(--color-neutral-3);
+  color: var(--color-neutral-8);
+  border-color: var(--color-neutral-5);
 }
 
 .submitButton {

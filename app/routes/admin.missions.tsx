@@ -1396,9 +1396,19 @@ function EditMissionForm({
                     className={styles.addButton}
                     disabled={selectedAvailableInstructions.length !== 1 || createAndEditFetcher.state !== "idle"}
                     style={{ minWidth: "60px" }}
-                    title="Open selected instruction in the Instructions editor"
+                    title={
+                      selectedAvailableInstructions.length === 0
+                        ? "Select exactly one instruction to edit it"
+                        : selectedAvailableInstructions.length === 1
+                          ? "Open selected instruction in the Instructions editor"
+                          : `Select only 1 instruction (${selectedAvailableInstructions.length} selected)`
+                    }
                   >
-                    Edit
+                    {selectedAvailableInstructions.length === 0
+                      ? "Edit"
+                      : selectedAvailableInstructions.length === 1
+                        ? "✎ Edit"
+                        : `Edit (${selectedAvailableInstructions.length})`}
                   </button>
                 </div>
                 <div
