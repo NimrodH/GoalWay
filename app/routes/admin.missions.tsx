@@ -163,6 +163,7 @@ function EditMissionForm({
   const [codeEditorError, setCodeEditorError] = useState<string | null>(null);
   const [showDrawioDialog, setShowDrawioDialog] = useState(false);
   const [collapsedIfIds, setCollapsedIfIds] = useState<Set<string>>(new Set());
+  const [collapsedElseIds, setCollapsedElseIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (selectedMissionId) {
@@ -1779,28 +1780,32 @@ function EditMissionForm({
                       }
                     }
 
-                    // Determine which rows are hidden:
-                    // A row is hidden when its owning IF is collapsed.
-                    // ELSE rows: also hidden when the IF is collapsed.
-                    // Rows after ELSE (before END-IF): hidden when ELSE is collapsed.
-                    const collapsedElseIds = new Set(
-                      [...collapsedIfIds].flatMap((ifId) => {
-                        const suffix = ifId.replace(/^if-/, "");
-                        const elseId = `else-${suffix}`;
-                        return selectedInstructions.some(([id]) => id === elseId) ? [elseId] : [];
-                      }),
-                    );
-
-                    // Determine rows between ELSE and END-IF for each collapsed IF
+                    // IF collapse: hide only the IF-branch (up to ELSE if present, else up to END-IF).
                     const hiddenDueToIfCollapse = new Set<string>();
                     for (const ifId of collapsedIfIds) {
                       const suffix = ifId.replace(/^if-/, "");
+                      const elseId = `else-${suffix}`;
                       const endIfId = `end-if-${suffix}`;
+                      const hasElse = selectedInstructions.some(([id]) => id === elseId);
                       let inside = false;
                       for (const [id] of selectedInstructions) {
                         if (id === ifId) { inside = true; continue; }
-                        if (id === endIfId) { inside = false; break; }
+                        // Stop before ELSE (if present) or END-IF
+                        if (id === (hasElse ? elseId : endIfId)) { inside = false; break; }
                         if (inside) hiddenDueToIfCollapse.add(id);
+                      }
+                    }
+
+                    // ELSE collapse: hide content between ELSE and END-IF.
+                    const hiddenDueToElseCollapse = new Set<string>();
+                    for (const elseId of collapsedElseIds) {
+                      const suffix = elseId.replace(/^else-/, "");
+                      const endIfId = `end-if-${suffix}`;
+                      let inside = false;
+                      for (const [id] of selectedInstructions) {
+                        if (id === elseId) { inside = true; continue; }
+                        if (id === endIfId) { inside = false; break; }
+                        if (inside) hiddenDueToElseCollapse.add(id);
                       }
                     }
 
@@ -1813,9 +1818,18 @@ function EditMissionForm({
                       });
                     };
 
+                    const toggleElseCollapse = (elseId: string) => {
+                      setCollapsedElseIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(elseId)) next.delete(elseId);
+                        else next.add(elseId);
+                        return next;
+                      });
+                    };
+
                     return selectedInstructions.map(([instructionId, customTitle], rowIndex) => {
                       // Hide rows that are inside a collapsed IF block
-                      if (hiddenDueToIfCollapse.has(instructionId)) return null;
+                      if (hiddenDueToIfCollapse.has(instructionId) || hiddenDueToElseCollapse.has(instructionId)) return null;
                     const isComment = instructionId.startsWith("comment-") || instructionId === "0";
                     const isIf = instructionId.startsWith("if-");
                     const isEndIf = instructionId.startsWith("end-if-");
@@ -1844,16 +1858,31 @@ function EditMissionForm({
                       isComment || isIf || isEndIf || isElse || isTemp ? customTitle : customTitle || instruction?.title || "";
                     const indentLevel = depthMap.get(instructionId) ?? 0;
                     const isCollapsed = isIf && collapsedIfIds.has(instructionId);
-                    // Count hidden children for collapsed IF
+                    const isElseCollapsed = isElse && collapsedElseIds.has(instructionId);
+                    // Count hidden IF-branch children (up to ELSE if present, else up to END-IF)
                     let hiddenCount = 0;
                     if (isCollapsed) {
                       const suffix = instructionId.replace(/^if-/, "");
+                      const elseId = `else-${suffix}`;
+                      const endIfId = `end-if-${suffix}`;
+                      const hasElse = selectedInstructions.some(([id]) => id === elseId);
+                      let counting = false;
+                      for (const [id] of selectedInstructions) {
+                        if (id === instructionId) { counting = true; continue; }
+                        if (id === (hasElse ? elseId : endIfId)) break;
+                        if (counting) hiddenCount++;
+                      }
+                    }
+                    // Count hidden ELSE-branch children (ELSE to END-IF)
+                    let elseHiddenCount = 0;
+                    if (isElseCollapsed) {
+                      const suffix = instructionId.replace(/^else-/, "");
                       const endIfId = `end-if-${suffix}`;
                       let counting = false;
                       for (const [id] of selectedInstructions) {
                         if (id === instructionId) { counting = true; continue; }
                         if (id === endIfId) break;
-                        if (counting) hiddenCount++;
+                        if (counting) elseHiddenCount++;
                       }
                     }
                     return (
@@ -1913,9 +1942,33 @@ function EditMissionForm({
                               🔁 END-IF{customTitle && customTitle !== "END-IF" ? `: ${customTitle}` : ""}
                             </span>
                           ) : isElse ? (
-                            <span style={{ color: "var(--color-accent-11)", fontWeight: 700 }}>
-                              ↔️ ELSE{customTitle ? `: ${customTitle}` : ""}
-                            </span>
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleElseCollapse(instructionId); }}
+                                title={isElseCollapsed ? "Expand ELSE block" : "Collapse ELSE block"}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  padding: "0 2px",
+                                  fontSize: "0.75rem",
+                                  lineHeight: 1,
+                                  color: "var(--color-accent-11)",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {isElseCollapsed ? "▶" : "▼"}
+                              </button>
+                              <span style={{ color: "var(--color-accent-11)", fontWeight: 700 }}>
+                                ↔️ ELSE{customTitle ? `: ${customTitle}` : ""}
+                              </span>
+                              {isElseCollapsed && elseHiddenCount > 0 && (
+                                <span style={{ fontSize: "0.75rem", color: "var(--color-neutral-9)", marginLeft: "4px", fontStyle: "italic" }}>
+                                  ({elseHiddenCount} hidden)
+                                </span>
+                              )}
+                            </>
                           ) : isTemp ? (
                             <span
                               style={{ color: "var(--color-accent-10)", fontWeight: 600 }}
