@@ -1386,6 +1386,20 @@ function EditMissionForm({
                   >
                     Clear
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedAvailableInstructions.length === 1) {
+                        handleEditInstruction(selectedAvailableInstructions[0]);
+                      }
+                    }}
+                    className={styles.addButton}
+                    disabled={selectedAvailableInstructions.length !== 1 || createAndEditFetcher.state !== "idle"}
+                    style={{ minWidth: "60px" }}
+                    title="Open selected instruction in the Instructions editor"
+                  >
+                    Edit
+                  </button>
                 </div>
                 <div
                   style={{
