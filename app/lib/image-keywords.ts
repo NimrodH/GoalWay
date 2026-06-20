@@ -44,6 +44,45 @@ export async function saveImageKeywords(
   }
 }
 
+export interface ImageCategories {
+  keywords: string[];
+  software: string | null;
+  module: string | null;
+  screen: string | null;
+  item: string | null;
+}
+
+/**
+ * Fetch keywords for multiple image paths in one query.
+ * Returns a map: image_path => ImageCategories
+ */
+export async function fetchCategoriesForPaths(
+  imagePaths: string[]
+): Promise<Record<string, ImageCategories>> {
+  if (imagePaths.length === 0) return {};
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('image_keywords')
+      .select('image_path, keywords, software, module, screen, item')
+      .in('image_path', imagePaths);
+
+    if (error || !data) return {};
+    return data.reduce<Record<string, ImageCategories>>((acc, row) => {
+      acc[row.image_path] = {
+        keywords: row.keywords ?? [],
+        software: row.software ?? null,
+        module: row.module ?? null,
+        screen: row.screen ?? null,
+        item: row.item ?? null,
+      };
+      return acc;
+    }, {});
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Fetch keywords for multiple image paths in one query.
  * Returns a map: image_path => keywords[]

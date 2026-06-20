@@ -4,7 +4,7 @@ import classNames from "classnames";
 import { AdminLayout } from "~/components/admin-layout/admin-layout";
 import { useAuth } from "~/hooks/use-auth";
 import { uploadImage, listAllImages } from "~/lib/image-upload";
-import { fetchImageKeywords, saveImageKeywords, fetchKeywordsForPaths } from "~/lib/image-keywords";
+import { fetchImageKeywords, saveImageKeywords, fetchCategoriesForPaths, type ImageCategories } from "~/lib/image-keywords";
 import type { Instruction, InstructionContent, Annotation } from "~/services/instructions.server";
 import type { Mission } from "~/services/missions.server";
 import { ImageAnnotationEditor } from "~/components/image-annotation-editor/image-annotation-editor";
@@ -68,17 +68,33 @@ function ImageLibraryDialog({
   returnLang?: string;
 }) {
   const [images, setImages] = useState<Array<{ name: string; url: string; path: string }>>([]);
-  const [imageKeywordsMap, setImageKeywordsMap] = useState<Record<string, string[]>>({});
+  const [imageCategoriesMap, setImageCategoriesMap] = useState<Record<string, ImageCategories>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Filtering state
   const [imageNameFilter, setImageNameFilter] = useState("");
+  const [softwareFilter, setSoftwareFilter] = useState("");
+  const [moduleFilter, setModuleFilter] = useState("");
+  const [screenFilter, setScreenFilter] = useState("");
+  const [itemFilter, setItemFilter] = useState("");
+
+  // Extracted unique categories for dropdowns
+  const [uniqueSoftware, setUniqueSoftware] = useState<string[]>([]);
+  const [uniqueModule, setUniqueModule] = useState<string[]>([]);
+  const [uniqueScreen, setUniqueScreen] = useState<string[]>([]);
+  const [uniqueItem, setUniqueItem] = useState<string[]>([]);
 
   useEffect(() => {
     if (isOpen) {
       loadImages();
       setImageNameFilter("");
+      setSoftwareFilter("");
+      setModuleFilter("");
+      setScreenFilter("");
+      setItemFilter("");
     }
   }, [isOpen, preSelectImageUrl]);
 
@@ -93,9 +109,27 @@ function ImageLibraryDialog({
     } else {
       setImages(result.images);
       const paths = result.images.map((img) => img.path);
-      const kwMap = await fetchKeywordsForPaths(paths);
-      setImageKeywordsMap(kwMap);
+      const catMap = await fetchCategoriesForPaths(paths);
+      setImageCategoriesMap(catMap);
       
+      // Extract unique values
+      const sw = new Set<string>();
+      const mo = new Set<string>();
+      const sc = new Set<string>();
+      const it = new Set<string>();
+      
+      Object.values(catMap).forEach(cat => {
+        if (cat.software) sw.add(cat.software);
+        if (cat.module) mo.add(cat.module);
+        if (cat.screen) sc.add(cat.screen);
+        if (cat.item) it.add(cat.item);
+      });
+      
+      setUniqueSoftware(Array.from(sw).sort());
+      setUniqueModule(Array.from(mo).sort());
+      setUniqueScreen(Array.from(sc).sort());
+      setUniqueItem(Array.from(it).sort());
+
       if (preSelectImageUrl) {
         const found = result.images.find(img => img.url === preSelectImageUrl);
         if (found) {
@@ -203,23 +237,70 @@ function ImageLibraryDialog({
                 gap: "var(--space-3)",
               }}
             >
-              <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", alignItems: "center" }}>
                 <input
                   type="text"
                   className={styles.input}
                   value={imageNameFilter}
                   onChange={(e) => setImageNameFilter(e.target.value)}
                   placeholder="Filter by name or keyword..."
-                  style={{ flex: 1, fontSize: "0.875rem" }}
+                  style={{ flex: 1, minWidth: "200px", fontSize: "0.875rem" }}
                 />
-                {imageNameFilter && (
+                
+                <select 
+                  className={styles.input} 
+                  value={softwareFilter}
+                  onChange={(e) => setSoftwareFilter(e.target.value)}
+                  style={{ width: "140px", fontSize: "0.875rem" }}
+                >
+                  <option value="">All Software</option>
+                  {uniqueSoftware.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+
+                <select 
+                  className={styles.input} 
+                  value={moduleFilter}
+                  onChange={(e) => setModuleFilter(e.target.value)}
+                  style={{ width: "140px", fontSize: "0.875rem" }}
+                >
+                  <option value="">All Modules</option>
+                  {uniqueModule.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+
+                <select 
+                  className={styles.input} 
+                  value={screenFilter}
+                  onChange={(e) => setScreenFilter(e.target.value)}
+                  style={{ width: "140px", fontSize: "0.875rem" }}
+                >
+                  <option value="">All Screens</option>
+                  {uniqueScreen.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+
+                <select 
+                  className={styles.input} 
+                  value={itemFilter}
+                  onChange={(e) => setItemFilter(e.target.value)}
+                  style={{ width: "140px", fontSize: "0.875rem" }}
+                >
+                  <option value="">All Items</option>
+                  {uniqueItem.map(i => <option key={i} value={i}>{i}</option>)}
+                </select>
+
+                {(imageNameFilter || softwareFilter || moduleFilter || screenFilter || itemFilter) && (
                   <button
                     type="button"
-                    onClick={() => setImageNameFilter("")}
+                    onClick={() => {
+                      setImageNameFilter("");
+                      setSoftwareFilter("");
+                      setModuleFilter("");
+                      setScreenFilter("");
+                      setItemFilter("");
+                    }}
                     className={styles.addButton}
                     style={{ minWidth: "60px", fontSize: "0.875rem" }}
                   >
-                    Clear
+                    Clear All
                   </button>
                 )}
               </div>
@@ -279,15 +360,25 @@ function ImageLibraryDialog({
             <div className={styles.imageGrid}>
               {images
                 .filter((image) => {
+                  const cat = imageCategoriesMap[image.path];
+                  
+                  if (softwareFilter && cat?.software !== softwareFilter) return false;
+                  if (moduleFilter && cat?.module !== moduleFilter) return false;
+                  if (screenFilter && cat?.screen !== screenFilter) return false;
+                  if (itemFilter && cat?.item !== itemFilter) return false;
+
                   if (!imageNameFilter.trim()) return true;
                   const term = imageNameFilter.toLowerCase().trim();
                   if (image.name.toLowerCase().includes(term)) return true;
-                  const kws = imageKeywordsMap[image.path] ?? [];
+                  const kws = cat?.keywords ?? [];
                   return kws.some((kw) => kw.toLowerCase().includes(term));
                 })
                 .map((image) => {
                   const isUsed = isImageUsed(image.url);
                   const isSelected = selectedImages.has(image.path);
+                  const cat = imageCategoriesMap[image.path];
+                  const keywords = cat?.keywords ?? [];
+                  
                   return (
                     <div
                       key={image.path}
@@ -337,7 +428,7 @@ function ImageLibraryDialog({
                       )}
                       <img src={image.url} alt={image.name} className={styles.imageGridThumb} />
                       <div className={styles.imageGridName}>{image.name}</div>
-                      {(imageKeywordsMap[image.path] ?? []).length > 0 && (
+                      {keywords.length > 0 && (
                         <div
                           style={{
                             padding: "var(--space-1) var(--space-2)",
@@ -346,7 +437,7 @@ function ImageLibraryDialog({
                             gap: "var(--space-1)",
                           }}
                         >
-                          {(imageKeywordsMap[image.path] ?? []).map((kw) => (
+                          {keywords.map((kw) => (
                             <span
                               key={kw}
                               style={{
