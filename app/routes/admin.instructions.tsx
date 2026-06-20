@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useActionData, useLoaderData, useSearchParams, useFetcher } from "react-router";
 import classNames from "classnames";
 import { AdminLayout } from "~/components/admin-layout/admin-layout";
@@ -81,11 +81,44 @@ function ImageLibraryDialog({
   const [screenFilter, setScreenFilter] = useState("");
   const [itemFilter, setItemFilter] = useState("");
 
-  // Extracted unique categories for dropdowns
-  const [uniqueSoftware, setUniqueSoftware] = useState<string[]>([]);
-  const [uniqueModule, setUniqueModule] = useState<string[]>([]);
-  const [uniqueScreen, setUniqueScreen] = useState<string[]>([]);
-  const [uniqueItem, setUniqueItem] = useState<string[]>([]);
+  // Extracted unique categories for dropdowns, dynamically computed based on hierarchy
+  const availableSoftware = useMemo(() => {
+    const set = new Set<string>();
+    Object.values(imageCategoriesMap).forEach((cat) => {
+      if (cat.software) set.add(cat.software);
+    });
+    return Array.from(set).sort();
+  }, [imageCategoriesMap]);
+
+  const availableModule = useMemo(() => {
+    const set = new Set<string>();
+    Object.values(imageCategoriesMap).forEach((cat) => {
+      if (softwareFilter && cat.software !== softwareFilter) return;
+      if (cat.module) set.add(cat.module);
+    });
+    return Array.from(set).sort();
+  }, [imageCategoriesMap, softwareFilter]);
+
+  const availableScreen = useMemo(() => {
+    const set = new Set<string>();
+    Object.values(imageCategoriesMap).forEach((cat) => {
+      if (softwareFilter && cat.software !== softwareFilter) return;
+      if (moduleFilter && cat.module !== moduleFilter) return;
+      if (cat.screen) set.add(cat.screen);
+    });
+    return Array.from(set).sort();
+  }, [imageCategoriesMap, softwareFilter, moduleFilter]);
+
+  const availableItem = useMemo(() => {
+    const set = new Set<string>();
+    Object.values(imageCategoriesMap).forEach((cat) => {
+      if (softwareFilter && cat.software !== softwareFilter) return;
+      if (moduleFilter && cat.module !== moduleFilter) return;
+      if (screenFilter && cat.screen !== screenFilter) return;
+      if (cat.item) set.add(cat.item);
+    });
+    return Array.from(set).sort();
+  }, [imageCategoriesMap, softwareFilter, moduleFilter, screenFilter]);
 
   useEffect(() => {
     if (isOpen) {
@@ -111,24 +144,6 @@ function ImageLibraryDialog({
       const paths = result.images.map((img) => img.path);
       const catMap = await fetchCategoriesForPaths(paths);
       setImageCategoriesMap(catMap);
-      
-      // Extract unique values
-      const sw = new Set<string>();
-      const mo = new Set<string>();
-      const sc = new Set<string>();
-      const it = new Set<string>();
-      
-      Object.values(catMap).forEach(cat => {
-        if (cat.software) sw.add(cat.software);
-        if (cat.module) mo.add(cat.module);
-        if (cat.screen) sc.add(cat.screen);
-        if (cat.item) it.add(cat.item);
-      });
-      
-      setUniqueSoftware(Array.from(sw).sort());
-      setUniqueModule(Array.from(mo).sort());
-      setUniqueScreen(Array.from(sc).sort());
-      setUniqueItem(Array.from(it).sort());
 
       if (preSelectImageUrl) {
         const found = result.images.find(img => img.url === preSelectImageUrl);
@@ -250,31 +265,43 @@ function ImageLibraryDialog({
                 <select 
                   className={styles.input} 
                   value={softwareFilter}
-                  onChange={(e) => setSoftwareFilter(e.target.value)}
+                  onChange={(e) => {
+                    setSoftwareFilter(e.target.value);
+                    setModuleFilter("");
+                    setScreenFilter("");
+                    setItemFilter("");
+                  }}
                   style={{ width: "140px", fontSize: "0.875rem" }}
                 >
                   <option value="">All Software</option>
-                  {uniqueSoftware.map(s => <option key={s} value={s}>{s}</option>)}
+                  {availableSoftware.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
 
                 <select 
                   className={styles.input} 
                   value={moduleFilter}
-                  onChange={(e) => setModuleFilter(e.target.value)}
+                  onChange={(e) => {
+                    setModuleFilter(e.target.value);
+                    setScreenFilter("");
+                    setItemFilter("");
+                  }}
                   style={{ width: "140px", fontSize: "0.875rem" }}
                 >
                   <option value="">All Modules</option>
-                  {uniqueModule.map(m => <option key={m} value={m}>{m}</option>)}
+                  {availableModule.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
 
                 <select 
                   className={styles.input} 
                   value={screenFilter}
-                  onChange={(e) => setScreenFilter(e.target.value)}
+                  onChange={(e) => {
+                    setScreenFilter(e.target.value);
+                    setItemFilter("");
+                  }}
                   style={{ width: "140px", fontSize: "0.875rem" }}
                 >
                   <option value="">All Screens</option>
-                  {uniqueScreen.map(s => <option key={s} value={s}>{s}</option>)}
+                  {availableScreen.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
 
                 <select 
@@ -284,7 +311,7 @@ function ImageLibraryDialog({
                   style={{ width: "140px", fontSize: "0.875rem" }}
                 >
                   <option value="">All Items</option>
-                  {uniqueItem.map(i => <option key={i} value={i}>{i}</option>)}
+                  {availableItem.map(i => <option key={i} value={i}>{i}</option>)}
                 </select>
 
                 {(imageNameFilter || softwareFilter || moduleFilter || screenFilter || itemFilter) && (
