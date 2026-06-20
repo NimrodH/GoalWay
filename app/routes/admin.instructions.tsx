@@ -80,14 +80,8 @@ function ImageLibraryDialog({
   useEffect(() => {
     if (isOpen) {
       loadImages();
-      setSelectedImages(new Set());
       setImageNameFilter("");
-      if (preSelectImageUrl) {
-        const imageName = preSelectImageUrl.split("/").pop() || "Preview";
-        setPreviewImage({ url: preSelectImageUrl, name: imageName });
-      } else {
-        setPreviewImage(null);
-      }
+      setPreviewImage(null);
     }
   }, [isOpen, preSelectImageUrl]);
 
@@ -104,6 +98,17 @@ function ImageLibraryDialog({
       const paths = result.images.map((img) => img.path);
       const kwMap = await fetchKeywordsForPaths(paths);
       setImageKeywordsMap(kwMap);
+      
+      if (preSelectImageUrl) {
+        const found = result.images.find(img => img.url === preSelectImageUrl);
+        if (found) {
+          setSelectedImages(new Set([found.path]));
+        } else {
+          setSelectedImages(new Set());
+        }
+      } else {
+        setSelectedImages(new Set());
+      }
     }
   };
 
