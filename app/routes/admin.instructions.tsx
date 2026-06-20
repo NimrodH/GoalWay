@@ -73,15 +73,12 @@ function ImageLibraryDialog({
   const [error, setError] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
-  const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
   const [imageNameFilter, setImageNameFilter] = useState("");
 
   useEffect(() => {
     if (isOpen) {
       loadImages();
       setImageNameFilter("");
-      setPreviewImage(null);
     }
   }, [isOpen, preSelectImageUrl]);
 
@@ -178,119 +175,6 @@ function ImageLibraryDialog({
   };
 
   if (!isOpen) return null;
-
-  if (previewImage) {
-    const handlePrevImage = () => {
-      if (currentImageIndex > 0) {
-        const prevIndex = currentImageIndex - 1;
-        setCurrentImageIndex(prevIndex);
-        setPreviewImage({ url: images[prevIndex].url, name: images[prevIndex].name });
-      }
-    };
-
-    const handleNextImage = () => {
-      if (currentImageIndex < images.length - 1) {
-        const nextIndex = currentImageIndex + 1;
-        setCurrentImageIndex(nextIndex);
-        setPreviewImage({ url: images[nextIndex].url, name: images[nextIndex].name });
-      }
-    };
-
-    return (
-      <div className={styles.dialogOverlay} onClick={() => setPreviewImage(null)}>
-        <div
-          className={styles.dialogContent}
-          onClick={(e) => e.stopPropagation()}
-          style={{ maxWidth: "90vw", maxHeight: "90vh", display: "flex", flexDirection: "column", padding: 0 }}
-        >
-          <div className={styles.dialogHeader}>
-            <h2 className={styles.dialogTitle}>{previewImage.name}</h2>
-            <button className={styles.dialogClose} onClick={() => setPreviewImage(null)}>
-              ✕
-            </button>
-          </div>
-          <div
-            style={{
-              flex: 1,
-              overflow: "auto",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "var(--space-4)",
-              background: "var(--color-neutral-2)",
-              position: "relative",
-            }}
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelectImage(previewImage.url);
-                onClose();
-              }}
-              className={styles.selectImageButton}
-              title="Select this image"
-            >
-              ✓ Select
-            </button>
-            <div
-              style={{
-                background: "rgba(0, 0, 0, 0.7)",
-                color: "white",
-                padding: "var(--space-2) var(--space-3)",
-                borderRadius: "var(--radius-2)",
-                fontSize: "0.875rem",
-                fontFamily: "var(--font-body)",
-                fontWeight: 600,
-              }}
-              className={styles.div13}
-            >
-              {currentImageIndex + 1} / {images.length}
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePrevImage();
-              }}
-              disabled={currentImageIndex === 0}
-              className={styles.imageNavButton}
-              style={{ position: "absolute", left: "var(--space-4)", top: "50%", transform: "translateY(-50%)" }}
-              title="Previous image"
-            >
-              ←
-            </button>
-            <img
-              src={previewImage.url}
-              alt={previewImage.name}
-              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: "var(--radius-2)" }}
-            />
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleNextImage();
-              }}
-              disabled={currentImageIndex === images.length - 1}
-              className={styles.imageNavButton}
-              style={{ position: "absolute", right: "var(--space-4)", top: "50%", transform: "translateY(-50%)" }}
-              title="Next image"
-            >
-              →
-            </button>
-            <div
-              style={{
-                position: "absolute",
-                bottom: "var(--space-4)",
-                left: "50%",
-                transform: "translateX(-50%)",
-                display: "flex",
-                gap: "var(--space-3)",
-                alignItems: "center",
-              }}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={styles.dialogOverlay} onClick={onClose}>
