@@ -4,40 +4,84 @@ function getAdminClient() {
   return createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
 }
 
+export interface ImageCategories {
+  keywords: string[];
+  software: string | null;
+  module: string | null;
+  screen: string | null;
+  item: string | null;
+}
+
 /**
- * Fetch keywords for a list of image paths in one query.
- * Returns a map: image_path => keywords[]
+ * Fetch keywords and categories for a list of image paths in one query.
+ * Returns a map: image_path => ImageCategories
  */
 export async function getKeywordsForPaths(
   imagePaths: string[]
-): Promise<Record<string, string[]>> {
+): Promise<Record<string, ImageCategories>> {
   if (imagePaths.length === 0) return {};
   const supabase = getAdminClient();
   const { data, error } = await supabase
     .from("image_keywords")
-    .select("image_path, keywords")
+    .select("image_path, keywords, software, module, screen, item")
     .in("image_path", imagePaths);
 
   if (error || !data) return {};
 
-  return data.reduce<Record<string, string[]>>((acc, row) => {
-    acc[row.image_path] = row.keywords ?? [];
+  return data.reduce<Record<string, ImageCategories>>((acc, row) => {
+    acc[row.image_path] = {
+      keywords: row.keywords ?? [],
+      software: row.software ?? null,
+      module: row.module ?? null,
+      screen: row.screen ?? null,
+      item: row.item ?? null,
+    };
     return acc;
   }, {});
 }
 
 /**
- * Upsert keywords for a single image path (server-side).
+ * Get all unique values for each category field
+ */
+export async function getAllCategoryValues(): Promise<{
+  software: string[];
+  module: string[];
+  screen: string[];
+  item: string[];
+}> {
+  const supabase = getAdminClient();
+  const { data, error } = await supabase
+    .from("image_keywords")
+    .select("software, module, screen, item");
+
+  if (error || !data) {
+    return { software: [], module: [], screen: [], item: [] };
+  }
+
+  const software = Array.from(new Set(data.map((r) => r.software).filter(Boolean))) as string[];
+  const module = Array.from(new Set(data.map((r) => r.module).filter(Boolean))) as string[];
+  const screen = Array.from(new Set(data.map((r) => r.screen).filter(Boolean))) as string[];
+  const item = Array.from(new Set(data.map((r) => r.item).filter(Boolean))) as string[];
+
+  return { software, module, screen, item };
+}
+
+/**
+ * Upsert keywords and categories for a single image path (server-side).
  */
 export async function upsertImageKeywords(
   imagePath: string,
-  keywords: string[]
+  categories: ImageCategories
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = getAdminClient();
   const { error } = await supabase
     .from("image_keywords")
     .upsert(
-      { image_path: imagePath, keywords, updated_at: new Date().toISOString() },
+      { 
+        image_path: imagePath, 
+        ...categories,
+        updated_at: new Date().toISOString() 
+      },
       { onConflict: "image_path" }
     );
 
@@ -58,7 +102,7 @@ export async function renameImageKeywords(
 
   const { data } = await supabase
     .from("image_keywords")
-    .select("keywords")
+    .select("keywords, software, module, screen, item")
     .eq("image_path", oldPath)
     .maybeSingle();
 
@@ -67,7 +111,15 @@ export async function renameImageKeywords(
   const { error: upsertError } = await supabase
     .from("image_keywords")
     .upsert(
-      { image_path: newPath, keywords: data.keywords, updated_at: new Date().toISOString() },
+      { 
+        image_path: newPath, 
+        keywords: data.keywords,
+        software: data.software,
+        module: data.module,
+        screen: data.screen,
+        item: data.item,
+        updated_at: new Date().toISOString() 
+      },
       { onConflict: "image_path" }
     );
 

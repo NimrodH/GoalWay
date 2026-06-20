@@ -16,6 +16,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   const [instructions, instructionsHe] = await Promise.all([getAllInstructions(), getAllInstructionsHe()]);
 
   let initialKeywords: string[] = [];
+  let initialSoftware: string = "";
+  let initialModule: string = "";
+  let initialScreen: string = "";
+  let initialItem: string = "";
+
+  const { getAllCategoryValues } = await import("~/services/image-keywords.server");
+  const categoryValues = await getAllCategoryValues();
+
   if (imageUrl) {
     const marker = "/object/public/mission-images/";
     const idx = imageUrl.indexOf(marker);
@@ -23,7 +31,14 @@ export async function loader({ request }: Route.LoaderArgs) {
       const storagePath = decodeURIComponent(imageUrl.slice(idx + marker.length).split("?")[0]);
       const { getKeywordsForPaths } = await import("~/services/image-keywords.server");
       const kwMap = await getKeywordsForPaths([storagePath]);
-      initialKeywords = kwMap[storagePath] ?? [];
+      const cats = kwMap[storagePath];
+      if (cats) {
+        initialKeywords = cats.keywords ?? [];
+        initialSoftware = cats.software ?? "";
+        initialModule = cats.module ?? "";
+        initialScreen = cats.screen ?? "";
+        initialItem = cats.item ?? "";
+      }
     }
   }
 
@@ -33,6 +48,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     supabaseUrl: process.env.SUPABASE_PROJECT_URL!,
     supabaseKey: process.env.SUPABASE_API_KEY!,
     initialKeywords,
+    initialSoftware,
+    initialModule,
+    initialScreen,
+    initialItem,
+    categoryValues,
   };
 }
 
@@ -265,15 +285,25 @@ export async function action({ request }: Route.ActionArgs) {
   if (actionType === "updateKeywords") {
     const imagePath = formData.get("imagePath") as string;
     const keywordsRaw = formData.get("keywords") as string;
+    const software = formData.get("software") as string;
+    const module = formData.get("module") as string;
+    const screen = formData.get("screen") as string;
+    const item = formData.get("item") as string;
 
     if (!imagePath) return { success: false, error: "Image path is required" };
 
     try {
       const keywords = JSON.parse(keywordsRaw) as string[];
       const { upsertImageKeywords } = await import("~/services/image-keywords.server");
-      const result = await upsertImageKeywords(imagePath, keywords);
+      const result = await upsertImageKeywords(imagePath, {
+        keywords,
+        software: software || null,
+        module: module || null,
+        screen: screen || null,
+        item: item || null,
+      });
       return result.success
-        ? { success: true, actionType: "updateKeywords" as const, message: "Keywords saved!" }
+        ? { success: true, actionType: "updateKeywords" as const, message: "Keywords and categories saved!" }
         : { success: false, error: result.error ?? "Failed to save keywords" };
     } catch {
       return { success: false, error: "Invalid keywords data" };
@@ -556,7 +586,7 @@ function getStoragePathFromUrl(url: string): string {
 }
 
 export default function InstructionsWithImages({ loaderData }: Route.ComponentProps) {
-  const { instructions, instructionsHe, supabaseUrl, supabaseKey, initialKeywords } = loaderData;
+  const { instructions, instructionsHe, supabaseUrl, supabaseKey, initialKeywords, initialSoftware, initialModule, initialScreen, initialItem, categoryValues } = loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
   const imageUrl = searchParams.get("imageUrl");
   const returnInstructionId = searchParams.get("returnInstructionId");
@@ -582,6 +612,10 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   const keywordsFetcher = useFetcher<typeof action>();
   const [keywords, setKeywords] = useState<string[]>(initialKeywords);
   const [keywordInput, setKeywordInput] = useState("");
+  const [software, setSoftware] = useState<string>(initialSoftware);
+  const [module, setModule] = useState<string>(initialModule);
+  const [screen, setScreen] = useState<string>(initialScreen);
+  const [item, setItem] = useState<string>(initialItem);
 
   // Initialize Supabase on the client
   useEffect(() => {
@@ -829,7 +863,11 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   // Sync keywords when loader re-runs (e.g. after rename changes the URL)
   useEffect(() => {
     setKeywords(loaderData.initialKeywords);
-  }, [loaderData.initialKeywords]);
+    setSoftware(loaderData.initialSoftware);
+    setModule(loaderData.initialModule);
+    setScreen(loaderData.initialScreen);
+    setItem(loaderData.initialItem);
+  }, [loaderData.initialKeywords, loaderData.initialSoftware, loaderData.initialModule, loaderData.initialScreen, loaderData.initialItem]);
 
   // Watch for keywords fetcher result
   useEffect(() => {
@@ -870,6 +908,10 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
     formData.append("actionType", "updateKeywords");
     formData.append("imagePath", storagePath);
     formData.append("keywords", JSON.stringify(keywords));
+    formData.append("software", software);
+    formData.append("module", module);
+    formData.append("screen", screen);
+    formData.append("item", item);
     keywordsFetcher.submit(formData, { method: "post" });
   };
 
@@ -1064,7 +1106,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
           <div className={styles.keywordsSection}>
             <div className={styles.keywordsSectionHeader}>
               <span className={styles.keywordsSectionTitle}>
-                🏷️ Keywords (module, screen, subforamt, section, functionality)
+                🏷️ Image Categories & Keywords
               </span>
               <button
                 type="button"
@@ -1072,47 +1114,121 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                 className={styles.keywordSaveButton}
                 disabled={!session || keywordsFetcher.state !== "idle"}
               >
-                {keywordsFetcher.state !== "idle" ? "Saving..." : "💾 Save Keywords"}
+                {keywordsFetcher.state !== "idle" ? "Saving..." : "💾 Save"}
               </button>
             </div>
-            <div className={styles.keywordChips}>
-              {keywords.map((kw) => (
-                <span key={kw} className={styles.keywordChip}>
-                  {kw}
-                  <button
-                    type="button"
-                    onClick={() => removeKeyword(kw)}
-                    className={styles.keywordChipRemove}
-                    title={`Remove "${kw}"`}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-              {keywords.length === 0 && <span className={styles.noKeywordsText}>No keywords yet</span>}
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Software</label>
+                <input
+                  type="text"
+                  list="software-list"
+                  value={software}
+                  onChange={(e) => setSoftware(e.target.value)}
+                  placeholder="e.g. Photoshop, Excel..."
+                  className={styles.input}
+                />
+                <datalist id="software-list">
+                  {categoryValues.software.map((val) => (
+                    <option key={val} value={val} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Module</label>
+                <input
+                  type="text"
+                  list="module-list"
+                  value={module}
+                  onChange={(e) => setModule(e.target.value)}
+                  placeholder="e.g. CRM, Inventory..."
+                  className={styles.input}
+                />
+                <datalist id="module-list">
+                  {categoryValues.module.map((val) => (
+                    <option key={val} value={val} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Screen</label>
+                <input
+                  type="text"
+                  list="screen-list"
+                  value={screen}
+                  onChange={(e) => setScreen(e.target.value)}
+                  placeholder="e.g. Dashboard, Settings..."
+                  className={styles.input}
+                />
+                <datalist id="screen-list">
+                  {categoryValues.screen.map((val) => (
+                    <option key={val} value={val} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Item</label>
+                <input
+                  type="text"
+                  list="item-list"
+                  value={item}
+                  onChange={(e) => setItem(e.target.value)}
+                  placeholder="e.g. Save Button, Profile Pic..."
+                  className={styles.input}
+                />
+                <datalist id="item-list">
+                  {categoryValues.item.map((val) => (
+                    <option key={val} value={val} />
+                  ))}
+                </datalist>
+              </div>
             </div>
-            <div className={styles.keywordInputRow}>
-              <input
-                type="text"
-                value={keywordInput}
-                onChange={(e) => setKeywordInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addKeyword();
-                  }
-                }}
-                placeholder="Add a keyword..."
-                className={styles.keywordInput}
-              />
-              <button
-                type="button"
-                onClick={addKeyword}
-                className={styles.keywordAddButton}
-                disabled={!keywordInput.trim()}
-              >
-                + Add
-              </button>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>General Keywords</label>
+              <div className={styles.keywordChips}>
+                {keywords.map((kw) => (
+                  <span key={kw} className={styles.keywordChip}>
+                    {kw}
+                    <button
+                      type="button"
+                      onClick={() => removeKeyword(kw)}
+                      className={styles.keywordChipRemove}
+                      title={`Remove "${kw}"`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {keywords.length === 0 && <span className={styles.noKeywordsText}>No keywords yet</span>}
+              </div>
+              <div className={styles.keywordInputRow}>
+                <input
+                  type="text"
+                  value={keywordInput}
+                  onChange={(e) => setKeywordInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addKeyword();
+                    }
+                  }}
+                  placeholder="Add a keyword..."
+                  className={styles.keywordInput}
+                />
+                <button
+                  type="button"
+                  onClick={addKeyword}
+                  className={styles.keywordAddButton}
+                  disabled={!keywordInput.trim()}
+                >
+                  + Add
+                </button>
+              </div>
             </div>
           </div>
         )}
