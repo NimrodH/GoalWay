@@ -43,27 +43,22 @@ export async function getKeywordsForPaths(
 /**
  * Get all unique values for each category field
  */
-export async function getAllCategoryValues(): Promise<{
-  software: string[];
-  module: string[];
-  screen: string[];
-  item: string[];
-}> {
+export async function getAllCategoryValues(): Promise<Array<{
+  software: string | null;
+  module: string | null;
+  screen: string | null;
+  item: string | null;
+}>> {
   const supabase = getAdminClient();
   const { data, error } = await supabase
     .from("image_keywords")
     .select("software, module, screen, item");
 
   if (error || !data) {
-    return { software: [], module: [], screen: [], item: [] };
+    return [];
   }
 
-  const software = Array.from(new Set(data.map((r) => r.software).filter(Boolean))) as string[];
-  const module = Array.from(new Set(data.map((r) => r.module).filter(Boolean))) as string[];
-  const screen = Array.from(new Set(data.map((r) => r.screen).filter(Boolean))) as string[];
-  const item = Array.from(new Set(data.map((r) => r.item).filter(Boolean))) as string[];
-
-  return { software, module, screen, item };
+  return data;
 }
 
 /**

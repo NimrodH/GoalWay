@@ -22,7 +22,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   let initialItem: string = "";
 
   const { getAllCategoryValues } = await import("~/services/image-keywords.server");
-  const categoryValues = await getAllCategoryValues();
+  const categoryValuesRaw = await getAllCategoryValues();
 
   if (imageUrl) {
     const marker = "/object/public/mission-images/";
@@ -52,7 +52,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     initialModule,
     initialScreen,
     initialItem,
-    categoryValues,
+    categoryValuesRaw,
   };
 }
 
@@ -586,7 +586,7 @@ function getStoragePathFromUrl(url: string): string {
 }
 
 export default function InstructionsWithImages({ loaderData }: Route.ComponentProps) {
-  const { instructions, instructionsHe, supabaseUrl, supabaseKey, initialKeywords, initialSoftware, initialModule, initialScreen, initialItem, categoryValues } = loaderData;
+  const { instructions, instructionsHe, supabaseUrl, supabaseKey, initialKeywords, initialSoftware, initialModule, initialScreen, initialItem, categoryValuesRaw } = loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
   const imageUrl = searchParams.get("imageUrl");
   const returnInstructionId = searchParams.get("returnInstructionId");
@@ -616,6 +616,23 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   const [module, setModule] = useState<string>(initialModule);
   const [screen, setScreen] = useState<string>(initialScreen);
   const [item, setItem] = useState<string>(initialItem);
+
+  const availableSoftware = Array.from(new Set(categoryValuesRaw.map(c => c.software).filter(Boolean))) as string[];
+  
+  const availableModule = Array.from(new Set(categoryValuesRaw
+    .filter(c => !software || c.software === software)
+    .map(c => c.module)
+    .filter(Boolean))) as string[];
+
+  const availableScreen = Array.from(new Set(categoryValuesRaw
+    .filter(c => (!software || c.software === software) && (!module || c.module === module))
+    .map(c => c.screen)
+    .filter(Boolean))) as string[];
+
+  const availableItem = Array.from(new Set(categoryValuesRaw
+    .filter(c => (!software || c.software === software) && (!module || c.module === module) && (!screen || c.screen === screen))
+    .map(c => c.item)
+    .filter(Boolean))) as string[];
 
   // Initialize Supabase on the client
   useEffect(() => {
@@ -1125,12 +1142,12 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                   type="text"
                   list="software-list"
                   value={software}
-                  onChange={(e) => setSoftware(e.target.value)}
+                  onChange={(e) => { setSoftware(e.target.value); setModule(""); setScreen(""); setItem(""); }}
                   placeholder="e.g. Photoshop, Excel..."
                   className={styles.input}
                 />
                 <datalist id="software-list">
-                  {categoryValues.software.map((val) => (
+                  {availableSoftware.map((val) => (
                     <option key={val} value={val} />
                   ))}
                 </datalist>
@@ -1142,12 +1159,12 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                   type="text"
                   list="module-list"
                   value={module}
-                  onChange={(e) => setModule(e.target.value)}
+                  onChange={(e) => { setModule(e.target.value); setScreen(""); setItem(""); }}
                   placeholder="e.g. CRM, Inventory..."
                   className={styles.input}
                 />
                 <datalist id="module-list">
-                  {categoryValues.module.map((val) => (
+                  {availableModule.map((val) => (
                     <option key={val} value={val} />
                   ))}
                 </datalist>
@@ -1159,12 +1176,12 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                   type="text"
                   list="screen-list"
                   value={screen}
-                  onChange={(e) => setScreen(e.target.value)}
+                  onChange={(e) => { setScreen(e.target.value); setItem(""); }}
                   placeholder="e.g. Dashboard, Settings..."
                   className={styles.input}
                 />
                 <datalist id="screen-list">
-                  {categoryValues.screen.map((val) => (
+                  {availableScreen.map((val) => (
                     <option key={val} value={val} />
                   ))}
                 </datalist>
@@ -1181,7 +1198,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                   className={styles.input}
                 />
                 <datalist id="item-list">
-                  {categoryValues.item.map((val) => (
+                  {availableItem.map((val) => (
                     <option key={val} value={val} />
                   ))}
                 </datalist>
