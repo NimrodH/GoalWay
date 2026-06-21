@@ -616,6 +616,14 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   const [module, setModule] = useState<string>(initialModule);
   const [screen, setScreen] = useState<string>(initialScreen);
   const [item, setItem] = useState<string>(initialItem);
+  const [isDeletingImage, setIsDeletingImage] = useState(false);
+
+  // Check if current image is used in any instruction
+  const isCurrentImageUsed = imageUrl 
+    ? [...instructions, ...instructionsHe].some((inst) => 
+        inst.explanation?.some((item: any) => item.type === "image" && item.content === imageUrl)
+      )
+    : false;
 
   const availableSoftware = Array.from(new Set(categoryValuesRaw.map(c => c.software).filter(Boolean))) as string[];
   
@@ -959,6 +967,41 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
     renameFetcher.submit(formData, { method: "post" });
   };
 
+  const handleDeleteCurrentImage = async () => {
+    if (!imageUrl) return;
+    if (isCurrentImageUsed) {
+      alert("Cannot delete this image because it is used by one or more instructions.");
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this image from the library?\n\nThis action cannot be undone."
+    );
+
+    if (!confirmDelete) return;
+
+    setIsDeletingImage(true);
+    try {
+      const { deleteImage } = await import("~/lib/image-upload");
+      const storagePath = getStoragePathFromUrl(imageUrl);
+      if (!storagePath) {
+        alert("Could not determine storage path for this image");
+        return;
+      }
+      const result = await deleteImage(storagePath);
+      if (result.success) {
+        alert("Image successfully deleted.");
+        setSearchParams({});
+      } else {
+        alert(`Failed to delete image: ${result.error}`);
+      }
+    } catch (e: any) {
+      alert(`Error deleting image: ${e.message}`);
+    } finally {
+      setIsDeletingImage(false);
+    }
+  };
+
   return (
     <div className={styles.container}>
       <AppNavigation />
@@ -1125,14 +1168,26 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               <span className={styles.keywordsSectionTitle}>
                 🏷️ Image Categories & Keywords
               </span>
-              <button
-                type="button"
-                onClick={handleSaveKeywords}
-                className={styles.keywordSaveButton}
-                disabled={!session || keywordsFetcher.state !== "idle"}
-              >
-                {keywordsFetcher.state !== "idle" ? "Saving..." : "💾 Save"}
-              </button>
+              <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                {!isCurrentImageUsed && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteCurrentImage}
+                    className={styles.deleteButton}
+                    disabled={isDeletingImage || !session}
+                  >
+                    {isDeletingImage ? "Deleting..." : "🗑️ Delete Image"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSaveKeywords}
+                  className={styles.keywordSaveButton}
+                  disabled={!session || keywordsFetcher.state !== "idle"}
+                >
+                  {keywordsFetcher.state !== "idle" ? "Saving..." : "💾 Save"}
+                </button>
+              </div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
