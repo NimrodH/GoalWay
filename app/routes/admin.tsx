@@ -25,6 +25,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   const { createClient } = await import("@supabase/supabase-js");
   const adminClient = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
 
+  const { getAllCategoryValues } = await import("~/services/image-keywords.server");
+
   const [
     instructions,
     missions,
@@ -38,6 +40,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     users,
     adminNotesRows,
     missionAdminNotesRows,
+    categoryValuesRaw,
   ] = await Promise.all([
     language === "he" ? getAllInstructionsHe() : getAllInstructions(),
     language === "he" ? getAllMissionsHe() : getAllMissions(),
@@ -51,6 +54,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getAllUsers(),
     adminClient.from("instructions").select("id, admin_notes"),
     adminClient.from("missions").select("id, admin_notes"),
+    getAllCategoryValues(),
   ]);
 
   const adminNotesMap: Record<string, string[]> = {};
@@ -91,6 +95,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     missionsWithAccess,
     adminNotesMap,
     missionAdminNotesMap,
+    categoryValuesRaw,
   };
 }
 
@@ -867,6 +872,34 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     }
 
     return { success: true, message: "Admin notes saved!" };
+  }
+
+  if (actionType === "updateKeywords") {
+    const imagePath = formData.get("imagePath") as string;
+    const keywordsRaw = formData.get("keywords") as string;
+    const software = formData.get("software") as string;
+    const module = formData.get("module") as string;
+    const screen = formData.get("screen") as string;
+    const item = formData.get("item") as string;
+
+    if (!imagePath) return { success: false, error: "Image path is required" };
+
+    try {
+      const keywords = JSON.parse(keywordsRaw) as string[];
+      const { upsertImageKeywords } = await import("~/services/image-keywords.server");
+      const result = await upsertImageKeywords(imagePath, {
+        keywords,
+        software: software || null,
+        module: module || null,
+        screen: screen || null,
+        item: item || null,
+      });
+      return result.success
+        ? { success: true, message: "Keywords and categories saved!" }
+        : { success: false, error: result.error ?? "Failed to save keywords" };
+    } catch {
+      return { success: false, error: "Invalid keywords data" };
+    }
   }
 
   if (actionType === "saveInstruction") {

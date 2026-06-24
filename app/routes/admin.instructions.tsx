@@ -37,6 +37,7 @@ export default function AdminInstructionsPage() {
           onChangesDetected={onChangesDetected}
           onNavigationRequest={onNavigationRequest}
           adminNotesMap={loaderData.adminNotesMap}
+          categoryValuesRaw={loaderData.categoryValuesRaw}
         />
       )}
     </AdminLayout>
@@ -514,6 +515,7 @@ function ExplanationContentItem({
   onImageFileChange,
   onUpdateAnnotations,
   hasUnsavedChanges,
+  categoryValuesRaw,
 }: {
   item: InstructionContentWithKey;
   index: number;
@@ -535,6 +537,12 @@ function ExplanationContentItem({
   onImageFileChange: (index: number, file: File | null, preview: string) => void;
   onUpdateAnnotations: (index: number, annotations: Annotation[]) => void;
   hasUnsavedChanges: boolean;
+  categoryValuesRaw: Array<{
+    software: string | null;
+    module: string | null;
+    screen: string | null;
+    item: string | null;
+  }>;
 }) {
   const [imagePreview, setImagePreview] = useState<string>(item.type === "image" ? item.content : "");
   const [isUploading, setIsUploading] = useState(false);
@@ -548,8 +556,20 @@ function ExplanationContentItem({
   // Keywords state
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
+  const [software, setSoftware] = useState("");
+  const [moduleVal, setModuleVal] = useState("");
+  const [screenVal, setScreenVal] = useState("");
+  const [itemVal, setItemVal] = useState("");
+  
   const [isSavingKeywords, setIsSavingKeywords] = useState(false);
   const keywordInputRef = useRef<HTMLInputElement>(null);
+  const { session } = useAuth();
+  const keywordsFetcher = useFetcher();
+
+  const availableSoftware = useMemo(() => Array.from(new Set(categoryValuesRaw.map(c => c.software).filter(Boolean))) as string[], [categoryValuesRaw]);
+  const availableModule = useMemo(() => Array.from(new Set(categoryValuesRaw.filter(c => !software || c.software === software).map(c => c.module).filter(Boolean))) as string[], [categoryValuesRaw, software]);
+  const availableScreen = useMemo(() => Array.from(new Set(categoryValuesRaw.filter(c => (!software || c.software === software) && (!moduleVal || c.module === moduleVal)).map(c => c.screen).filter(Boolean))) as string[], [categoryValuesRaw, software, moduleVal]);
+  const availableItem = useMemo(() => Array.from(new Set(categoryValuesRaw.filter(c => (!software || c.software === software) && (!moduleVal || c.module === moduleVal) && (!screenVal || c.screen === screenVal)).map(c => c.item).filter(Boolean))) as string[], [categoryValuesRaw, software, moduleVal, screenVal]);
 
   // Derive the image name / upload filename from first keyword
   const imageName = keywords[0]?.trim() ?? "";
@@ -562,12 +582,30 @@ function ExplanationContentItem({
       const markerIdx = item.content.indexOf(marker);
       if (markerIdx !== -1) {
         const storagePath = decodeURIComponent(item.content.slice(markerIdx + marker.length).split("?")[0]);
-        fetchImageKeywords(storagePath).then((kws) => {
-          if (kws.length > 0) setKeywords(kws);
+        fetchCategoriesForPaths([storagePath]).then((catMap) => {
+          const cats = catMap[storagePath];
+          if (cats) {
+            setKeywords(cats.keywords ?? []);
+            setSoftware(cats.software ?? "");
+            setModuleVal(cats.module ?? "");
+            setScreenVal(cats.screen ?? "");
+            setItemVal(cats.item ?? "");
+          }
         });
       }
     }
   }, [item.content]);
+
+  useEffect(() => {
+    if (keywordsFetcher.data && keywordsFetcher.state === "idle") {
+      const data = keywordsFetcher.data as any;
+      if (data.success) {
+        // Success
+      } else if (data.error) {
+        alert(`Failed to save keywords: ${data.error}`);
+      }
+    }
+  }, [keywordsFetcher.data, keywordsFetcher.state]);
 
   const addKeyword = () => {
     const trimmed = keywordInput.trim();
@@ -584,19 +622,30 @@ function ExplanationContentItem({
     setKeywords((prev) => prev.filter((k) => k !== kw));
   };
 
-  /** Save keywords to Supabase for an already-uploaded image */
   const handleSaveKeywords = async () => {
     if (!item.content || !item.content.startsWith("http")) return;
+    if (!session) {
+      alert("Please sign in to save keywords");
+      return;
+    }
     const marker = "/object/public/mission-images/";
     const markerIdx = item.content.indexOf(marker);
     if (markerIdx === -1) return;
     const storagePath = decodeURIComponent(item.content.slice(markerIdx + marker.length).split("?")[0]);
     setIsSavingKeywords(true);
-    const result = await saveImageKeywords(storagePath, keywords);
+    
+    const formData = new FormData();
+    formData.append("actionType", "updateKeywords");
+    formData.append("imagePath", storagePath);
+    formData.append("keywords", JSON.stringify(keywords));
+    formData.append("software", software);
+    formData.append("module", moduleVal);
+    formData.append("screen", screenVal);
+    formData.append("item", itemVal);
+    formData.append("accessToken", session.access_token || "");
+    
+    keywordsFetcher.submit(formData, { method: "post" });
     setIsSavingKeywords(false);
-    if (!result.success) {
-      alert(`Failed to save keywords: ${result.error}`);
-    }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -860,18 +909,82 @@ function ExplanationContentItem({
                   borderRadius: "var(--radius-2)",
                 }}
               >
+                <label className={styles.label} style={{ marginBottom: "var(--space-3)", display: "block", fontSize: "1.1rem" }}>
+                  🏷️ Image Categories & Keywords
+                </label>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Software</label>
+                    <input
+                      type="text"
+                      list="software-list-inline"
+                      value={software}
+                      onChange={(e) => { setSoftware(e.target.value); setModuleVal(""); setScreenVal(""); setItemVal(""); }}
+                      placeholder="e.g. Photoshop, Excel..."
+                      className={styles.input}
+                    />
+                    <datalist id="software-list-inline">
+                      {availableSoftware.map((val) => (
+                        <option key={val} value={val} />
+                      ))}
+                    </datalist>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Module</label>
+                    <input
+                      type="text"
+                      list="module-list-inline"
+                      value={moduleVal}
+                      onChange={(e) => { setModuleVal(e.target.value); setScreenVal(""); setItemVal(""); }}
+                      placeholder="e.g. CRM, Inventory..."
+                      className={styles.input}
+                    />
+                    <datalist id="module-list-inline">
+                      {availableModule.map((val) => (
+                        <option key={val} value={val} />
+                      ))}
+                    </datalist>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Screen</label>
+                    <input
+                      type="text"
+                      list="screen-list-inline"
+                      value={screenVal}
+                      onChange={(e) => { setScreenVal(e.target.value); setItemVal(""); }}
+                      placeholder="e.g. Dashboard, Settings..."
+                      className={styles.input}
+                    />
+                    <datalist id="screen-list-inline">
+                      {availableScreen.map((val) => (
+                        <option key={val} value={val} />
+                      ))}
+                    </datalist>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Item</label>
+                    <input
+                      type="text"
+                      list="item-list-inline"
+                      value={itemVal}
+                      onChange={(e) => setItemVal(e.target.value)}
+                      placeholder="e.g. Save Button, Profile Pic..."
+                      className={styles.input}
+                    />
+                    <datalist id="item-list-inline">
+                      {availableItem.map((val) => (
+                        <option key={val} value={val} />
+                      ))}
+                    </datalist>
+                  </div>
+                </div>
+
                 <label className={styles.label} style={{ marginBottom: "var(--space-2)", display: "block" }}>
-                  🏷️ Keywords
-                  <span
-                    style={{
-                      fontWeight: 400,
-                      fontSize: "0.8125rem",
-                      color: "var(--color-neutral-10)",
-                      marginLeft: "var(--space-2)",
-                    }}
-                  >
-                    (module, screen, subforamt, section, functionality)
-                  </span>
+                  General Keywords
                 </label>
 
                 {/* Tag chips */}
@@ -957,10 +1070,10 @@ function ExplanationContentItem({
                       type="button"
                       onClick={handleSaveKeywords}
                       className={styles.addButton}
-                      disabled={isSavingKeywords}
+                      disabled={isSavingKeywords || keywordsFetcher.state !== "idle"}
                       style={{ fontSize: "0.8125rem" }}
                     >
-                      {isSavingKeywords ? "Saving..." : "💾 Save Keywords"}
+                      {isSavingKeywords || keywordsFetcher.state !== "idle" ? "Saving..." : "💾 Save Keywords"}
                     </button>
                   </div>
                 )}
@@ -1116,6 +1229,7 @@ function EditInstructionForm({
   onChangesDetected,
   onNavigationRequest,
   adminNotesMap,
+  categoryValuesRaw,
 }: {
   actionData?: {
     success: boolean;
@@ -1136,6 +1250,12 @@ function EditInstructionForm({
   onChangesDetected: (hasChanges: boolean) => void;
   onNavigationRequest: (navigationFn: () => void) => void;
   adminNotesMap: Record<string, string[]>;
+  categoryValuesRaw: Array<{
+    software: string | null;
+    module: string | null;
+    screen: string | null;
+    item: string | null;
+  }>;
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>("");
@@ -1878,6 +1998,7 @@ function EditInstructionForm({
                   onImageFileChange={handleImageFileChange}
                   onUpdateAnnotations={handleUpdateAnnotations}
                   hasUnsavedChanges={!!hasUnsavedChanges}
+                  categoryValuesRaw={categoryValuesRaw}
                 />
               ))}
               <div className={styles.addContentButtons}>
