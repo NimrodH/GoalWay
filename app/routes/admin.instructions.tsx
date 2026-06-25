@@ -542,6 +542,7 @@ function ExplanationContentItem({
     module: string | null;
     screen: string | null;
     item: string | null;
+    keywords: string[];
   }>;
 }) {
   const [imagePreview, setImagePreview] = useState<string>(item.type === "image" ? item.content : "");
@@ -570,6 +571,11 @@ function ExplanationContentItem({
   const availableModule = useMemo(() => Array.from(new Set(categoryValuesRaw.filter(c => !software || c.software === software).map(c => c.module).filter(Boolean))) as string[], [categoryValuesRaw, software]);
   const availableScreen = useMemo(() => Array.from(new Set(categoryValuesRaw.filter(c => (!software || c.software === software) && (!moduleVal || c.module === moduleVal)).map(c => c.screen).filter(Boolean))) as string[], [categoryValuesRaw, software, moduleVal]);
   const availableItem = useMemo(() => Array.from(new Set(categoryValuesRaw.filter(c => (!software || c.software === software) && (!moduleVal || c.module === moduleVal) && (!screenVal || c.screen === screenVal)).map(c => c.item).filter(Boolean))) as string[], [categoryValuesRaw, software, moduleVal, screenVal]);
+
+  const availableKeywords = useMemo(() => {
+    const kws = categoryValuesRaw.flatMap(c => c.keywords || []);
+    return Array.from(new Set(kws)).filter(Boolean).sort() as string[];
+  }, [categoryValuesRaw]);
 
   // Derive the image name / upload filename from first keyword
   const imageName = keywords[0]?.trim() ?? "";
@@ -1040,6 +1046,7 @@ function ExplanationContentItem({
                   <input
                     ref={keywordInputRef}
                     type="text"
+                    list={`keyword-list-${index}`}
                     className={styles.input}
                     value={keywordInput}
                     onChange={(e) => setKeywordInput(e.target.value)}
@@ -1052,8 +1059,17 @@ function ExplanationContentItem({
                     placeholder="Add a keyword..."
                     style={{ flex: 1, fontSize: "0.875rem" }}
                   />
+                  <datalist id={`keyword-list-${index}`}>
+                    {availableKeywords.map((val) => (
+                      <option key={val} value={val} />
+                    ))}
+                  </datalist>
                   <button
                     type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      addKeyword();
+                    }}
                     onClick={addKeyword}
                     className={styles.addButton}
                     disabled={!keywordInput.trim()}
@@ -1255,6 +1271,7 @@ function EditInstructionForm({
     module: string | null;
     screen: string | null;
     item: string | null;
+    keywords: string[];
   }>;
 }) {
   const [searchParams, setSearchParams] = useSearchParams();

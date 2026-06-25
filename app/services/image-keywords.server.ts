@@ -48,11 +48,12 @@ export async function getAllCategoryValues(): Promise<Array<{
   module: string | null;
   screen: string | null;
   item: string | null;
+  keywords: string[];
 }>> {
   const supabase = getAdminClient();
   const { data, error } = await supabase
     .from("image_keywords")
-    .select("software, module, screen, item");
+    .select("software, module, screen, item, keywords");
 
   if (error || !data) {
     return [];

@@ -642,6 +642,8 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
     .map(c => c.item)
     .filter(Boolean))) as string[];
 
+  const availableKeywords = Array.from(new Set(categoryValuesRaw.flatMap(c => c.keywords || []))).filter(Boolean).sort() as string[];
+
   // Initialize Supabase on the client
   useEffect(() => {
     const initSupabase = async () => {
@@ -1281,6 +1283,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               <div className={styles.keywordInputRow}>
                 <input
                   type="text"
+                  list="keywords-list-inline"
                   value={keywordInput}
                   onChange={(e) => setKeywordInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -1292,8 +1295,17 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                   placeholder="Add a keyword..."
                   className={styles.keywordInput}
                 />
+                <datalist id="keywords-list-inline">
+                  {availableKeywords.map((val) => (
+                    <option key={val} value={val} />
+                  ))}
+                </datalist>
                 <button
                   type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    addKeyword();
+                  }}
                   onClick={addKeyword}
                   className={styles.keywordAddButton}
                   disabled={!keywordInput.trim()}
