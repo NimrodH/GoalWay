@@ -127,7 +127,7 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
    * x% = "% of image width" and y% = "% of image height", matching the
    * coordinate system used by ImageAnnotationView.
    */
-  const toPercent = useCallback((e: React.MouseEvent | MouseEvent): { x: number; y: number } => {
+  const toPercent = useCallback((e: React.PointerEvent | React.MouseEvent | MouseEvent): { x: number; y: number } => {
     const img = imgRef.current;
     if (!img) return { x: 0, y: 0 };
     const rect = img.getBoundingClientRect();
@@ -136,22 +136,32 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
     return { x, y };
   }, []);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     e.preventDefault();
+    try {
+      (e.target as Element).setPointerCapture(e.pointerId);
+    } catch (err) {
+      // ignore capture errors
+    }
     const { x, y } = toPercent(e);
     setDraw({ startX: x, startY: y, currentX: x, currentY: y, active: true });
     setSelectedId(null);
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handlePointerMove = (e: React.PointerEvent) => {
     if (!draw?.active) return;
     const { x, y } = toPercent(e);
     setDraw((d) => d ? { ...d, currentX: x, currentY: y } : null);
   };
 
-  const handleMouseUp = (_e: React.MouseEvent) => {
+  const handlePointerUp = (e: React.PointerEvent) => {
     if (!draw?.active) return;
+    try {
+      (e.target as Element).releasePointerCapture(e.pointerId);
+    } catch (err) {
+      // ignore
+    }
     // Use the last tracked position from mouseMove to avoid a positional jump
     // that occurs when mouseUp/mouseLeave fires at a slightly different coordinate
     // than the final mouseMove (especially in production vs. dev iframe environments).
@@ -293,11 +303,11 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
           <div
             ref={containerRef}
             className={styles.imageContainer}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            style={{ cursor: "crosshair" }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            style={{ cursor: "crosshair", touchAction: "none" }}
           >
             <ImageAnnotationView
               src={src}
