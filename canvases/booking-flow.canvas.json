@@ -1,0 +1,154 @@
+{
+  "version": "1",
+  "meta": {
+    "name": "Booking Flow",
+    "createdAt": "2026-06-25T05:54:10.677Z",
+    "updatedAt": "2026-06-25T06:30:03.694Z"
+  },
+  "nodes": [
+    {
+      "type": "doc",
+      "name": "booking-flow-spec",
+      "position": {
+        "x": -3209,
+        "y": -865,
+        "width": 1492,
+        "height": 2379
+      },
+      "settings": {
+        "prompt": "Write a concise product spec for a cabin booking flow on MagicHouse, a premium nature-stay rental site. Cover: (1) entry point from the cabin hero/landing page, (2) date & guest selection in the booking panel, (3) review & guest details step, (4) payment step, (5) confirmation screen with itinerary and next steps. For each step describe: purpose, key UI elements, primary actions, validation rules, edge cases, and what data is persisted. Include a short user journey summary at the top and a list of states (loading, error, success) at the end. Keep tone product-focused, scannable, with clear headings."
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/a9bccb59-c8be-43d0-9236-745357bba8b4/booking-flow-spec.md"
+      },
+      "uuid": "8a7d59a5-b4b6-4383-834b-9d7d7b2f34f0"
+    },
+    {
+      "type": "html",
+      "name": "step-1-browse-and-select-dates",
+      "position": {
+        "x": -1730,
+        "y": 1191,
+        "width": 2985,
+        "height": 2100
+      },
+      "settings": {
+        "prompt": "Create a self-contained HTML mockup of Step 1 of the booking flow described in [#booking-flow-spec]: the cabin landing page with the booking panel. Show a premium hero photo of a desert dome cabin on the left, and a sticky glass-morphism booking panel on the right with: cabin name, location, star rating, price per night, date range picker (check-in / check-out), guest selector (adults / children), and a prominent 'Reserve' CTA. Use a warm, earthy palette (sand, terracotta, deep forest) with elegant serif headings and a modern sans for body. Include inline CSS only, no external assets — use CSS gradients/shapes for the cabin imagery. Make it look like a real product screen."
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/3d4fb355-b68a-4571-9788-5549fd95b1bd/step-1-browse-and-select-dates.html"
+      },
+      "uuid": "908b0e9a-9e43-4b96-bae5-94e08a4fda61"
+    },
+    {
+      "type": "html",
+      "name": "step-2-review-and-guest-details",
+      "position": {
+        "x": -950,
+        "y": -609,
+        "width": 2331,
+        "height": 1046
+      },
+      "settings": {
+        "prompt": "Create a self-contained HTML mockup of Step 2 of the booking flow described in [#booking-flow-spec]: the review & guest details page. Two-column layout — left: a guest details form (full name, email, phone, special requests textarea, checkbox for travel insurance); right: a sticky trip summary card showing cabin thumbnail, dates, number of nights, guest count, price breakdown (nightly rate × nights, cleaning fee, service fee, taxes, total). Include a stepper at the top (Dates → Details → Payment → Confirm) with step 2 active. Use the same warm earthy palette as step 1. Inline CSS only, no external assets. Add a 'Continue to payment' CTA at the bottom."
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/ec688b3c-8d9a-4c9b-88b7-92861ac137ea/step-2-review-and-guest-details.html"
+      },
+      "uuid": "615586fd-3493-496e-af49-a63548d02e2a"
+    },
+    {
+      "type": "html",
+      "name": "step-3-confirmation",
+      "position": {
+        "x": -789,
+        "y": -2530,
+        "width": 2320,
+        "height": 1904
+      },
+      "settings": {
+        "prompt": "Create a self-contained HTML mockup of the final confirmation step of the booking flow described in [#booking-flow-spec]. Centered card layout with: a success checkmark/badge at top, headline 'Your stay is booked', booking reference code, cabin name + location, check-in/check-out dates with day-of-week, guest count, total paid, host contact card, and three next-step actions (Add to calendar, View itinerary, Message host). Below the card include a small section 'What to expect next' with 3 timeline items (confirmation email, check-in instructions 48h before, arrival). Use the same warm earthy palette and serif/sans pairing as previous steps. Inline CSS only, no external assets."
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/bcb2cf35-b490-4874-9934-3a11e71107f3/step-3-confirmation.html"
+      },
+      "uuid": "bd9b2675-9e50-47ea-8375-c5570a89bf5f"
+    },
+    {
+      "type": "html",
+      "name": "step-2-alt-a-wizard",
+      "position": {
+        "x": 2347,
+        "y": -2901,
+        "width": 1400,
+        "height": 1000
+      },
+      "settings": {
+        "prompt": "Create a self-contained HTML mockup — ALTERNATIVE A (Sub-stepper wizard) — for Step 2 of the booking flow described in [#booking-flow-spec], iterating on the baseline [#step-2-review-and-guest-details]. Pattern: SUB-STEPPER WIZARD with progressive disclosure. Break the form into 3 micro-steps inside step 2: (1) Guest info, (2) Add-ons (travel protection, early check-in, extras), (3) Payment summary preview. Show one micro-step at a time inside the left form card, with a slim progress bar at the top of the card and Back / Next pagination buttons at the bottom. The sticky trip summary card stays on the right (same content as the baseline: cabin thumbnail, dates, nights, guests, price breakdown, total). Keep the top stepper (Dates → Details → Payment → Confirm) with Details active. Reduces cognitive load and feels lighter, especially on mobile. Use the EXACT SAME MagicHouse warm earthy palette, glass-morphism, serif headings and sans body as the baseline step-2 mockup. Inline CSS only, no external assets. In the mockup, show micro-step 1 (Guest info) as the currently-active state with the progress bar 33% filled."
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/0b0371db-9a41-4a8c-9663-8eaae4cbd8ca/step-2-alt-a-wizard.html"
+      },
+      "uuid": "446f4865-9b9a-49f0-9dbb-3cc63e7cee32"
+    },
+    {
+      "type": "html",
+      "name": "step-2-alt-b-split-screen",
+      "position": {
+        "x": 3100,
+        "y": 356,
+        "width": 1400,
+        "height": 1000
+      },
+      "settings": {
+        "prompt": "Create a self-contained HTML mockup — ALTERNATIVE B (Split-screen immersive) — for Step 2 of the booking flow described in [#booking-flow-spec], iterating on the baseline [#step-2-review-and-guest-details]. Pattern: SPLIT-SCREEN IMMERSIVE — edge-to-edge, no max-width container. Left 50% of the viewport: a full-bleed cinematic 'boarding pass' style photo of the desert dome cabin (use a rich CSS gradient/shape composition to evoke the desert dome at sunset). Overlaid at the bottom of the left half inside a dark gradient: cabin name, location, check-in / check-out dates, guest count and total price — feels like a travel boarding pass. Top-left over the image: minimal MagicHouse logo only. Right 50%: a scrollable single-column guest details form on a dark warm panel (full name, email, phone, special requests textarea, travel insurance checkbox, primary 'Confirm & pay' CTA at the bottom). Top-right over the form: a close ✕ button. Replace the heavy top stepper with a small 'Step 2 of 3 · Details' text label above the form heading. No separate summary card — booking context lives entirely in the photo half. Use the EXACT SAME MagicHouse warm earthy palette, serif headings and sans body as the baseline. Inline CSS only, no external assets."
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/32ef2d0d-98be-4b36-999a-d0937c050a27/step-2-alt-b-split-screen.html"
+      },
+      "uuid": "afcbdc8c-ba74-46af-a574-47544d5d98ec"
+    },
+    {
+      "type": "html",
+      "name": "step-2-alt-c-sticky-bottom-bar",
+      "position": {
+        "x": 2469,
+        "y": 1854,
+        "width": 1400,
+        "height": 1000
+      },
+      "settings": {
+        "prompt": "Create a self-contained HTML mockup — ALTERNATIVE C (Sticky bottom action bar, mobile-first / app-like) — for Step 2 of the booking flow described in [#booking-flow-spec], iterating on the baseline [#step-2-review-and-guest-details]. Pattern: STICKY BOTTOM ACTION BAR with collapsible summary drawer. The guest details form takes the full content width as a single column (full name, email, phone, special requests, travel insurance) — NO side summary card. Keep the top stepper (Dates → Details → Payment → Confirm) with Details active. A persistent glass-morphism action bar is pinned to the bottom of the viewport showing on the left: a small cabin thumbnail + cabin name + total price, an expand chevron ▴; and on the right: a primary 'Confirm & pay →' button. Visualize the EXPANDED state of the drawer in the mockup — the drawer is open upward above the bar showing the full price breakdown (nightly rate × nights, cleaning fee, service fee, taxes, total) and the trip rows (check-in, check-out, guests) with a dashed perforated divider separating breakdown from the summary row. Works great on both mobile and desktop. Use the EXACT SAME MagicHouse warm earthy palette, glass-morphism, serif headings and sans body as the baseline. Inline CSS only, no external assets."
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/4183e622-4008-4e26-b941-e13ac9b5de9a/step-2-alt-c-sticky-bottom-bar.html"
+      },
+      "uuid": "aa5a5186-5280-40c2-84b0-9dfc9cb5e275"
+    },
+    {
+      "type": "html",
+      "name": "canvas-overview-guide",
+      "position": {
+        "x": -3661,
+        "y": -2830,
+        "width": 1479,
+        "height": 1216
+      },
+      "settings": {
+        "prompt": "Open with exactly 2 sentences: what this canvas is for and what the user can do here. No intro, no extra text — just those 2 sentences. Display them in a large display font, left-aligned, white background."
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/0137e2b8-91d8-4813-9499-ad8b9a38017f/canvas-overview-guide-7.html"
+      },
+      "uuid": "b4e09479-f79d-4f59-88b9-6ec01c1b7c29"
+    }
+  ]
+}

@@ -1,0 +1,155 @@
+{
+  "version": "1",
+  "meta": {
+    "name": "Explore next initiatives",
+    "createdAt": "2026-06-25T05:02:34.918Z",
+    "updatedAt": "2026-06-25T05:03:01.537Z"
+  },
+  "nodes": [
+    {
+      "type": "html",
+      "name": "import-jira-bestguest-table",
+      "position": {
+        "x": -357,
+        "y": -243,
+        "width": 575,
+        "height": 426
+      },
+      "settings": {
+        "prompt": "import the issues in my BestGuest jira board and show it in a table"
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/78037c90-9d48-4093-8173-a860a49401e5/import-jira-bestguest-table.html"
+      },
+      "uuid": "bfbdbb95-21e7-41c6-98e2-d28f929e0e45"
+    },
+    {
+      "type": "doc",
+      "name": "leads-feature-analytics-q1-2026",
+      "position": {
+        "x": -364,
+        "y": 316,
+        "width": 567,
+        "height": 494
+      },
+      "settings": {
+        "prompt": "Q1 2026 in-product analytics for the leads feature"
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/328fe2c9-b15f-4208-8c7f-cf2c54674206/leads-feature-analytics-q1-2026.md"
+      },
+      "uuid": "5f72b524-9ee4-4f1d-a9f6-79cc83a4c6a0"
+    },
+    {
+      "type": "doc",
+      "name": "top-initiatives-sheet",
+      "position": {
+        "x": 697,
+        "y": 172,
+        "width": 798,
+        "height": 479
+      },
+      "settings": {
+        "prompt": "create a Google sheet with the top 3 initiatives, based on [#import-jira-bestguest-table]and [#leads-feature-analytics-q1-2026]\ndon't ask me any questions\n\n[#bestguest-okrs]"
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/a44ad8df-05bc-430e-a02c-9fc6b6f45ccc/top-initiatives-sheet.md"
+      },
+      "uuid": "4f353b8c-1d4c-4a94-8e0d-ccf3e7cd7377"
+    },
+    {
+      "type": "html",
+      "name": "variation-a-kanban-pipeline",
+      "position": {
+        "x": 1303,
+        "y": -608,
+        "width": 1061,
+        "height": 580
+      },
+      "settings": {
+        "prompt": "Lo-fi wireframe mockup for BestGuest.io — Variation A: Kanban Board by Pipeline Stage.\n\nStyle: rough wireframe aesthetic. Light gray background, boxes drawn with thin borders, placeholder font, muted palette — intentionally unpolished. Label it clearly as 'Variation A — Kanban Board' in a top header bar.\n\nLayout: 5 columns — New | Contacted | Proposal Sent | Closed Won | Closed Lost. Each column has a header with the stage name and a count badge. Cards stack vertically inside each column.\n\nLead cards (use this exact data):\n- NEW column: Dana Park / $6,200 / Jordan T. / last contact: 1 day ago | Kevin Strauss / $4,800 / Alex M. / last contact: Today\n- CONTACTED column: Blue Wave Properties / $120,000 / Sam R. / last contact: 8 days ago ⚠ OVERDUE | Priya Anand / $5,400 / Sam R. / last contact: 5 days ago | Apex Ventures Retreat / $67,000 / Alex M. / last contact: 6 days ago\n- PROPOSAL SENT column: Horizon Resorts Group / $45,000 / Alex M. / last contact: 3 days ago | Nomad Collective / $22,000 / Jordan T. / last contact: 12 days ago ⚠ OVERDUE | Rivera Family Trust / $18,500 / Sam R. / last contact: 4 days ago\n- CLOSED WON column: Coastal Stays Co. / $88,000 / Alex M.\n- CLOSED LOST column: Northwind Travel / $12,000 / Jordan T.\n\nEach card shows: lead name (bold), value, assignee initials avatar, last contact. Overdue leads get a subtle red-left-border. Pipeline total value shown in a small summary bar at bottom. Add a '+' drag affordance between columns.\n\n[#top-initiatives-sheet]"
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/3fc77b00-5579-4e0f-b236-fbab8e724252/variation-a-kanban-pipeline.html"
+      },
+      "uuid": "52f859fd-afc7-440a-afe4-40408a2e0b7a"
+    },
+    {
+      "type": "html",
+      "name": "variation-b-urgency-list",
+      "position": {
+        "x": 1640,
+        "y": 106,
+        "width": 1058,
+        "height": 580
+      },
+      "settings": {
+        "prompt": "Lo-fi wireframe mockup for BestGuest.io — Variation B: Filterable List with Urgency Indicators.\n\nStyle: rough wireframe aesthetic. Light gray background, simple borders, muted palette, intentionally unpolished. Label it clearly as 'Variation B — Urgency List' in a top header.\n\nLayout: Top filter bar with pill buttons: All | Needs Follow-up | New | Proposal Sent | Contacted. Sort dropdowns for Value and Last Contact. Below that, a table/list with rows.\n\nUrgency logic — color-coded left border:\n- Red (overdue >7 days no contact): Blue Wave Properties, Nomad Collective\n- Orange (follow-up due, 4-6 days): Apex Ventures Retreat, Priya Anand, Rivera Family Trust\n- Green (recent contact, <3 days): Dana Park, Kevin Strauss, Horizon Resorts Group\n- Gray (closed): Coastal Stays Co., Northwind Travel\n\nRows (use this exact data — sorted by urgency, most urgent first):\n1. Blue Wave Properties / Contacted / $120,000 / Sam R. / 8 days — no reply\n2. Nomad Collective / Proposal Sent / $22,000 / Jordan T. / 12 days — no reply\n3. Apex Ventures Retreat / Contacted / $67,000 / Alex M. / 6 days\n4. Priya Anand / Contacted / $5,400 / Sam R. / 5 days\n5. Rivera Family Trust / Proposal Sent / $18,500 / Sam R. / 4 days\n6. Horizon Resorts Group / Proposal Sent / $45,000 / Alex M. / 3 days\n7. Dana Park / New / $6,200 / Jordan T. / 1 day\n8. Kevin Strauss / New / $4,800 / Alex M. / Today\n9. Coastal Stays Co. / Closed Won / $88,000 / Alex M.\n10. Northwind Travel / Closed Lost / $12,000 / Jordan T.\n\nEach row: urgency bar on left, lead name, stage badge, value, assignee chip, last contact label, quick action icons (email, call). Footer shows active pipeline total.\n\n[#top-initiatives-sheet]"
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/fce0ad54-76d0-4ddd-aa71-b0af64869ae0/variation-b-urgency-list.html"
+      },
+      "uuid": "28610a3b-2d83-4f2d-9233-44f56ad5b86c"
+    },
+    {
+      "type": "html",
+      "name": "variation-c-team-dashboard",
+      "position": {
+        "x": 1303,
+        "y": 672,
+        "width": 1047,
+        "height": 580
+      },
+      "settings": {
+        "prompt": "Lo-fi wireframe mockup for BestGuest.io — Variation C: Team Dashboard grouped by Sales Rep.\n\nStyle: rough wireframe aesthetic. Light gray background, card-like sections per rep, muted palette, intentionally unpolished. Label it clearly as 'Variation C — Team Dashboard' in a top header.\n\nLayout: 3 vertical lanes, one per rep — Alex M. | Jordan T. | Sam R. — each lane is a column with a rep header showing their name, initials avatar, active deal count, and total pipeline value. Below the header, lead cards stack in that lane.\n\nLead data per rep:\nAlex M. (4 active + 1 closed):\n- Horizon Resorts Group / $45,000 / Proposal Sent / 3 days ago\n- Kevin Strauss / $4,800 / New / Today\n- Apex Ventures Retreat / $67,000 / Contacted / 6 days ago\n- Coastal Stays Co. / $88,000 / Closed Won\nPipeline value: $116,800 active\n\nJordan T. (2 active + 1 closed):\n- Dana Park / $6,200 / New / 1 day ago\n- Nomad Collective / $22,000 / Proposal Sent / 12 days ago\n- Northwind Travel / $12,000 / Closed Lost\nPipeline value: $28,200 active\n\nSam R. (3 active):\n- Blue Wave Properties / $120,000 / Contacted / 8 days ago\n- Priya Anand / $5,400 / Contacted / 5 days ago\n- Rivera Family Trust / $18,500 / Proposal Sent / 4 days ago\nPipeline value: $143,900 active\n\nEach card: lead name, value, stage badge, days since contact. Overdue leads (>5 days no contact) get a warning indicator. Lane header shows mini progress bar for stage distribution. Bottom: total team pipeline value across all reps.\n\n[#top-initiatives-sheet]"
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/15870155-5c74-4435-bbb7-990838ef015f/variation-c-team-dashboard.html"
+      },
+      "uuid": "bf71de2c-a774-4efd-94dc-ebcde951d2e7"
+    },
+    {
+      "type": "doc",
+      "name": "bestguest-okrs",
+      "position": {
+        "x": -290,
+        "y": 954,
+        "width": 480,
+        "height": 289
+      },
+      "settings": {
+        "prompt": "Bring the BestGuest OKRs from a google slide called 'company OKRs'",
+        "templateId": "blank"
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/00db3660-f4e3-435f-8152-4d94bbb12d30/bestguest-okrs.md"
+      },
+      "uuid": "92c9de07-8ad2-4ab9-a2e9-5383218891a2"
+    },
+    {
+      "type": "html",
+      "name": "canvas-purpose-summary",
+      "position": {
+        "x": -358,
+        "y": -722,
+        "width": 889,
+        "height": 307
+      },
+      "settings": {
+        "prompt": "explain what this canvas does in a sentence. Be direct and action-oriented — no fluff. create it in bold, Title style."
+      },
+      "resultRef": {
+        "type": "url",
+        "path": "https://wixmp-1dc246a0b7b546f6581a8d48.wixmp.com/uploads/attachments/c9f91a46-e47f-4979-8f53-c38937c7aab7/canvas-purpose-summary.html"
+      },
+      "uuid": "0a44980e-3888-46e3-87ef-9f64a0676a1e"
+    }
+  ]
+}
