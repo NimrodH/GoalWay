@@ -993,7 +993,23 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
       const result = await deleteImage(storagePath);
       if (result.success) {
         alert("Image successfully deleted.");
-        setSearchParams({});
+        
+        let nextImageUrl = null;
+        if (libraryImages.length > 1 && libraryIndex >= 0) {
+          if (libraryIndex < libraryImages.length - 1) {
+            nextImageUrl = libraryImages[libraryIndex + 1].url;
+          } else {
+            nextImageUrl = libraryImages[libraryIndex - 1].url;
+          }
+        }
+
+        if (nextImageUrl) {
+          setSearchParams(buildNavParams(nextImageUrl), { replace: true });
+          setLibraryImages(prev => prev.filter(img => img.url !== imageUrl));
+        } else {
+          setSearchParams({});
+          setLibraryImages([]);
+        }
       } else {
         alert(`Failed to delete image: ${result.error}`);
       }
