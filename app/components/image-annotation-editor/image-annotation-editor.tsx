@@ -13,6 +13,15 @@ interface DrawState {
   active: boolean;
 }
 
+interface MoveState {
+  id: string;
+  startX: number;
+  startY: number;
+  originalX: number;
+  originalY: number;
+  active: boolean;
+}
+
 const ANNOTATION_COLORS = [
   "#e5484d", // red
   "#0090ff", // blue
@@ -117,6 +126,8 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
   const imageWrapperRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [draw, setDraw] = useState<DrawState | null>(null);
+  const [move, setMove] = useState<MoveState | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState(ANNOTATION_COLORS[0]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawMode, setDrawMode] = useState<DrawMode>("annotate");
@@ -145,23 +156,52 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
       // ignore capture errors
     }
     const { x, y } = toPercent(e);
+    
+    if (editingId) {
+      const ann = annotations.find(a => a.id === editingId);
+      if (ann) {
+        setMove({ id: ann.id, startX: x, startY: y, originalX: ann.x, originalY: ann.y, active: true });
+        return;
+      }
+    }
+
     setDraw({ startX: x, startY: y, currentX: x, currentY: y, active: true });
     setSelectedId(null);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!draw?.active) return;
     const { x, y } = toPercent(e);
+
+    if (move?.active) {
+      const dx = x - move.startX;
+      const dy = y - move.startY;
+      const ann = annotations.find(a => a.id === move.id);
+      if (ann) {
+        const newX = Math.max(0, Math.min(100 - ann.width, move.originalX + dx));
+        const newY = Math.max(0, Math.min(100 - ann.height, move.originalY + dy));
+        onChange(annotations.map(a => a.id === move.id ? { ...a, x: parseFloat(newX.toFixed(2)), y: parseFloat(newY.toFixed(2)) } : a));
+      }
+      return;
+    }
+
+    if (!draw?.active) return;
     setDraw((d) => d ? { ...d, currentX: x, currentY: y } : null);
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    if (!draw?.active) return;
     try {
       (e.target as Element).releasePointerCapture(e.pointerId);
     } catch (err) {
       // ignore
     }
+
+    if (move?.active) {
+      setMove(null);
+      setEditingId(null);
+      return;
+    }
+
+    if (!draw?.active) return;
     // Use the last tracked position from mouseMove to avoid a positional jump
     // that occurs when mouseUp/mouseLeave fires at a slightly different coordinate
     // than the final mouseMove (especially in production vs. dev iframe environments).
@@ -295,7 +335,9 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
             ))}
           </div>
 
-          <span className={styles.toolbarHint}>Click &amp; drag on the image to draw</span>
+          <span className={styles.toolbarHint}>
+            {editingId ? "Click & drag on the image to move the annotation" : "Click & drag on the image to draw"}
+          </span>
         </div>
 
         <div className={styles.canvasArea}>
@@ -307,7 +349,7 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            style={{ cursor: "crosshair", touchAction: "none" }}
+            style={{ cursor: editingId ? "move" : "crosshair", touchAction: "none" }}
           >
             <ImageAnnotationView
               src={src}
@@ -396,6 +438,13 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
                       x:{ann.x.toFixed(1)}% y:{ann.y.toFixed(1)}%
                       &nbsp;{ann.width.toFixed(1)}×{ann.height.toFixed(1)}%
                     </div>
+                    <button
+                      className={`${styles.moveBtn} ${editingId === ann.id ? styles.moveBtnActive : ""}`}
+                      onClick={(e) => { e.stopPropagation(); setEditingId(editingId === ann.id ? null : ann.id); }}
+                      title="Move position on image"
+                    >
+                      ✥
+                    </button>
                     <button
                       className={styles.moveBtn}
                       onClick={(e) => { e.stopPropagation(); moveAnnotation(ann.id, "up"); }}

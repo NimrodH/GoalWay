@@ -380,6 +380,11 @@
   color: var(--color-neutral-12);
 }
 
+.moveBtnActive {
+  background: var(--color-accent-4);
+  color: var(--color-accent-10) !important;
+}
+
 .moveBtn:disabled {
   opacity: 0.3;
   cursor: default;
