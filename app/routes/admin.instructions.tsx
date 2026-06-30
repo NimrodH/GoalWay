@@ -1410,6 +1410,7 @@ function EditInstructionForm({
   const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
   const [editingNoteText, setEditingNoteText] = useState("");
   const adminNotesFetcher = useFetcher<typeof action>();
+  const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
     if (selectedInstructionId) {
@@ -1878,6 +1879,21 @@ function EditInstructionForm({
     }
   };
 
+  const handleCopySelectedItem = async () => {
+    if (selectedContentIndex === null) return;
+    const item = explanation[selectedContentIndex];
+    if (!item) return;
+    const { _key, ...cleanItem } = item;
+    const json = JSON.stringify(cleanItem, null, 2);
+    try {
+      await navigator.clipboard.writeText(json);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch {
+      alert("Failed to copy to clipboard");
+    }
+  };
+
   const getMissionsForInstruction = (instructionId: string) => {
     return missions.filter((mission) => mission.instructions?.some(([id]) => id === instructionId));
   };
@@ -2145,12 +2161,31 @@ function EditInstructionForm({
         <>
           {type === "default" && (
             <div className={styles.formSection}>
-              <h2
-                className={styles.sectionTitle}
-                style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)" }}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "var(--space-2)",
+                }}
               >
-                Explanation Content
-              </h2>
+                <h2
+                  className={styles.sectionTitle}
+                  style={{ color: hasUnsavedChanges ? "red" : "var(--color-neutral-12)", marginBottom: 0 }}
+                >
+                  Explanation Content
+                </h2>
+                <button
+                  type="button"
+                  onClick={handleCopySelectedItem}
+                  className={styles.addButton}
+                  disabled={selectedContentIndex === null}
+                  title="Copy selected content item as JSON"
+                  style={{ fontSize: "0.875rem" }}
+                >
+                  {isCopied ? "✓ Copied!" : "📋 Copy Selected"}
+                </button>
+              </div>
               {explanation.map((item, index) => (
                 <ExplanationContentItem
                   key={item._key || `fallback-${index}`}
