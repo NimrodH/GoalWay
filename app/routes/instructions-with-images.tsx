@@ -975,8 +975,6 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
             setImagePreview(reader.result as string);
           };
           reader.readAsDataURL(blob);
-
-          alert(`Image pasted successfully! (${Math.round(blob.size / 1024)}KB)`);
           return;
         }
       }

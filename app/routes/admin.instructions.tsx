@@ -694,7 +694,6 @@ function ExplanationContentItem({
                 onImageFileChange(index, file, preview);
               };
               reader.readAsDataURL(blob);
-              alert(`Image pasted successfully! (${Math.round(blob.size / 1024)}KB)`);
               return;
             }
           }
@@ -748,7 +747,6 @@ function ExplanationContentItem({
                 };
                 reader.readAsDataURL(blob);
                 pasteZone.remove();
-                alert(`Image pasted successfully! (${Math.round(blob.size / 1024)}KB)`);
                 return;
               }
             }
