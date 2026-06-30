@@ -983,6 +983,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                 setImagePreview(result.url);
                 setNewImageUrl(result.url);
                 setImageFile(null);
+                setShowKeywordsSection(true);
               }
             });
           };
