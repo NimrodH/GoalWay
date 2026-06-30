@@ -1267,7 +1267,12 @@ function EditMissionForm({
                 onChange={(e) => handleSelectMission(e.target.value)}
               >
                 <option value="">Select a mission...</option>
-                {allMissionIds.map((missionId) => {
+                {[...allMissionIds].sort((a, b) => {
+                  const numA = Number(a);
+                  const numB = Number(b);
+                  if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                  return a.localeCompare(b);
+                }).map((missionId) => {
                   const mission = missions.find((m) => m.id === missionId);
                   const isHidden = mission?.status === "Hide";
                   const isOrgAssigned = !isHidden && orgAssignedIds.has(missionId);
