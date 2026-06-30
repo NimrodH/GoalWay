@@ -515,6 +515,7 @@ function ExplanationContentItem({
   onImageFileChange,
   onUpdateAnnotations,
   hasUnsavedChanges,
+  onSilentSave,
   categoryValuesRaw,
 }: {
   item: InstructionContentWithKey;
@@ -537,6 +538,7 @@ function ExplanationContentItem({
   onImageFileChange: (index: number, file: File | null, preview: string) => void;
   onUpdateAnnotations: (index: number, annotations: Annotation[]) => void;
   hasUnsavedChanges: boolean;
+  onSilentSave: () => Promise<void>;
   categoryValuesRaw: Array<{
     software: string | null;
     module: string | null;
@@ -1132,12 +1134,9 @@ function ExplanationContentItem({
               <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     if (hasUnsavedChanges) {
-                      const proceed = window.confirm(
-                        "You have unsaved changes to this instruction.\n\nOpening the library will navigate away from this page and your changes will be lost.\n\nDo you want to continue without saving?",
-                      );
-                      if (!proceed) return;
+                      await onSilentSave();
                     }
                     setShowImageLibrary(true);
                   }}
@@ -1727,6 +1726,24 @@ function EditInstructionForm({
 
   const hasUnsavedChanges = selectedInstructionId && originalCode !== "" && generateCode() !== originalCode;
 
+  const handleSilentSave = async (): Promise<void> => {
+    if (!session || !selectedInstructionId) return;
+    try {
+      const currentCode = generateCode();
+      const formData = new FormData();
+      formData.append("actionType", "saveInstruction");
+      formData.append("id", id);
+      formData.append("dataEn", currentCode);
+      formData.append("language", language);
+      formData.append("accessToken", session.access_token || "");
+      await fetch("/admin", { method: "POST", body: formData });
+      setOriginalCode(currentCode);
+      onChangesDetected(false);
+    } catch {
+      // fail silently — user can still pick an image
+    }
+  };
+
   const getMissionsForInstruction = (instructionId: string) => {
     return missions.filter((mission) => mission.instructions?.some(([id]) => id === instructionId));
   };
@@ -2015,6 +2032,7 @@ function EditInstructionForm({
                   onImageFileChange={handleImageFileChange}
                   onUpdateAnnotations={handleUpdateAnnotations}
                   hasUnsavedChanges={!!hasUnsavedChanges}
+                  onSilentSave={handleSilentSave}
                   categoryValuesRaw={categoryValuesRaw}
                 />
               ))}
