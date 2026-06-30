@@ -1248,17 +1248,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               >
                 {hasReturnContext ? "Select & Return" : "Select"}
               </button>
-              {hasReturnContext && returnInstructionId && returnContentIndex !== null && (
-                <button
-                  onClick={() => {
-                    window.location.href = `/admin/instructions?lang=${returnLang}&instructionId=${encodeURIComponent(returnInstructionId)}&contentIndex=${returnContentIndex}`;
-                  }}
-                  className={styles.cancelReturnButton}
-                  title="Return to instruction without selecting an image"
-                >
-                  Cancel & Return
-                </button>
-              )}
+
             </div>
           )}
         </div>
@@ -1276,6 +1266,18 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
             >
               ← Back
             </button>
+            {hasReturnContext && returnInstructionId && returnContentIndex !== null && (
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = `/admin/instructions?lang=${returnLang}&instructionId=${encodeURIComponent(returnInstructionId)}&contentIndex=${returnContentIndex}`;
+                }}
+                className={styles.cancelReturnButton}
+                title="Return to instruction without selecting an image"
+              >
+                Cancel & Return
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setIsRenaming((v) => !v)}
