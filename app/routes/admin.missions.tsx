@@ -164,6 +164,9 @@ function EditMissionForm({
   const [showDrawioDialog, setShowDrawioDialog] = useState(false);
   const [collapsedIfIds, setCollapsedIfIds] = useState<Set<string>>(new Set());
   const [collapsedElseIds, setCollapsedElseIds] = useState<Set<string>>(new Set());
+  const [filterMissionName, setFilterMissionName] = useState("");
+  const [filterMissionDesc, setFilterMissionDesc] = useState("");
+  const [filterMissionOrg, setFilterMissionOrg] = useState("");
 
   useEffect(() => {
     if (selectedMissionId) {
@@ -1133,6 +1136,36 @@ function EditMissionForm({
     duplicateMissionFetcher.submit(formData, { method: "post" });
   };
 
+  // Sorted and filtered mission IDs for the selection dropdown
+  const sortedMissionIds = [...allMissionIds].sort((a, b) => {
+    const numA = Number(a);
+    const numB = Number(b);
+    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+    return a.localeCompare(b);
+  });
+
+  const allOrgIds = Array.from(
+    new Set(missionsWithAccess.flatMap((m) => m.allowedOrgIds))
+  ).sort();
+
+  const nameLower = filterMissionName.trim().toLowerCase();
+  const descLower = filterMissionDesc.trim().toLowerCase();
+  const filteredMissionIds = sortedMissionIds.filter((missionId) => {
+    if (nameLower) {
+      const mission = missions.find((m) => m.id === missionId);
+      if (!(mission?.title || "").toLowerCase().includes(nameLower)) return false;
+    }
+    if (descLower) {
+      const mission = missions.find((m) => m.id === missionId);
+      if (!(mission?.description || "").toLowerCase().includes(descLower)) return false;
+    }
+    if (filterMissionOrg) {
+      const accessInfo = missionsWithAccess.find((m) => m.id === missionId);
+      if (!accessInfo?.allowedOrgIds.includes(filterMissionOrg)) return false;
+    }
+    return true;
+  });
+
   return (
     <div className={styles.div4}>
       <div className={styles.formSection}>
@@ -1261,18 +1294,55 @@ function EditMissionForm({
 
           return (
             <>
+              <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)", flexWrap: "wrap", alignItems: "center" }}>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={filterMissionName}
+                  onChange={(e) => setFilterMissionName(e.target.value)}
+                  placeholder="Filter by name..."
+                  style={{ flex: 1, minWidth: "140px" }}
+                />
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={filterMissionDesc}
+                  onChange={(e) => setFilterMissionDesc(e.target.value)}
+                  placeholder="Filter by description..."
+                  style={{ flex: 1, minWidth: "140px" }}
+                />
+                <select
+                  className={styles.input}
+                  value={filterMissionOrg}
+                  onChange={(e) => setFilterMissionOrg(e.target.value)}
+                  style={{ flex: "0 1 auto", minWidth: "170px" }}
+                >
+                  <option value="">All organizations</option>
+                  {allOrgIds.map((orgId) => (
+                    <option key={orgId} value={orgId}>{orgId}</option>
+                  ))}
+                </select>
+                {(filterMissionName || filterMissionDesc || filterMissionOrg) && (
+                  <button
+                    type="button"
+                    onClick={() => { setFilterMissionName(""); setFilterMissionDesc(""); setFilterMissionOrg(""); }}
+                    className={styles.addButton}
+                    style={{ flexShrink: 0, marginRight: 0 }}
+                  >
+                    ✕ Clear
+                  </button>
+                )}
+                <span style={{ fontSize: "0.8rem", color: "var(--color-neutral-10)", flexShrink: 0, whiteSpace: "nowrap" }}>
+                  {filteredMissionIds.length} / {allMissionIds.length}
+                </span>
+              </div>
               <select
                 className={styles.input}
                 value={selectedMissionId}
                 onChange={(e) => handleSelectMission(e.target.value)}
               >
                 <option value="">Select a mission...</option>
-                {[...allMissionIds].sort((a, b) => {
-                  const numA = Number(a);
-                  const numB = Number(b);
-                  if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-                  return a.localeCompare(b);
-                }).map((missionId) => {
+                {filteredMissionIds.map((missionId) => {
                   const mission = missions.find((m) => m.id === missionId);
                   const isHidden = mission?.status === "Hide";
                   const isOrgAssigned = !isHidden && orgAssignedIds.has(missionId);
