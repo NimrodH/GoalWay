@@ -1,12 +1,12 @@
 import type { Route } from "./+types/instructions-with-images";
 import { useSearchParams, useFetcher } from "react-router";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import styles from "./instructions-with-images.module.css";
 import { getAllInstructions, getAllInstructionsHe } from "~/services/instructions.server";
 import { Checkbox } from "~/components/ui/checkbox/checkbox";
 import { uploadImage, listAllImages } from "~/lib/image-upload";
+import { fetchCategoriesForPaths, type ImageCategories } from "~/lib/image-keywords";
 import { useAuth } from "~/hooks/use-auth";
-import { useEffect } from "react";
 import { AppNavigation } from "~/components/app-navigation/app-navigation";
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -340,15 +340,65 @@ function ImageLibraryDialog({
   mode?: "navigate" | "replace";
 }) {
   const [images, setImages] = useState<Array<{ name: string; url: string; path: string }>>([]);
+  const [imageCategoriesMap, setImageCategoriesMap] = useState<Record<string, ImageCategories>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Filtering state
+  const [imageNameFilter, setImageNameFilter] = useState("");
+  const [softwareFilter, setSoftwareFilter] = useState("");
+  const [moduleFilter, setModuleFilter] = useState("");
+  const [screenFilter, setScreenFilter] = useState("");
+  const [itemFilter, setItemFilter] = useState("");
+
+  // Hierarchical filter options derived from loaded category data
+  const availableSoftware = useMemo(() => {
+    const set = new Set<string>();
+    Object.values(imageCategoriesMap).forEach((cat) => { if (cat.software) set.add(cat.software); });
+    return Array.from(set).sort();
+  }, [imageCategoriesMap]);
+
+  const availableModule = useMemo(() => {
+    const set = new Set<string>();
+    Object.values(imageCategoriesMap).forEach((cat) => {
+      if (softwareFilter && cat.software !== softwareFilter) return;
+      if (cat.module) set.add(cat.module);
+    });
+    return Array.from(set).sort();
+  }, [imageCategoriesMap, softwareFilter]);
+
+  const availableScreen = useMemo(() => {
+    const set = new Set<string>();
+    Object.values(imageCategoriesMap).forEach((cat) => {
+      if (softwareFilter && cat.software !== softwareFilter) return;
+      if (moduleFilter && cat.module !== moduleFilter) return;
+      if (cat.screen) set.add(cat.screen);
+    });
+    return Array.from(set).sort();
+  }, [imageCategoriesMap, softwareFilter, moduleFilter]);
+
+  const availableItem = useMemo(() => {
+    const set = new Set<string>();
+    Object.values(imageCategoriesMap).forEach((cat) => {
+      if (softwareFilter && cat.software !== softwareFilter) return;
+      if (moduleFilter && cat.module !== moduleFilter) return;
+      if (screenFilter && cat.screen !== screenFilter) return;
+      if (cat.item) set.add(cat.item);
+    });
+    return Array.from(set).sort();
+  }, [imageCategoriesMap, softwareFilter, moduleFilter, screenFilter]);
+
   useEffect(() => {
     if (isOpen) {
       loadImages();
       setSelectedImages(new Set());
+      setImageNameFilter("");
+      setSoftwareFilter("");
+      setModuleFilter("");
+      setScreenFilter("");
+      setItemFilter("");
     }
   }, [isOpen]);
 
@@ -362,33 +412,19 @@ function ImageLibraryDialog({
       setError(result.error);
     } else {
       setImages(result.images);
+      const paths = result.images.map((img) => img.path);
+      const catMap = await fetchCategoriesForPaths(paths);
+      setImageCategoriesMap(catMap);
     }
   };
 
   // Check if an image URL is used in any instruction (check both languages)
   const isImageUsed = (imageUrl: string) => {
     const allInstructions = [...instructions, ...instructionsHe];
-    const found = allInstructions.some((instruction) => {
-      // Skip if instruction has no explanation or it's not an array
-      if (!instruction.explanation || !Array.isArray(instruction.explanation)) {
-        return false;
-      }
+    return allInstructions.some((instruction) => {
+      if (!instruction.explanation || !Array.isArray(instruction.explanation)) return false;
       return instruction.explanation.some((item: any) => item.type === "image" && item.content === imageUrl);
     });
-    // Console log for debugging (will show in browser console)
-    if (!found) {
-      console.log("Image not found in any instruction:", imageUrl);
-      console.log("Total instructions checked:", allInstructions.length);
-      const instructionsWithExplanation = allInstructions.filter(
-        (i) => i.explanation && Array.isArray(i.explanation) && i.explanation.length > 0,
-      );
-      console.log("Instructions with explanations:", instructionsWithExplanation.length);
-      const allImageUrls = instructionsWithExplanation.flatMap((i) =>
-        i.explanation!.filter((e: any) => e.type === "image").map((e: any) => e.content),
-      );
-      console.log("All image URLs in instructions:", allImageUrls);
-    }
-    return found;
   };
 
   // Toggle image selection
@@ -416,9 +452,7 @@ function ImageLibraryDialog({
       `Are you sure you want to delete ${selectedImages.size} image(s)?\n\nThis action cannot be undone.`,
     );
 
-    if (!confirmDelete) {
-      return;
-    }
+    if (!confirmDelete) return;
 
     setIsDeleting(true);
     const { deleteImage } = await import("~/lib/image-upload");
@@ -445,10 +479,24 @@ function ImageLibraryDialog({
       alert(`Successfully deleted ${successCount} image(s)!`);
     }
 
-    // Reload images and clear selection
     setSelectedImages(new Set());
     await loadImages();
   };
+
+  const hasActiveFilter = !!(imageNameFilter || softwareFilter || moduleFilter || screenFilter || itemFilter);
+
+  const filteredImages = images.filter((image) => {
+    const cat = imageCategoriesMap[image.path];
+    if (softwareFilter && cat?.software !== softwareFilter) return false;
+    if (moduleFilter && cat?.module !== moduleFilter) return false;
+    if (screenFilter && cat?.screen !== screenFilter) return false;
+    if (itemFilter && cat?.item !== itemFilter) return false;
+    if (!imageNameFilter.trim()) return true;
+    const term = imageNameFilter.toLowerCase().trim();
+    if (image.name.toLowerCase().includes(term)) return true;
+    const kws = cat?.keywords ?? [];
+    return kws.some((kw) => kw.toLowerCase().includes(term));
+  });
 
   if (!isOpen) return null;
 
@@ -474,48 +522,114 @@ function ImageLibraryDialog({
           <>
             <div
               style={{
-                padding: "var(--space-4)",
+                padding: "var(--space-3) var(--space-4)",
                 borderBottom: "1px solid var(--color-neutral-6)",
                 display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
+                flexDirection: "column",
+                gap: "var(--space-3)",
               }}
             >
-              <div style={{ fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
-                {selectedImages.size > 0 ? `${selectedImages.size} image(s) selected` : "Select images to delete"}
+              {/* Filter row */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", alignItems: "center" }}>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={imageNameFilter}
+                  onChange={(e) => setImageNameFilter(e.target.value)}
+                  placeholder="Filter by name or keyword..."
+                  style={{ flex: 1, minWidth: "200px", fontSize: "0.875rem" }}
+                />
+                <select
+                  className={styles.input}
+                  value={softwareFilter}
+                  onChange={(e) => { setSoftwareFilter(e.target.value); setModuleFilter(""); setScreenFilter(""); setItemFilter(""); }}
+                  style={{ width: "140px", fontSize: "0.875rem" }}
+                >
+                  <option value="">All Software</option>
+                  {availableSoftware.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <select
+                  className={styles.input}
+                  value={moduleFilter}
+                  onChange={(e) => { setModuleFilter(e.target.value); setScreenFilter(""); setItemFilter(""); }}
+                  style={{ width: "140px", fontSize: "0.875rem" }}
+                >
+                  <option value="">All Modules</option>
+                  {availableModule.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <select
+                  className={styles.input}
+                  value={screenFilter}
+                  onChange={(e) => { setScreenFilter(e.target.value); setItemFilter(""); }}
+                  style={{ width: "140px", fontSize: "0.875rem" }}
+                >
+                  <option value="">All Screens</option>
+                  {availableScreen.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <select
+                  className={styles.input}
+                  value={itemFilter}
+                  onChange={(e) => setItemFilter(e.target.value)}
+                  style={{ width: "140px", fontSize: "0.875rem" }}
+                >
+                  <option value="">All Items</option>
+                  {availableItem.map(i => <option key={i} value={i}>{i}</option>)}
+                </select>
+                {hasActiveFilter && (
+                  <button
+                    type="button"
+                    onClick={() => { setImageNameFilter(""); setSoftwareFilter(""); setModuleFilter(""); setScreenFilter(""); setItemFilter(""); }}
+                    className={styles.submitButton}
+                    style={{ minWidth: "80px", fontSize: "0.875rem" }}
+                  >
+                    Clear All
+                  </button>
+                )}
               </div>
-              <div style={{ display: "flex", gap: "var(--space-2)" }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const selectedImagePath = Array.from(selectedImages)[0];
-                    const selectedImage = images.find((img) => img.path === selectedImagePath);
-                    if (selectedImage) {
-                      onSelectImage(selectedImage.url);
-                      onClose();
-                    }
-                  }}
-                  className={styles.submitButton}
-                  disabled={selectedImages.size !== 1}
-                  style={{ minWidth: "100px" }}
-                >
-                  ✓ Select
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDeleteSelected}
-                  className={styles.deleteButton}
-                  disabled={selectedImages.size === 0 || isDeleting}
-                  style={{ minWidth: "100px" }}
-                >
-                  {isDeleting ? "Deleting..." : "Delete Selected"}
-                </button>
+
+              {/* Actions row */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontSize: "0.875rem", color: "var(--color-neutral-11)" }}>
+                  {selectedImages.size > 0
+                    ? `${selectedImages.size} image(s) selected`
+                    : `${filteredImages.length} / ${images.length} images`}
+                </div>
+                <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const selectedImagePath = Array.from(selectedImages)[0];
+                      const selectedImage = images.find((img) => img.path === selectedImagePath);
+                      if (selectedImage) {
+                        onSelectImage(selectedImage.url);
+                        onClose();
+                      }
+                    }}
+                    className={styles.submitButton}
+                    disabled={selectedImages.size !== 1}
+                    style={{ minWidth: "100px" }}
+                  >
+                    ✓ Select
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteSelected}
+                    className={styles.deleteButton}
+                    disabled={selectedImages.size === 0 || isDeleting}
+                    style={{ minWidth: "100px" }}
+                  >
+                    {isDeleting ? "Deleting..." : "Delete Selected"}
+                  </button>
+                </div>
               </div>
             </div>
+
             <div className={styles.imageGrid}>
-              {images.map((image) => {
+              {filteredImages.map((image) => {
                 const isUsed = isImageUsed(image.url);
                 const isSelected = selectedImages.has(image.path);
+                const cat = imageCategoriesMap[image.path];
+                const keywords = cat?.keywords ?? [];
                 return (
                   <div
                     key={image.path}
@@ -567,9 +681,40 @@ function ImageLibraryDialog({
                     )}
                     <img src={image.url} alt={image.name} className={styles.imageGridThumb} />
                     <div className={styles.imageGridName}>{image.name}</div>
+                    {keywords.length > 0 && (
+                      <div
+                        style={{
+                          padding: "var(--space-1) var(--space-2)",
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: "var(--space-1)",
+                        }}
+                      >
+                        {keywords.map((kw) => (
+                          <span
+                            key={kw}
+                            style={{
+                              background: "var(--color-accent-3)",
+                              color: "var(--color-accent-11)",
+                              borderRadius: "var(--radius-round)",
+                              padding: "1px 6px",
+                              fontSize: "0.7rem",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {kw}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
+              {filteredImages.length === 0 && (
+                <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "var(--space-6)", color: "var(--color-neutral-11)" }}>
+                  No images match the current filters.
+                </div>
+              )}
             </div>
           </>
         )}
