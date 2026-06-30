@@ -1,6 +1,6 @@
 import type { Route } from "./+types/instructions-with-images";
 import { useSearchParams, useFetcher } from "react-router";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import styles from "./instructions-with-images.module.css";
 import { getAllInstructions, getAllInstructionsHe } from "~/services/instructions.server";
 import { Checkbox } from "~/components/ui/checkbox/checkbox";
@@ -816,6 +816,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   const [screen, setScreen] = useState<string>(initialScreen);
   const [item, setItem] = useState<string>(initialItem);
   const [isDeletingImage, setIsDeletingImage] = useState(false);
+  const keywordInputRef = useRef<HTMLInputElement>(null);
 
   // Check if current image is used in any instruction
   const isCurrentImageUsed = imageUrl
@@ -984,6 +985,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                 setNewImageUrl(result.url);
                 setImageFile(null);
                 setShowKeywordsSection(true);
+                setTimeout(() => keywordInputRef.current?.focus(), 0);
               }
             });
           };
@@ -1566,6 +1568,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               </div>
               <div className={styles.keywordInputRow}>
                 <input
+                  ref={keywordInputRef}
                   type="text"
                   list="keywords-list-inline"
                   value={keywordInput}

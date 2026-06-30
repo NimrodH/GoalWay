@@ -684,6 +684,7 @@ function ExplanationContentItem({
         onImageFileChange(index, null, result.url);
         setShowUploadSource(false);
         setShowAdvanced(true);
+        setTimeout(() => keywordInputRef.current?.focus(), 0);
         const kwsToSave = updatedKeywords.length > 0 ? updatedKeywords : [autoName];
         await saveImageKeywords(result.path, kwsToSave);
       }
