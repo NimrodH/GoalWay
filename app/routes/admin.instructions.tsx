@@ -669,6 +669,28 @@ function ExplanationContentItem({
     }
   };
 
+  const handleAutoUploadFile = async (file: File) => {
+    const autoName = file.name.replace(/\.[^.]+$/, "");
+    const updatedKeywords = [autoName, ...keywords.filter((k) => k !== autoName)];
+    setKeywords(updatedKeywords);
+    setIsUploading(true);
+    try {
+      const result = await uploadImage(file, "instructions", autoName);
+      if ("error" in result) {
+        console.error("Auto-upload failed:", result.error);
+      } else {
+        setImagePreview(result.url);
+        onUpdate(index, result.url);
+        onImageFileChange(index, null, result.url);
+        setShowUploadSource(false);
+        const kwsToSave = updatedKeywords.length > 0 ? updatedKeywords : [autoName];
+        await saveImageKeywords(result.path, kwsToSave);
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handlePasteFromClipboard = async () => {
     try {
       if (navigator.clipboard && navigator.clipboard.read) {
@@ -692,6 +714,7 @@ function ExplanationContentItem({
                 const preview = reader.result as string;
                 setImagePreview(preview);
                 onImageFileChange(index, file, preview);
+                void handleAutoUploadFile(file);
               };
               reader.readAsDataURL(blob);
               return;
@@ -744,6 +767,7 @@ function ExplanationContentItem({
                   const preview = reader.result as string;
                   setImagePreview(preview);
                   onImageFileChange(index, file, preview);
+                  void handleAutoUploadFile(file);
                 };
                 reader.readAsDataURL(blob);
                 pasteZone.remove();

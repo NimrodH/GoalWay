@@ -973,6 +973,18 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
           const reader = new FileReader();
           reader.onloadend = () => {
             setImagePreview(reader.result as string);
+            // Auto-upload immediately after paste — no button click needed
+            setIsUploading(true);
+            uploadImage(file, "instructions").then((result) => {
+              setIsUploading(false);
+              if ("error" in result) {
+                console.error("Auto-upload failed:", result.error);
+              } else {
+                setImagePreview(result.url);
+                setNewImageUrl(result.url);
+                setImageFile(null);
+              }
+            });
           };
           reader.readAsDataURL(blob);
           return;
