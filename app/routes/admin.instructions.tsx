@@ -4,7 +4,12 @@ import classNames from "classnames";
 import { AdminLayout } from "~/components/admin-layout/admin-layout";
 import { useAuth } from "~/hooks/use-auth";
 import { uploadImage, listAllImages } from "~/lib/image-upload";
-import { fetchImageKeywords, saveImageKeywords, fetchCategoriesForPaths, type ImageCategories } from "~/lib/image-keywords";
+import {
+  fetchImageKeywords,
+  saveImageKeywords,
+  fetchCategoriesForPaths,
+  type ImageCategories,
+} from "~/lib/image-keywords";
 import type { Instruction, InstructionContent, Annotation } from "~/services/instructions.server";
 import type { Mission } from "~/services/missions.server";
 import { ImageAnnotationEditor } from "~/components/image-annotation-editor/image-annotation-editor";
@@ -74,7 +79,7 @@ function ImageLibraryDialog({
   const [error, setError] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   // Filtering state
   const [imageNameFilter, setImageNameFilter] = useState("");
   const [softwareFilter, setSoftwareFilter] = useState("");
@@ -147,7 +152,7 @@ function ImageLibraryDialog({
       setImageCategoriesMap(catMap);
 
       if (preSelectImageUrl) {
-        const found = result.images.find(img => img.url === preSelectImageUrl);
+        const found = result.images.find((img) => img.url === preSelectImageUrl);
         if (found) {
           setSelectedImages(new Set([found.path]));
         } else {
@@ -262,9 +267,9 @@ function ImageLibraryDialog({
                   placeholder="Filter by name or keyword..."
                   style={{ flex: 1, minWidth: "200px", fontSize: "0.875rem" }}
                 />
-                
-                <select 
-                  className={styles.input} 
+
+                <select
+                  className={styles.input}
                   value={softwareFilter}
                   onChange={(e) => {
                     setSoftwareFilter(e.target.value);
@@ -275,11 +280,15 @@ function ImageLibraryDialog({
                   style={{ width: "140px", fontSize: "0.875rem" }}
                 >
                   <option value="">All Software</option>
-                  {availableSoftware.map(s => <option key={s} value={s}>{s}</option>)}
+                  {availableSoftware.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
                 </select>
 
-                <select 
-                  className={styles.input} 
+                <select
+                  className={styles.input}
                   value={moduleFilter}
                   onChange={(e) => {
                     setModuleFilter(e.target.value);
@@ -289,11 +298,15 @@ function ImageLibraryDialog({
                   style={{ width: "140px", fontSize: "0.875rem" }}
                 >
                   <option value="">All Modules</option>
-                  {availableModule.map(m => <option key={m} value={m}>{m}</option>)}
+                  {availableModule.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
                 </select>
 
-                <select 
-                  className={styles.input} 
+                <select
+                  className={styles.input}
                   value={screenFilter}
                   onChange={(e) => {
                     setScreenFilter(e.target.value);
@@ -302,17 +315,25 @@ function ImageLibraryDialog({
                   style={{ width: "140px", fontSize: "0.875rem" }}
                 >
                   <option value="">All Screens</option>
-                  {availableScreen.map(s => <option key={s} value={s}>{s}</option>)}
+                  {availableScreen.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
                 </select>
 
-                <select 
-                  className={styles.input} 
+                <select
+                  className={styles.input}
                   value={itemFilter}
                   onChange={(e) => setItemFilter(e.target.value)}
                   style={{ width: "140px", fontSize: "0.875rem" }}
                 >
                   <option value="">All Items</option>
-                  {availableItem.map(i => <option key={i} value={i}>{i}</option>)}
+                  {availableItem.map((i) => (
+                    <option key={i} value={i}>
+                      {i}
+                    </option>
+                  ))}
                 </select>
 
                 {(imageNameFilter || softwareFilter || moduleFilter || screenFilter || itemFilter) && (
@@ -389,7 +410,7 @@ function ImageLibraryDialog({
               {images
                 .filter((image) => {
                   const cat = imageCategoriesMap[image.path];
-                  
+
                   if (softwareFilter && cat?.software !== softwareFilter) return false;
                   if (moduleFilter && cat?.module !== moduleFilter) return false;
                   if (screenFilter && cat?.screen !== screenFilter) return false;
@@ -406,7 +427,7 @@ function ImageLibraryDialog({
                   const isSelected = selectedImages.has(image.path);
                   const cat = imageCategoriesMap[image.path];
                   const keywords = cat?.keywords ?? [];
-                  
+
                   return (
                     <div
                       key={image.path}
@@ -563,19 +584,60 @@ function ExplanationContentItem({
   const [moduleVal, setModuleVal] = useState("");
   const [screenVal, setScreenVal] = useState("");
   const [itemVal, setItemVal] = useState("");
-  
+
   const [isSavingKeywords, setIsSavingKeywords] = useState(false);
   const keywordInputRef = useRef<HTMLInputElement>(null);
   const { session } = useAuth();
   const keywordsFetcher = useFetcher();
 
-  const availableSoftware = useMemo(() => Array.from(new Set(categoryValuesRaw.map(c => c.software).filter(Boolean))) as string[], [categoryValuesRaw]);
-  const availableModule = useMemo(() => Array.from(new Set(categoryValuesRaw.filter(c => !software || c.software === software).map(c => c.module).filter(Boolean))) as string[], [categoryValuesRaw, software]);
-  const availableScreen = useMemo(() => Array.from(new Set(categoryValuesRaw.filter(c => (!software || c.software === software) && (!moduleVal || c.module === moduleVal)).map(c => c.screen).filter(Boolean))) as string[], [categoryValuesRaw, software, moduleVal]);
-  const availableItem = useMemo(() => Array.from(new Set(categoryValuesRaw.filter(c => (!software || c.software === software) && (!moduleVal || c.module === moduleVal) && (!screenVal || c.screen === screenVal)).map(c => c.item).filter(Boolean))) as string[], [categoryValuesRaw, software, moduleVal, screenVal]);
+  const availableSoftware = useMemo(
+    () => Array.from(new Set(categoryValuesRaw.map((c) => c.software).filter(Boolean))) as string[],
+    [categoryValuesRaw],
+  );
+  const availableModule = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          categoryValuesRaw
+            .filter((c) => !software || c.software === software)
+            .map((c) => c.module)
+            .filter(Boolean),
+        ),
+      ) as string[],
+    [categoryValuesRaw, software],
+  );
+  const availableScreen = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          categoryValuesRaw
+            .filter((c) => (!software || c.software === software) && (!moduleVal || c.module === moduleVal))
+            .map((c) => c.screen)
+            .filter(Boolean),
+        ),
+      ) as string[],
+    [categoryValuesRaw, software, moduleVal],
+  );
+  const availableItem = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          categoryValuesRaw
+            .filter(
+              (c) =>
+                (!software || c.software === software) &&
+                (!moduleVal || c.module === moduleVal) &&
+                (!screenVal || c.screen === screenVal),
+            )
+            .map((c) => c.item)
+            .filter(Boolean),
+        ),
+      ) as string[],
+    [categoryValuesRaw, software, moduleVal, screenVal],
+  );
 
   const availableKeywords = useMemo(() => {
-    const kws = categoryValuesRaw.flatMap(c => c.keywords || []);
+    const kws = categoryValuesRaw.flatMap((c) => c.keywords || []);
     return Array.from(new Set(kws)).filter(Boolean).sort() as string[];
   }, [categoryValuesRaw]);
 
@@ -641,7 +703,7 @@ function ExplanationContentItem({
     if (markerIdx === -1) return;
     const storagePath = decodeURIComponent(item.content.slice(markerIdx + marker.length).split("?")[0]);
     setIsSavingKeywords(true);
-    
+
     const formData = new FormData();
     formData.append("actionType", "updateKeywords");
     formData.append("imagePath", storagePath);
@@ -651,7 +713,7 @@ function ExplanationContentItem({
     formData.append("screen", screenVal);
     formData.append("item", itemVal);
     formData.append("accessToken", session.access_token || "");
-    
+
     keywordsFetcher.submit(formData, { method: "post" });
     setIsSavingKeywords(false);
   };
@@ -941,18 +1003,33 @@ function ExplanationContentItem({
                   borderRadius: "var(--radius-2)",
                 }}
               >
-                <label className={styles.label} style={{ marginBottom: "var(--space-3)", display: "block", fontSize: "1.1rem" }}>
+                <label
+                  className={styles.label}
+                  style={{ marginBottom: "var(--space-3)", display: "block", fontSize: "1.1rem" }}
+                >
                   🏷️ Image Categories & Keywords
                 </label>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "var(--space-4)",
+                    marginBottom: "var(--space-4)",
+                  }}
+                >
                   <div className={styles.formGroup}>
                     <label className={styles.label}>Software</label>
                     <input
                       type="text"
                       list="software-list-inline"
                       value={software}
-                      onChange={(e) => { setSoftware(e.target.value); setModuleVal(""); setScreenVal(""); setItemVal(""); }}
+                      onChange={(e) => {
+                        setSoftware(e.target.value);
+                        setModuleVal("");
+                        setScreenVal("");
+                        setItemVal("");
+                      }}
                       placeholder="e.g. Photoshop, Excel..."
                       className={styles.input}
                     />
@@ -969,7 +1046,11 @@ function ExplanationContentItem({
                       type="text"
                       list="module-list-inline"
                       value={moduleVal}
-                      onChange={(e) => { setModuleVal(e.target.value); setScreenVal(""); setItemVal(""); }}
+                      onChange={(e) => {
+                        setModuleVal(e.target.value);
+                        setScreenVal("");
+                        setItemVal("");
+                      }}
                       placeholder="e.g. CRM, Inventory..."
                       className={styles.input}
                     />
@@ -986,7 +1067,10 @@ function ExplanationContentItem({
                       type="text"
                       list="screen-list-inline"
                       value={screenVal}
-                      onChange={(e) => { setScreenVal(e.target.value); setItemVal(""); }}
+                      onChange={(e) => {
+                        setScreenVal(e.target.value);
+                        setItemVal("");
+                      }}
                       placeholder="e.g. Dashboard, Settings..."
                       className={styles.input}
                     />
@@ -1909,7 +1993,7 @@ function EditInstructionForm({
               className={styles.addButton}
               disabled={!selectedInstructionId || !session}
             >
-              Replace Instruction
+              Replace In all missions
             </button>
             <button
               type="button"

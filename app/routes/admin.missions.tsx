@@ -116,7 +116,12 @@ function EditMissionForm({
   onChangesDetected: (hasChanges: boolean) => void;
   onNavigationRequest: (navigationFn: () => void) => void;
   missionAdminNotesMap: Record<string, string[]>;
-  missionsWithAccess: Array<{ id: string; allowedOrgIds: string[]; instructions?: Array<[string, string?]>; [key: string]: unknown }>;
+  missionsWithAccess: Array<{
+    id: string;
+    allowedOrgIds: string[];
+    instructions?: Array<[string, string?]>;
+    [key: string]: unknown;
+  }>;
   organizations: Array<{ id: string; name: string }>;
 }) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
@@ -187,7 +192,7 @@ function EditMissionForm({
       setOriginalCode(generateCode());
       onChangesDetected(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionData]);
 
   useEffect(() => {
@@ -342,8 +347,10 @@ function EditMissionForm({
           const matchingEndIf = id.replace(/^end-if-/, "") === top.ifId.replace(/^if-/, "");
           const sameTimestamp = id.split("-").slice(2).join("-") === top.ifId.split("-").slice(1).join("-");
           // Check if selection is this IF, this END-IF, or anything between
-          const isInRange = i >= top.ifIndex &&
-            (selId === top.ifId || selId === id ||
+          const isInRange =
+            i >= top.ifIndex &&
+            (selId === top.ifId ||
+              selId === id ||
               selectedInstructions.slice(top.ifIndex + 1, i).some(([sid]) => sid === selId));
           if (isInRange && (matchingEndIf || sameTimestamp || selId === top.ifId || selId === id)) {
             matchingIfIndex = top.ifIndex;
@@ -392,14 +399,18 @@ function EditMissionForm({
     }
 
     if (matchingIfIndex === -1 || matchingEndIfIndex === -1) {
-      alert("Could not find a matching IF…END-IF pair. Select the IF row, a row inside the IF block, or the END-IF row.");
+      alert(
+        "Could not find a matching IF…END-IF pair. Select the IF row, a row inside the IF block, or the END-IF row.",
+      );
       return;
     }
 
     // Check if there's already an else- between this if and end-if
     const ifId = selectedInstructions[matchingIfIndex][0];
     const suffix = ifId.replace(/^if-/, "");
-    const existingElse = selectedInstructions.slice(matchingIfIndex + 1, matchingEndIfIndex).find(([id]) => id === `else-${suffix}`);
+    const existingElse = selectedInstructions
+      .slice(matchingIfIndex + 1, matchingEndIfIndex)
+      .find(([id]) => id === `else-${suffix}`);
     if (existingElse) {
       alert("This IF block already has an ELSE branch.");
       return;
@@ -463,9 +474,7 @@ function EditMissionForm({
       // No record for this language yet — fall back to English data (missionsWithAccess
       // is always built from English missions) so the user sees the mission structure
       // and can fill in the translation before saving.
-      const enFallback = language === "he"
-        ? missionsWithAccess.find((m) => m.id === missionId)
-        : null;
+      const enFallback = language === "he" ? missionsWithAccess.find((m) => m.id === missionId) : null;
       setId(missionId);
       setTitle((enFallback as Mission | undefined)?.title ?? "");
       setDescription((enFallback as Mission | undefined)?.description ?? "");
@@ -484,15 +493,18 @@ function EditMissionForm({
     updateMissionFormFields(missionId);
     // Keep the URL ?missionId= in sync so AppNavigation's "Open Preview" button
     // always reflects the currently selected mission without a stale value.
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (missionId) {
-        next.set("missionId", missionId);
-      } else {
-        next.delete("missionId");
-      }
-      return next;
-    }, { replace: true });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (missionId) {
+          next.set("missionId", missionId);
+        } else {
+          next.delete("missionId");
+        }
+        return next;
+      },
+      { replace: true },
+    );
   };
 
   const moveInstructionUp = (e: React.MouseEvent) => {
@@ -569,7 +581,7 @@ function EditMissionForm({
       const fixed = instructions.map(([id, title]: [string, string?]) => {
         // Only deduplicate real instruction IDs (not temp, comment, if, end-if, else)
         const isSpecial =
-          id.startsWith("T") && /^T\d+$/.test(id) ||
+          (id.startsWith("T") && /^T\d+$/.test(id)) ||
           id.startsWith("comment-") ||
           id.startsWith("if-") ||
           id.startsWith("end-if-") ||
@@ -581,9 +593,7 @@ function EditMissionForm({
         }
         // Strip any existing #N suffix to get the canonical base ID
         const baseId = id.includes("#") ? id.split("#")[0] : id;
-        const alreadyPresent = allocatedKeys.some(
-          (k) => k === baseId || k.startsWith(`${baseId}#`),
-        );
+        const alreadyPresent = allocatedKeys.some((k) => k === baseId || k.startsWith(`${baseId}#`));
         let newKey: string;
         if (!alreadyPresent) {
           newKey = baseId;
@@ -1150,9 +1160,7 @@ function EditMissionForm({
   // Build a lookup map from org ID → org name for the filter dropdown
   const orgNameMap = new Map(organizations.map((o) => [o.id, o.name]));
 
-  const allOrgIds = Array.from(
-    new Set(missionsWithAccess.flatMap((m) => m.allowedOrgIds))
-  ).sort();
+  const allOrgIds = Array.from(new Set(missionsWithAccess.flatMap((m) => m.allowedOrgIds))).sort();
 
   const nameLower = filterMissionName.trim().toLowerCase();
   const descLower = filterMissionDesc.trim().toLowerCase();
@@ -1294,13 +1302,19 @@ function EditMissionForm({
           const selectedLinkers = selectedMissionId ? (reverseLinkedMap.get(selectedMissionId) ?? []) : [];
           const selectedMission = missions.find((m) => m.id === selectedMissionId);
           const isSelectedLinked =
-            selectedLinkers.length > 0 &&
-            selectedMission?.status !== "Hide" &&
-            !orgAssignedIds.has(selectedMissionId);
+            selectedLinkers.length > 0 && selectedMission?.status !== "Hide" && !orgAssignedIds.has(selectedMissionId);
 
           return (
             <>
-              <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)", flexWrap: "wrap", alignItems: "center" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "var(--space-2)",
+                  marginBottom: "var(--space-2)",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                }}
+              >
                 <input
                   type="text"
                   className={styles.input}
@@ -1325,20 +1339,28 @@ function EditMissionForm({
                 >
                   <option value="">All organizations</option>
                   {allOrgIds.map((orgId) => (
-                    <option key={orgId} value={orgId}>{orgNameMap.get(orgId) ?? orgId}</option>
+                    <option key={orgId} value={orgId}>
+                      {orgNameMap.get(orgId) ?? orgId}
+                    </option>
                   ))}
                 </select>
                 {(filterMissionName || filterMissionDesc || filterMissionOrg) && (
                   <button
                     type="button"
-                    onClick={() => { setFilterMissionName(""); setFilterMissionDesc(""); setFilterMissionOrg(""); }}
+                    onClick={() => {
+                      setFilterMissionName("");
+                      setFilterMissionDesc("");
+                      setFilterMissionOrg("");
+                    }}
                     className={styles.addButton}
                     style={{ flexShrink: 0, marginRight: 0 }}
                   >
                     ✕ Clear
                   </button>
                 )}
-                <span style={{ fontSize: "0.8rem", color: "var(--color-neutral-10)", flexShrink: 0, whiteSpace: "nowrap" }}>
+                <span
+                  style={{ fontSize: "0.8rem", color: "var(--color-neutral-10)", flexShrink: 0, whiteSpace: "nowrap" }}
+                >
                   {filteredMissionIds.length} / {allMissionIds.length}
                 </span>
               </div>
@@ -1355,15 +1377,20 @@ function EditMissionForm({
                   const isLinked = !isHidden && !isOrgAssigned && linkedMissionIds.has(missionId);
                   const prefix = isHidden ? "🔴 " : isOrgAssigned ? "🟢 " : isLinked ? "🟡 " : "";
                   const linkers = reverseLinkedMap.get(missionId) ?? [];
-                  const optionTitle = isLinked && linkers.length > 0
-                    ? `Linked from: ${linkers.map((id) => {
-                        const m = missions.find((m) => m.id === id);
-                        return m ? `${id} - ${m.title}` : id;
-                      }).join(" | ")}`
-                    : undefined;
+                  const optionTitle =
+                    isLinked && linkers.length > 0
+                      ? `Linked from: ${linkers
+                          .map((id) => {
+                            const m = missions.find((m) => m.id === id);
+                            return m ? `${id} - ${m.title}` : id;
+                          })
+                          .join(" | ")}`
+                      : undefined;
                   return (
                     <option key={missionId} value={missionId} title={optionTitle}>
-                      {prefix}{missionId}{mission ? ` - ${mission.title}` : " (No data for this language)"}
+                      {prefix}
+                      {missionId}
+                      {mission ? ` - ${mission.title}` : " (No data for this language)"}
                     </option>
                   );
                 })}
@@ -1765,6 +1792,24 @@ function EditMissionForm({
                   >
                     ↑ Up
                   </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenJsonDialog}
+                    className={styles.addButton}
+                    disabled={
+                      !selectedMissionInstruction ||
+                      selectedMissionInstruction.startsWith("comment-") ||
+                      selectedMissionInstruction.startsWith("if-") ||
+                      selectedMissionInstruction.startsWith("end-if-") ||
+                      selectedMissionInstruction.startsWith("else-") ||
+                      selectedMissionInstruction === "0" ||
+                      /^T\d+$/.test(selectedMissionInstruction || "")
+                    }
+                    style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                    title="View and edit the raw JSON for this instruction"
+                  >
+                    JSON
+                  </button>
                   <div style={{ display: "flex", gap: "var(--space-0)" }} className={styles0.div1}>
                     <button
                       type="button"
@@ -1793,24 +1838,6 @@ function EditMissionForm({
                       {createAndEditFetcher.state !== "idle" && pendingTempEdit?.tempId === selectedMissionInstruction
                         ? "Creating..."
                         : "Edit"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpenJsonDialog}
-                      className={styles.addButton}
-                      disabled={
-                        !selectedMissionInstruction ||
-                        selectedMissionInstruction.startsWith("comment-") ||
-                        selectedMissionInstruction.startsWith("if-") ||
-                        selectedMissionInstruction.startsWith("end-if-") ||
-                        selectedMissionInstruction.startsWith("else-") ||
-                        selectedMissionInstruction === "0" ||
-                        /^T\d+$/.test(selectedMissionInstruction || "")
-                      }
-                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                      title="View and edit the raw JSON for this instruction"
-                    >
-                      JSON
                     </button>
                     <button
                       type="button"
@@ -1894,9 +1921,15 @@ function EditMissionForm({
                       const hasElse = selectedInstructions.some(([id]) => id === elseId);
                       let inside = false;
                       for (const [id] of selectedInstructions) {
-                        if (id === ifId) { inside = true; continue; }
+                        if (id === ifId) {
+                          inside = true;
+                          continue;
+                        }
                         // Stop before ELSE (if present) or END-IF
-                        if (id === (hasElse ? elseId : endIfId)) { inside = false; break; }
+                        if (id === (hasElse ? elseId : endIfId)) {
+                          inside = false;
+                          break;
+                        }
                         if (inside) hiddenDueToIfCollapse.add(id);
                       }
                     }
@@ -1908,8 +1941,14 @@ function EditMissionForm({
                       const endIfId = `end-if-${suffix}`;
                       let inside = false;
                       for (const [id] of selectedInstructions) {
-                        if (id === elseId) { inside = true; continue; }
-                        if (id === endIfId) { inside = false; break; }
+                        if (id === elseId) {
+                          inside = true;
+                          continue;
+                        }
+                        if (id === endIfId) {
+                          inside = false;
+                          break;
+                        }
                         if (inside) hiddenDueToElseCollapse.add(id);
                       }
                     }
@@ -1934,212 +1973,253 @@ function EditMissionForm({
 
                     return selectedInstructions.map(([instructionId, customTitle], rowIndex) => {
                       // Hide rows that are inside a collapsed IF block
-                      if (hiddenDueToIfCollapse.has(instructionId) || hiddenDueToElseCollapse.has(instructionId)) return null;
-                    const isComment = instructionId.startsWith("comment-") || instructionId === "0";
-                    const isIf = instructionId.startsWith("if-");
-                    const isEndIf = instructionId.startsWith("end-if-");
-                    const isElse = instructionId.startsWith("else-");
-                    const isTemp = instructionId.startsWith("T") && /^T\d+$/.test(instructionId);
-                    // Strip the duplicate suffix (#2, #3, …) to get the real instruction ID for lookup
-                    const baseInstructionId = instructionId.includes("#") ? instructionId.split("#")[0] : instructionId;
-                    // Prefer the current-language instruction; in Hebrew mode fall back to English
-                    // so that instructions without Hebrew data are still visible in the panel.
-                    const primaryInstruction =
-                      !isComment && !isIf && !isEndIf && !isElse && !isTemp
-                        ? instructions.find((i) => i.id === baseInstructionId)
-                        : null;
-                    const fallbackInstruction =
-                      !isComment && !isIf && !isEndIf && !isElse && !isTemp && !primaryInstruction && language === "he"
-                        ? instructionsEn.find((i) => i.id === baseInstructionId)
-                        : null;
-                    const instruction = primaryInstruction ?? fallbackInstruction;
-                    // True when displayed using English data because no Hebrew version exists yet
-                    const isEnFallback = language === "he" && !!fallbackInstruction;
+                      if (hiddenDueToIfCollapse.has(instructionId) || hiddenDueToElseCollapse.has(instructionId))
+                        return null;
+                      const isComment = instructionId.startsWith("comment-") || instructionId === "0";
+                      const isIf = instructionId.startsWith("if-");
+                      const isEndIf = instructionId.startsWith("end-if-");
+                      const isElse = instructionId.startsWith("else-");
+                      const isTemp = instructionId.startsWith("T") && /^T\d+$/.test(instructionId);
+                      // Strip the duplicate suffix (#2, #3, …) to get the real instruction ID for lookup
+                      const baseInstructionId = instructionId.includes("#")
+                        ? instructionId.split("#")[0]
+                        : instructionId;
+                      // Prefer the current-language instruction; in Hebrew mode fall back to English
+                      // so that instructions without Hebrew data are still visible in the panel.
+                      const primaryInstruction =
+                        !isComment && !isIf && !isEndIf && !isElse && !isTemp
+                          ? instructions.find((i) => i.id === baseInstructionId)
+                          : null;
+                      const fallbackInstruction =
+                        !isComment &&
+                        !isIf &&
+                        !isEndIf &&
+                        !isElse &&
+                        !isTemp &&
+                        !primaryInstruction &&
+                        language === "he"
+                          ? instructionsEn.find((i) => i.id === baseInstructionId)
+                          : null;
+                      const instruction = primaryInstruction ?? fallbackInstruction;
+                      // True when displayed using English data because no Hebrew version exists yet
+                      const isEnFallback = language === "he" && !!fallbackInstruction;
 
-                    // Non-special entries must resolve to a real instruction (or be filtered out)
-                    if (!isComment && !isIf && !isEndIf && !isElse && !isTemp && !instruction) return null;
+                      // Non-special entries must resolve to a real instruction (or be filtered out)
+                      if (!isComment && !isIf && !isEndIf && !isElse && !isTemp && !instruction) return null;
 
-                    const displayTitle =
-                      isComment || isIf || isEndIf || isElse || isTemp ? customTitle : customTitle || instruction?.title || "";
-                    const indentLevel = depthMap.get(instructionId) ?? 0;
-                    const isCollapsed = isIf && collapsedIfIds.has(instructionId);
-                    const isElseCollapsed = isElse && collapsedElseIds.has(instructionId);
-                    // Count hidden IF-branch children (up to ELSE if present, else up to END-IF)
-                    let hiddenCount = 0;
-                    if (isCollapsed) {
-                      const suffix = instructionId.replace(/^if-/, "");
-                      const elseId = `else-${suffix}`;
-                      const endIfId = `end-if-${suffix}`;
-                      const hasElse = selectedInstructions.some(([id]) => id === elseId);
-                      let counting = false;
-                      for (const [id] of selectedInstructions) {
-                        if (id === instructionId) { counting = true; continue; }
-                        if (id === (hasElse ? elseId : endIfId)) break;
-                        if (counting) hiddenCount++;
+                      const displayTitle =
+                        isComment || isIf || isEndIf || isElse || isTemp
+                          ? customTitle
+                          : customTitle || instruction?.title || "";
+                      const indentLevel = depthMap.get(instructionId) ?? 0;
+                      const isCollapsed = isIf && collapsedIfIds.has(instructionId);
+                      const isElseCollapsed = isElse && collapsedElseIds.has(instructionId);
+                      // Count hidden IF-branch children (up to ELSE if present, else up to END-IF)
+                      let hiddenCount = 0;
+                      if (isCollapsed) {
+                        const suffix = instructionId.replace(/^if-/, "");
+                        const elseId = `else-${suffix}`;
+                        const endIfId = `end-if-${suffix}`;
+                        const hasElse = selectedInstructions.some(([id]) => id === elseId);
+                        let counting = false;
+                        for (const [id] of selectedInstructions) {
+                          if (id === instructionId) {
+                            counting = true;
+                            continue;
+                          }
+                          if (id === (hasElse ? elseId : endIfId)) break;
+                          if (counting) hiddenCount++;
+                        }
                       }
-                    }
-                    // Count hidden ELSE-branch children (ELSE to END-IF)
-                    let elseHiddenCount = 0;
-                    if (isElseCollapsed) {
-                      const suffix = instructionId.replace(/^else-/, "");
-                      const endIfId = `end-if-${suffix}`;
-                      let counting = false;
-                      for (const [id] of selectedInstructions) {
-                        if (id === instructionId) { counting = true; continue; }
-                        if (id === endIfId) break;
-                        if (counting) elseHiddenCount++;
+                      // Count hidden ELSE-branch children (ELSE to END-IF)
+                      let elseHiddenCount = 0;
+                      if (isElseCollapsed) {
+                        const suffix = instructionId.replace(/^else-/, "");
+                        const endIfId = `end-if-${suffix}`;
+                        let counting = false;
+                        for (const [id] of selectedInstructions) {
+                          if (id === instructionId) {
+                            counting = true;
+                            continue;
+                          }
+                          if (id === endIfId) break;
+                          if (counting) elseHiddenCount++;
+                        }
                       }
-                    }
-                    return (
-                      <label
-                        key={`${instructionId}-${rowIndex}`}
-                        className={styles.checkboxLabel}
-                        style={{
-                          paddingTop: "var(--space-2)",
-                          paddingBottom: "var(--space-2)",
-                          paddingRight: "var(--space-2)",
-                          paddingLeft: `calc(var(--space-2) + ${indentLevel * 20}px)`,
-                          borderBottom: "1px solid var(--color-neutral-4)",
-                          margin: 0,
-                          background: isIf
-                            ? "var(--color-success-3)"
-                            : isEndIf
-                              ? "var(--color-neutral-3)"
-                              : isElse
-                                ? "var(--color-accent-3)"
-                                : isTemp
-                                  ? "var(--color-accent-2)"
-                                  : undefined,
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          name="missionInstructionRadio"
-                          checked={selectedMissionInstruction === instructionId}
-                          onChange={() => setSelectedMissionInstruction(instructionId)}
-                        />
-                        <span style={{ display: "flex", alignItems: "center", gap: "4px", flex: 1 }}>
-                          {isComment ? (
-                            <span style={{ color: "var(--color-accent-11)", fontStyle: "italic" }}>💬 Comment:</span>
-                          ) : isIf ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleCollapse(instructionId); }}
-                                title={isCollapsed ? "Expand IF block" : "Collapse IF block"}
-                                style={{
-                                  background: "none",
-                                  border: "none",
-                                  cursor: "pointer",
-                                  padding: "0 2px",
-                                  fontSize: "0.75rem",
-                                  lineHeight: 1,
-                                  color: "var(--color-success-11)",
-                                  flexShrink: 0,
-                                }}
-                              >
-                                {isCollapsed ? "▶" : "▼"}
-                              </button>
-                              <span style={{ color: "var(--color-success-11)", fontWeight: 700 }}>🔀 IF:</span>
-                            </>
-                          ) : isEndIf ? (
-                            <span style={{ color: "var(--color-neutral-10)", fontWeight: 600, opacity: 0.7 }}>
-                              🔁 END-IF{customTitle && customTitle !== "END-IF" ? `: ${customTitle}` : ""}
-                            </span>
-                          ) : isElse ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleElseCollapse(instructionId); }}
-                                title={isElseCollapsed ? "Expand ELSE block" : "Collapse ELSE block"}
-                                style={{
-                                  background: "none",
-                                  border: "none",
-                                  cursor: "pointer",
-                                  padding: "0 2px",
-                                  fontSize: "0.75rem",
-                                  lineHeight: 1,
-                                  color: "var(--color-accent-11)",
-                                  flexShrink: 0,
-                                }}
-                              >
-                                {isElseCollapsed ? "▶" : "▼"}
-                              </button>
-                              <span style={{ color: "var(--color-accent-11)", fontWeight: 700 }}>
-                                ↔️ ELSE{customTitle ? `: ${customTitle}` : ""}
-                              </span>
-                              {isElseCollapsed && elseHiddenCount > 0 && (
-                                <span style={{ fontSize: "0.75rem", color: "var(--color-neutral-9)", marginLeft: "4px", fontStyle: "italic" }}>
-                                  ({elseHiddenCount} hidden)
-                                </span>
-                              )}
-                            </>
-                          ) : isTemp ? (
-                            <span
-                              style={{ color: "var(--color-accent-10)", fontWeight: 600 }}
-                              title="Temporary — not yet saved to DB"
-                            >
-                              {instructionId}
-                            </span>
-                          ) : (
-                            <span
-                              style={{
-                                color:
-                                  instruction?.status === "full explanation"
-                                    ? "green"
-                                    : instruction?.status === "only title"
-                                      ? "red"
-                                      : "inherit",
-                                fontWeight: 600,
-                              }}
-                            >
-                              {baseInstructionId}
-                              {instructionId.includes("#") && (
-                                <span style={{ color: "var(--color-accent-9)", fontSize: "0.8em", marginLeft: "2px" }}>
-                                  ×{instructionId.split("#")[1]}
-                                </span>
-                              )}
-                              {isEnFallback && (
-                                <span
-                                  title="No Hebrew translation yet — showing English title as fallback"
+                      return (
+                        <label
+                          key={`${instructionId}-${rowIndex}`}
+                          className={styles.checkboxLabel}
+                          style={{
+                            paddingTop: "var(--space-2)",
+                            paddingBottom: "var(--space-2)",
+                            paddingRight: "var(--space-2)",
+                            paddingLeft: `calc(var(--space-2) + ${indentLevel * 20}px)`,
+                            borderBottom: "1px solid var(--color-neutral-4)",
+                            margin: 0,
+                            background: isIf
+                              ? "var(--color-success-3)"
+                              : isEndIf
+                                ? "var(--color-neutral-3)"
+                                : isElse
+                                  ? "var(--color-accent-3)"
+                                  : isTemp
+                                    ? "var(--color-accent-2)"
+                                    : undefined,
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="missionInstructionRadio"
+                            checked={selectedMissionInstruction === instructionId}
+                            onChange={() => setSelectedMissionInstruction(instructionId)}
+                          />
+                          <span style={{ display: "flex", alignItems: "center", gap: "4px", flex: 1 }}>
+                            {isComment ? (
+                              <span style={{ color: "var(--color-accent-11)", fontStyle: "italic" }}>💬 Comment:</span>
+                            ) : isIf ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    toggleCollapse(instructionId);
+                                  }}
+                                  title={isCollapsed ? "Expand IF block" : "Collapse IF block"}
                                   style={{
-                                    marginLeft: "4px",
-                                    fontSize: "0.65em",
-                                    background: "var(--amber-4)",
-                                    color: "var(--amber-11)",
-                                    padding: "0 3px",
-                                    borderRadius: "2px",
-                                    fontWeight: 700,
-                                    verticalAlign: "middle",
+                                    background: "none",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    padding: "0 2px",
+                                    fontSize: "0.75rem",
+                                    lineHeight: 1,
+                                    color: "var(--color-success-11)",
+                                    flexShrink: 0,
                                   }}
                                 >
-                                  EN
+                                  {isCollapsed ? "▶" : "▼"}
+                                </button>
+                                <span style={{ color: "var(--color-success-11)", fontWeight: 700 }}>🔀 IF:</span>
+                              </>
+                            ) : isEndIf ? (
+                              <span style={{ color: "var(--color-neutral-10)", fontWeight: 600, opacity: 0.7 }}>
+                                🔁 END-IF{customTitle && customTitle !== "END-IF" ? `: ${customTitle}` : ""}
+                              </span>
+                            ) : isElse ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    toggleElseCollapse(instructionId);
+                                  }}
+                                  title={isElseCollapsed ? "Expand ELSE block" : "Collapse ELSE block"}
+                                  style={{
+                                    background: "none",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    padding: "0 2px",
+                                    fontSize: "0.75rem",
+                                    lineHeight: 1,
+                                    color: "var(--color-accent-11)",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {isElseCollapsed ? "▶" : "▼"}
+                                </button>
+                                <span style={{ color: "var(--color-accent-11)", fontWeight: 700 }}>
+                                  ↔️ ELSE{customTitle ? `: ${customTitle}` : ""}
                                 </span>
-                              )}
-                            </span>
-                          )}
-                          {!isComment && !isEndIf && !isElse && " "}
-                          {!isEndIf && !isElse && displayTitle}
-                          {isCollapsed && hiddenCount > 0 && (
-                            <span style={{ fontSize: "0.75rem", color: "var(--color-neutral-9)", marginLeft: "4px", fontStyle: "italic" }}>
-                              ({hiddenCount} hidden)
-                            </span>
-                          )}
-                          {!isComment && !isIf && !isEndIf && !isElse && !isTemp && customTitle && (
-                            <span
-                              style={{
-                                color: "var(--color-accent-11)",
-                                fontSize: "0.875rem",
-                                marginLeft: "var(--space-2)",
-                              }}
-                            >
-                              {instruction && `(${instruction.title})`}
-                            </span>
-                          )}
-                        </span>
-                      </label>
-                    );
-                  });
+                                {isElseCollapsed && elseHiddenCount > 0 && (
+                                  <span
+                                    style={{
+                                      fontSize: "0.75rem",
+                                      color: "var(--color-neutral-9)",
+                                      marginLeft: "4px",
+                                      fontStyle: "italic",
+                                    }}
+                                  >
+                                    ({elseHiddenCount} hidden)
+                                  </span>
+                                )}
+                              </>
+                            ) : isTemp ? (
+                              <span
+                                style={{ color: "var(--color-accent-10)", fontWeight: 600 }}
+                                title="Temporary — not yet saved to DB"
+                              >
+                                {instructionId}
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  color:
+                                    instruction?.status === "full explanation"
+                                      ? "green"
+                                      : instruction?.status === "only title"
+                                        ? "red"
+                                        : "inherit",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {baseInstructionId}
+                                {instructionId.includes("#") && (
+                                  <span
+                                    style={{ color: "var(--color-accent-9)", fontSize: "0.8em", marginLeft: "2px" }}
+                                  >
+                                    ×{instructionId.split("#")[1]}
+                                  </span>
+                                )}
+                                {isEnFallback && (
+                                  <span
+                                    title="No Hebrew translation yet — showing English title as fallback"
+                                    style={{
+                                      marginLeft: "4px",
+                                      fontSize: "0.65em",
+                                      background: "var(--amber-4)",
+                                      color: "var(--amber-11)",
+                                      padding: "0 3px",
+                                      borderRadius: "2px",
+                                      fontWeight: 700,
+                                      verticalAlign: "middle",
+                                    }}
+                                  >
+                                    EN
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                            {!isComment && !isEndIf && !isElse && " "}
+                            {!isEndIf && !isElse && displayTitle}
+                            {isCollapsed && hiddenCount > 0 && (
+                              <span
+                                style={{
+                                  fontSize: "0.75rem",
+                                  color: "var(--color-neutral-9)",
+                                  marginLeft: "4px",
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                ({hiddenCount} hidden)
+                              </span>
+                            )}
+                            {!isComment && !isIf && !isEndIf && !isElse && !isTemp && customTitle && (
+                              <span
+                                style={{
+                                  color: "var(--color-accent-11)",
+                                  fontSize: "0.875rem",
+                                  marginLeft: "var(--space-2)",
+                                }}
+                              >
+                                {instruction && `(${instruction.title})`}
+                              </span>
+                            )}
+                          </span>
+                        </label>
+                      );
+                    });
                   })()}
                 </div>
               </div>
