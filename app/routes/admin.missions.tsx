@@ -35,6 +35,7 @@ export default function AdminMissionsPage() {
           onNavigationRequest={onNavigationRequest}
           missionAdminNotesMap={loaderData.missionAdminNotesMap}
           missionsWithAccess={loaderData.missionsWithAccess}
+          organizations={loaderData.organizations}
         />
       )}
     </AdminLayout>
@@ -93,6 +94,7 @@ function EditMissionForm({
   onNavigationRequest,
   missionAdminNotesMap,
   missionsWithAccess,
+  organizations,
 }: {
   actionData?: {
     success: boolean;
@@ -115,6 +117,7 @@ function EditMissionForm({
   onNavigationRequest: (navigationFn: () => void) => void;
   missionAdminNotesMap: Record<string, string[]>;
   missionsWithAccess: Array<{ id: string; allowedOrgIds: string[]; instructions?: Array<[string, string?]>; [key: string]: unknown }>;
+  organizations: Array<{ id: string; name: string }>;
 }) {
   const [selectedMissionId, setSelectedMissionId] = useState<string>("");
   const [id, setId] = useState("");
@@ -1144,6 +1147,9 @@ function EditMissionForm({
     return a.localeCompare(b);
   });
 
+  // Build a lookup map from org ID → org name for the filter dropdown
+  const orgNameMap = new Map(organizations.map((o) => [o.id, o.name]));
+
   const allOrgIds = Array.from(
     new Set(missionsWithAccess.flatMap((m) => m.allowedOrgIds))
   ).sort();
@@ -1319,7 +1325,7 @@ function EditMissionForm({
                 >
                   <option value="">All organizations</option>
                   {allOrgIds.map((orgId) => (
-                    <option key={orgId} value={orgId}>{orgId}</option>
+                    <option key={orgId} value={orgId}>{orgNameMap.get(orgId) ?? orgId}</option>
                   ))}
                 </select>
                 {(filterMissionName || filterMissionDesc || filterMissionOrg) && (
