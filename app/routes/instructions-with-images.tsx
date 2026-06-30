@@ -356,7 +356,9 @@ function ImageLibraryDialog({
   // Hierarchical filter options derived from loaded category data
   const availableSoftware = useMemo(() => {
     const set = new Set<string>();
-    Object.values(imageCategoriesMap).forEach((cat) => { if (cat.software) set.add(cat.software); });
+    Object.values(imageCategoriesMap).forEach((cat) => {
+      if (cat.software) set.add(cat.software);
+    });
     return Array.from(set).sort();
   }, [imageCategoriesMap]);
 
@@ -542,29 +544,53 @@ function ImageLibraryDialog({
                 <select
                   className={styles.input}
                   value={softwareFilter}
-                  onChange={(e) => { setSoftwareFilter(e.target.value); setModuleFilter(""); setScreenFilter(""); setItemFilter(""); }}
+                  onChange={(e) => {
+                    setSoftwareFilter(e.target.value);
+                    setModuleFilter("");
+                    setScreenFilter("");
+                    setItemFilter("");
+                  }}
                   style={{ width: "140px", fontSize: "0.875rem" }}
                 >
                   <option value="">All Software</option>
-                  {availableSoftware.map(s => <option key={s} value={s}>{s}</option>)}
+                  {availableSoftware.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
                 </select>
                 <select
                   className={styles.input}
                   value={moduleFilter}
-                  onChange={(e) => { setModuleFilter(e.target.value); setScreenFilter(""); setItemFilter(""); }}
+                  onChange={(e) => {
+                    setModuleFilter(e.target.value);
+                    setScreenFilter("");
+                    setItemFilter("");
+                  }}
                   style={{ width: "140px", fontSize: "0.875rem" }}
                 >
                   <option value="">All Modules</option>
-                  {availableModule.map(m => <option key={m} value={m}>{m}</option>)}
+                  {availableModule.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
                 </select>
                 <select
                   className={styles.input}
                   value={screenFilter}
-                  onChange={(e) => { setScreenFilter(e.target.value); setItemFilter(""); }}
+                  onChange={(e) => {
+                    setScreenFilter(e.target.value);
+                    setItemFilter("");
+                  }}
                   style={{ width: "140px", fontSize: "0.875rem" }}
                 >
                   <option value="">All Screens</option>
-                  {availableScreen.map(s => <option key={s} value={s}>{s}</option>)}
+                  {availableScreen.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
                 </select>
                 <select
                   className={styles.input}
@@ -573,12 +599,22 @@ function ImageLibraryDialog({
                   style={{ width: "140px", fontSize: "0.875rem" }}
                 >
                   <option value="">All Items</option>
-                  {availableItem.map(i => <option key={i} value={i}>{i}</option>)}
+                  {availableItem.map((i) => (
+                    <option key={i} value={i}>
+                      {i}
+                    </option>
+                  ))}
                 </select>
                 {hasActiveFilter && (
                   <button
                     type="button"
-                    onClick={() => { setImageNameFilter(""); setSoftwareFilter(""); setModuleFilter(""); setScreenFilter(""); setItemFilter(""); }}
+                    onClick={() => {
+                      setImageNameFilter("");
+                      setSoftwareFilter("");
+                      setModuleFilter("");
+                      setScreenFilter("");
+                      setItemFilter("");
+                    }}
                     className={styles.submitButton}
                     style={{ minWidth: "80px", fontSize: "0.875rem" }}
                   >
@@ -711,7 +747,14 @@ function ImageLibraryDialog({
                 );
               })}
               {filteredImages.length === 0 && (
-                <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "var(--space-6)", color: "var(--color-neutral-11)" }}>
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    textAlign: "center",
+                    padding: "var(--space-6)",
+                    color: "var(--color-neutral-11)",
+                  }}
+                >
                   No images match the current filters.
                 </div>
               )}
@@ -731,7 +774,18 @@ function getStoragePathFromUrl(url: string): string {
 }
 
 export default function InstructionsWithImages({ loaderData }: Route.ComponentProps) {
-  const { instructions, instructionsHe, supabaseUrl, supabaseKey, initialKeywords, initialSoftware, initialModule, initialScreen, initialItem, categoryValuesRaw } = loaderData;
+  const {
+    instructions,
+    instructionsHe,
+    supabaseUrl,
+    supabaseKey,
+    initialKeywords,
+    initialSoftware,
+    initialModule,
+    initialScreen,
+    initialItem,
+    categoryValuesRaw,
+  } = loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
   const imageUrl = searchParams.get("imageUrl");
   const returnInstructionId = searchParams.get("returnInstructionId");
@@ -764,30 +818,49 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   const [isDeletingImage, setIsDeletingImage] = useState(false);
 
   // Check if current image is used in any instruction
-  const isCurrentImageUsed = imageUrl 
-    ? [...instructions, ...instructionsHe].some((inst) => 
-        inst.explanation?.some((item: any) => item.type === "image" && item.content === imageUrl)
+  const isCurrentImageUsed = imageUrl
+    ? [...instructions, ...instructionsHe].some((inst) =>
+        inst.explanation?.some((item: any) => item.type === "image" && item.content === imageUrl),
       )
     : false;
 
-  const availableSoftware = Array.from(new Set(categoryValuesRaw.map(c => c.software).filter(Boolean))) as string[];
-  
-  const availableModule = Array.from(new Set(categoryValuesRaw
-    .filter(c => !software || c.software === software)
-    .map(c => c.module)
-    .filter(Boolean))) as string[];
+  const availableSoftware = Array.from(new Set(categoryValuesRaw.map((c) => c.software).filter(Boolean))) as string[];
 
-  const availableScreen = Array.from(new Set(categoryValuesRaw
-    .filter(c => (!software || c.software === software) && (!module || c.module === module))
-    .map(c => c.screen)
-    .filter(Boolean))) as string[];
+  const availableModule = Array.from(
+    new Set(
+      categoryValuesRaw
+        .filter((c) => !software || c.software === software)
+        .map((c) => c.module)
+        .filter(Boolean),
+    ),
+  ) as string[];
 
-  const availableItem = Array.from(new Set(categoryValuesRaw
-    .filter(c => (!software || c.software === software) && (!module || c.module === module) && (!screen || c.screen === screen))
-    .map(c => c.item)
-    .filter(Boolean))) as string[];
+  const availableScreen = Array.from(
+    new Set(
+      categoryValuesRaw
+        .filter((c) => (!software || c.software === software) && (!module || c.module === module))
+        .map((c) => c.screen)
+        .filter(Boolean),
+    ),
+  ) as string[];
 
-  const availableKeywords = Array.from(new Set(categoryValuesRaw.flatMap(c => c.keywords || []))).filter(Boolean).sort() as string[];
+  const availableItem = Array.from(
+    new Set(
+      categoryValuesRaw
+        .filter(
+          (c) =>
+            (!software || c.software === software) &&
+            (!module || c.module === module) &&
+            (!screen || c.screen === screen),
+        )
+        .map((c) => c.item)
+        .filter(Boolean),
+    ),
+  ) as string[];
+
+  const availableKeywords = Array.from(new Set(categoryValuesRaw.flatMap((c) => c.keywords || [])))
+    .filter(Boolean)
+    .sort() as string[];
 
   // Initialize Supabase on the client
   useEffect(() => {
@@ -1027,7 +1100,11 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
   // Sync renameValue whenever the displayed image changes (browse prev/next)
   useEffect(() => {
     if (imageUrl) {
-      const currentName = imageUrl.split("/").pop()?.replace(/\.[^.]+$/, "") ?? "";
+      const currentName =
+        imageUrl
+          .split("/")
+          .pop()
+          ?.replace(/\.[^.]+$/, "") ?? "";
       setRenameValue(currentName);
     }
   }, [imageUrl]);
@@ -1039,7 +1116,13 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
     setModule(loaderData.initialModule);
     setScreen(loaderData.initialScreen);
     setItem(loaderData.initialItem);
-  }, [loaderData.initialKeywords, loaderData.initialSoftware, loaderData.initialModule, loaderData.initialScreen, loaderData.initialItem]);
+  }, [
+    loaderData.initialKeywords,
+    loaderData.initialSoftware,
+    loaderData.initialModule,
+    loaderData.initialScreen,
+    loaderData.initialItem,
+  ]);
 
   // Watch for keywords fetcher result
   useEffect(() => {
@@ -1122,7 +1205,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
     }
 
     const confirmDelete = window.confirm(
-      "Are you sure you want to delete this image from the library?\n\nThis action cannot be undone."
+      "Are you sure you want to delete this image from the library?\n\nThis action cannot be undone.",
     );
 
     if (!confirmDelete) return;
@@ -1138,7 +1221,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
       const result = await deleteImage(storagePath);
       if (result.success) {
         alert("Image successfully deleted.");
-        
+
         let nextImageUrl = null;
         if (libraryImages.length > 1 && libraryIndex >= 0) {
           if (libraryIndex < libraryImages.length - 1) {
@@ -1150,7 +1233,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
 
         if (nextImageUrl) {
           setSearchParams(buildNavParams(nextImageUrl), { replace: true });
-          setLibraryImages(prev => prev.filter(img => img.url !== imageUrl));
+          setLibraryImages((prev) => prev.filter((img) => img.url !== imageUrl));
         } else {
           setSearchParams({});
           setLibraryImages([]);
@@ -1236,7 +1319,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               )}
               <button
                 onClick={() => {
-                  const selectedUrl = libraryIndex >= 0 ? libraryImages[libraryIndex].url : imageUrl ?? "";
+                  const selectedUrl = libraryIndex >= 0 ? libraryImages[libraryIndex].url : (imageUrl ?? "");
                   if (hasReturnContext && returnInstructionId && returnContentIndex !== null) {
                     window.location.href = `/admin/instructions?lang=${returnLang}&instructionId=${encodeURIComponent(returnInstructionId)}&selectImage=${encodeURIComponent(selectedUrl)}&contentIndex=${returnContentIndex}`;
                   } else {
@@ -1248,7 +1331,6 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               >
                 {hasReturnContext ? "Select & Return" : "Select"}
               </button>
-
             </div>
           )}
         </div>
@@ -1264,7 +1346,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               }}
               className={styles.actionBackButton}
             >
-              ← Back
+              ← Library
             </button>
             {hasReturnContext && returnInstructionId && returnContentIndex !== null && (
               <button
@@ -1341,9 +1423,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
         {imageUrl && showKeywordsSection && (
           <div className={styles.keywordsSection}>
             <div className={styles.keywordsSectionHeader}>
-              <span className={styles.keywordsSectionTitle}>
-                🏷️ Image Categories & Keywords
-              </span>
+              <span className={styles.keywordsSectionTitle}>🏷️ Image Categories & Keywords</span>
               <div style={{ display: "flex", gap: "var(--space-2)" }}>
                 {!isCurrentImageUsed && (
                   <button
@@ -1366,14 +1446,26 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "var(--space-4)",
+                marginBottom: "var(--space-4)",
+              }}
+            >
               <div className={styles.formGroup}>
                 <label className={styles.label}>Software</label>
                 <input
                   type="text"
                   list="software-list"
                   value={software}
-                  onChange={(e) => { setSoftware(e.target.value); setModule(""); setScreen(""); setItem(""); }}
+                  onChange={(e) => {
+                    setSoftware(e.target.value);
+                    setModule("");
+                    setScreen("");
+                    setItem("");
+                  }}
                   placeholder="e.g. Photoshop, Excel..."
                   className={styles.input}
                 />
@@ -1390,7 +1482,11 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                   type="text"
                   list="module-list"
                   value={module}
-                  onChange={(e) => { setModule(e.target.value); setScreen(""); setItem(""); }}
+                  onChange={(e) => {
+                    setModule(e.target.value);
+                    setScreen("");
+                    setItem("");
+                  }}
                   placeholder="e.g. CRM, Inventory..."
                   className={styles.input}
                 />
@@ -1407,7 +1503,10 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                   type="text"
                   list="screen-list"
                   value={screen}
-                  onChange={(e) => { setScreen(e.target.value); setItem(""); }}
+                  onChange={(e) => {
+                    setScreen(e.target.value);
+                    setItem("");
+                  }}
                   placeholder="e.g. Dashboard, Settings..."
                   className={styles.input}
                 />
@@ -1514,7 +1613,14 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               <div className={styles.formGroup}>
                 <label className={styles.label}>Upload New Image or Select from Library</label>
                 <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-                  <button type="button" onClick={() => { setLibraryMode("replace"); setShowImageLibrary(true); }} className={styles.libraryButton}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLibraryMode("replace");
+                      setShowImageLibrary(true);
+                    }}
+                    className={styles.libraryButton}
+                  >
                     📚 Select from Library
                   </button>
                   <button type="button" onClick={handlePasteFromClipboard} className={styles.pasteButton}>
@@ -1565,7 +1671,6 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
 
               {!loading && !session && <p className={styles.authWarning}>Please sign in to replace images</p>}
             </div>
-
           </div>
         )}
 
