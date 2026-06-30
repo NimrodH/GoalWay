@@ -246,6 +246,112 @@
   cursor: not-allowed;
 }
 
+/* ── Mission filter bar ─────────────────────────────────── */
+
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.filterField {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 160px;
+  max-width: 260px;
+}
+
+.filterIcon {
+  position: absolute;
+  left: var(--space-3);
+  color: var(--color-neutral-9);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.filterInput {
+  width: 100%;
+  padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + 14px + var(--space-2));
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  background: var(--color-neutral-1);
+  color: var(--color-neutral-12);
+  font: var(--font-body);
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease;
+}
+
+.filterInput:focus {
+  outline: 2px solid var(--color-accent-8);
+  outline-offset: -1px;
+  border-color: var(--color-accent-8);
+}
+
+.filterInput::placeholder {
+  color: var(--color-neutral-9);
+}
+
+.filterSelect {
+  width: 100%;
+  padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + 14px + var(--space-2));
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  background: var(--color-neutral-1);
+  color: var(--color-neutral-12);
+  font: var(--font-body);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+  appearance: none;
+}
+
+.filterSelect:focus {
+  outline: 2px solid var(--color-accent-8);
+  outline-offset: -1px;
+  border-color: var(--color-accent-8);
+}
+
+.clearFiltersButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-neutral-3);
+  color: var(--color-neutral-11);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  font: var(--font-body);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.clearFiltersButton:hover {
+  background: var(--color-error-3);
+  color: var(--color-error-11);
+  border-color: var(--color-error-6);
+}
+
+.filterCount {
+  font: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--color-neutral-10);
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.matrixEmpty {
+  text-align: center;
+  padding: var(--space-6) !important;
+  color: var(--color-neutral-10);
+  font-style: italic;
+}
+
 /* ── Mission access matrix ───────────────────────────────── */
 
 .matrixTable {

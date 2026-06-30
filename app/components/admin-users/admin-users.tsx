@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useFetcher } from "react-router";
-import { Trash2, Plus, Building2, ChevronDown, Check } from "lucide-react";
+import { Trash2, Plus, Building2, ChevronDown, Check, Search, X } from "lucide-react";
 import type { Organization, PendingUser } from "~/services/organizations.server";
 import type { Mission } from "~/services/missions.server";
 import styles from "./admin-users.module.css";
@@ -351,6 +351,11 @@ function MissionAccessMatrix({
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
+  // ── Filter state ──────────────────────────────────────────────────────────
+  const [filterName, setFilterName] = useState("");
+  const [filterDesc, setFilterDesc] = useState("");
+  const [filterOrgId, setFilterOrgId] = useState("");
+
   useEffect(() => {
     if (fetcher.state === "idle" && savingMissionId.current) {
       const missionId = savingMissionId.current;
@@ -409,7 +414,22 @@ function MissionAccessMatrix({
     fetcher.submit(formData, { method: "POST", action: "/admin" });
   };
 
-  const visibleMissions = missions.filter((m) => m.status !== "Hide");
+  const nameLower = filterName.trim().toLowerCase();
+  const descLower = filterDesc.trim().toLowerCase();
+
+  const visibleMissions = missions
+    .filter((m) => m.status !== "Hide")
+    .filter((m) => !nameLower || m.title.toLowerCase().includes(nameLower))
+    .filter((m) => !descLower || m.description.toLowerCase().includes(descLower))
+    .filter((m) => !filterOrgId || (changes[m.id]?.orgIds ?? new Set()).has(filterOrgId));
+
+  const hasAnyFilter = filterName !== "" || filterDesc !== "" || filterOrgId !== "";
+
+  const clearFilters = () => {
+    setFilterName("");
+    setFilterDesc("");
+    setFilterOrgId("");
+  };
 
   return (
     <div>
@@ -418,6 +438,58 @@ function MissionAccessMatrix({
         Configure which organizations can see each mission. Example missions are visible to everyone
         (including non-logged-in users).
       </p>
+
+      {/* ── Filter Bar ── */}
+      <div className={styles.filterBar}>
+        <div className={styles.filterField}>
+          <Search size={14} className={styles.filterIcon} />
+          <input
+            className={styles.filterInput}
+            type="text"
+            placeholder="Filter by name…"
+            value={filterName}
+            onChange={(e) => setFilterName(e.target.value)}
+          />
+        </div>
+
+        <div className={styles.filterField}>
+          <Search size={14} className={styles.filterIcon} />
+          <input
+            className={styles.filterInput}
+            type="text"
+            placeholder="Filter by description…"
+            value={filterDesc}
+            onChange={(e) => setFilterDesc(e.target.value)}
+          />
+        </div>
+
+        <div className={styles.filterField}>
+          <Building2 size={14} className={styles.filterIcon} />
+          <select
+            className={styles.filterSelect}
+            value={filterOrgId}
+            onChange={(e) => setFilterOrgId(e.target.value)}
+          >
+            <option value="">All organizations</option>
+            {organizations.map((org) => (
+              <option key={org.id} value={org.id}>
+                {org.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {hasAnyFilter && (
+          <button className={styles.clearFiltersButton} onClick={clearFilters} title="Clear all filters">
+            <X size={13} />
+            Clear
+          </button>
+        )}
+
+        <span className={styles.filterCount}>
+          {visibleMissions.length} of {missions.filter((m) => m.status !== "Hide").length} missions
+        </span>
+      </div>
 
       <table className={styles.matrixTable}>
         <thead>
@@ -429,45 +501,53 @@ function MissionAccessMatrix({
           </tr>
         </thead>
         <tbody>
-          {visibleMissions.map((mission) => {
-            const row = changes[mission.id] ?? { isExample: false, orgIds: new Set() };
-            const isSaving = savingIds.has(mission.id);
-            const isSaved = savedIds.has(mission.id);
-            return (
-              <tr key={mission.id}>
-                <td>
-                  <div style={{ fontWeight: 600 }}>{mission.title}</div>
-                  <div style={{ fontSize: "0.75rem", color: "var(--color-neutral-10)" }}>
-                    ID: {mission.id}
-                  </div>
-                </td>
-                <td style={{ textAlign: "center" }}>
-                  <input
-                    type="checkbox"
-                    checked={row.isExample}
-                    onChange={() => toggleExample(mission.id)}
-                    style={{ cursor: "pointer", width: 16, height: 16 }}
-                  />
-                </td>
-                <td>
-                  <OrgMultiSelect
-                    organizations={organizations}
-                    selectedIds={row.orgIds}
-                    onChange={(orgId) => toggleOrg(mission.id, orgId)}
-                  />
-                </td>
-                <td>
-                  <button
-                    className={styles.saveRowButton}
-                    onClick={() => saveRow(mission.id)}
-                    disabled={isSaving || !accessToken}
-                  >
-                    {isSaving ? "…" : isSaved ? "✓ Saved" : "Save"}
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
+          {visibleMissions.length === 0 ? (
+            <tr>
+              <td colSpan={4} className={styles.matrixEmpty}>
+                No missions match the current filters.
+              </td>
+            </tr>
+          ) : (
+            visibleMissions.map((mission) => {
+              const row = changes[mission.id] ?? { isExample: false, orgIds: new Set() };
+              const isSaving = savingIds.has(mission.id);
+              const isSaved = savedIds.has(mission.id);
+              return (
+                <tr key={mission.id}>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{mission.title}</div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--color-neutral-10)" }}>
+                      ID: {mission.id}
+                    </div>
+                  </td>
+                  <td style={{ textAlign: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={row.isExample}
+                      onChange={() => toggleExample(mission.id)}
+                      style={{ cursor: "pointer", width: 16, height: 16 }}
+                    />
+                  </td>
+                  <td>
+                    <OrgMultiSelect
+                      organizations={organizations}
+                      selectedIds={row.orgIds}
+                      onChange={(orgId) => toggleOrg(mission.id, orgId)}
+                    />
+                  </td>
+                  <td>
+                    <button
+                      className={styles.saveRowButton}
+                      onClick={() => saveRow(mission.id)}
+                      disabled={isSaving || !accessToken}
+                    >
+                      {isSaving ? "…" : isSaved ? "✓ Saved" : "Save"}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })
+          )}
         </tbody>
       </table>
     </div>
