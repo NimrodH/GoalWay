@@ -1315,6 +1315,7 @@ function EditInstructionForm({
   const saveFetcher = useFetcher<typeof action>();
   const deleteInstructionFetcher = useFetcher<typeof action>();
   const replaceInstructionFetcher = useFetcher<typeof action>();
+  const duplicateInstructionFetcher = useFetcher<typeof action>();
   const [selectedContentIndex, setSelectedContentIndex] = useState<number | null>(null);
   const [instructionFilterEdit, setInstructionFilterEdit] = useState("");
   const [showReplaceDialog, setShowReplaceDialog] = useState(false);
@@ -1404,6 +1405,16 @@ function EditInstructionForm({
   }, [fetcher.data, fetcher.state, language]);
 
   useEffect(() => {
+    if (duplicateInstructionFetcher.data && duplicateInstructionFetcher.state === "idle") {
+      if (duplicateInstructionFetcher.data.success && duplicateInstructionFetcher.data.newInstructionId) {
+        window.location.href = `/admin/instructions?lang=${language}&instructionId=${duplicateInstructionFetcher.data.newInstructionId}`;
+      } else if (duplicateInstructionFetcher.data.error) {
+        alert(`Failed to duplicate instruction: ${duplicateInstructionFetcher.data.error}`);
+      }
+    }
+  }, [duplicateInstructionFetcher.data, duplicateInstructionFetcher.state, language]);
+
+  useEffect(() => {
     if (deleteInstructionFetcher.data && deleteInstructionFetcher.state === "idle") {
       if (deleteInstructionFetcher.data.success) {
         alert(deleteInstructionFetcher.data.message || "Instruction deleted successfully!");
@@ -1426,6 +1437,21 @@ function EditInstructionForm({
       }
     }
   }, [replaceInstructionFetcher.data, replaceInstructionFetcher.state, language, selectedInstructionId]);
+
+  const handleDuplicateInstruction = () => {
+    if (!selectedInstructionId) {
+      alert("Please select an instruction first");
+      return;
+    }
+    onNavigationRequest(() => {
+      const formData = new FormData();
+      formData.append("actionType", "duplicateInstruction");
+      formData.append("sourceInstructionId", selectedInstructionId);
+      formData.append("language", language);
+      formData.append("accessToken", session?.access_token || "");
+      duplicateInstructionFetcher.submit(formData, { method: "post" });
+    });
+  };
 
   const handleAddNewInstruction = () => {
     onNavigationRequest(() => {
@@ -1884,6 +1910,14 @@ function EditInstructionForm({
               disabled={!selectedInstructionId || !session}
             >
               Replace Instruction
+            </button>
+            <button
+              type="button"
+              onClick={handleDuplicateInstruction}
+              className={styles.addButton}
+              disabled={!selectedInstructionId || duplicateInstructionFetcher.state !== "idle" || !session}
+            >
+              {duplicateInstructionFetcher.state !== "idle" ? "Duplicating..." : "⎘ Duplicate Instruction"}
             </button>
             <button
               type="button"

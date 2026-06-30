@@ -749,6 +749,83 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     };
   }
 
+  if (actionType === "duplicateInstruction") {
+    const accessToken = formData.get("accessToken") as string | null;
+    const sourceInstructionId = formData.get("sourceInstructionId") as string | null;
+    const targetLanguage = formData.get("language") as string;
+
+    if (!accessToken) {
+      return { success: false, error: "Unauthorized: Authentication required" };
+    }
+    if (!sourceInstructionId) {
+      return { success: false, error: "Source instruction ID is required" };
+    }
+
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+        global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      });
+
+      // Fetch source row
+      const { data: sourceRow, error: fetchError } = await supabase
+        .from("instructions")
+        .select("data_en, data_he")
+        .eq("id", sourceInstructionId)
+        .single();
+
+      if (fetchError || !sourceRow) {
+        return { success: false, error: fetchError?.message || "Source instruction not found" };
+      }
+
+      // Determine next numeric ID across all instructions
+      const { data: existingInstructions, error: listError } = await supabase
+        .from("instructions")
+        .select("id");
+
+      if (listError) {
+        return { success: false, error: listError.message };
+      }
+
+      const numericIds = (existingInstructions || [])
+        .map((i: any) => parseInt(i.id, 10))
+        .filter((n: number) => !isNaN(n));
+      const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+      const newId = String(maxId + 1);
+
+      // Deep-copy with updated id and " Copy" appended to the title
+      const newDataEn = sourceRow.data_en
+        ? { ...sourceRow.data_en, id: newId, title: `${(sourceRow.data_en.title || "").trim()} Copy`.trim() }
+        : { id: newId, title: "Copy", explanation: [] };
+      const newDataHe = sourceRow.data_he
+        ? { ...sourceRow.data_he, id: newId, title: `${(sourceRow.data_he.title || "").trim()} Copy`.trim() }
+        : null;
+
+      const insertData: any = {
+        id: newId,
+        data_en: newDataEn,
+        data_he: newDataHe,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: insertError } = await supabase.from("instructions").insert(insertData);
+
+      if (insertError) {
+        return { success: false, error: insertError.message };
+      }
+
+      return {
+        success: true,
+        message: `Instruction duplicated as ${newId}!`,
+        newInstructionId: newId,
+      };
+    } catch (error) {
+      console.error("Error in duplicateInstruction:", error);
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
   if (actionType === "createOrganization") {
     const name = formData.get("name") as string | null;
     const slug = formData.get("slug") as string | null;
