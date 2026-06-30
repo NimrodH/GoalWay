@@ -1894,6 +1894,53 @@ function EditInstructionForm({
     }
   };
 
+  const handlePasteContentItem = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        alert("Clipboard is empty.");
+        return;
+      }
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        alert("Clipboard content is not valid JSON.");
+        return;
+      }
+      if (
+        !parsed ||
+        typeof parsed !== "object" ||
+        typeof parsed.type !== "string" ||
+        typeof parsed.content !== "string"
+      ) {
+        alert('Clipboard JSON does not look like a content item. Expected an object with "type" and "content" fields.');
+        return;
+      }
+      const newItem: InstructionContentWithKey = {
+        ...(parsed as unknown as InstructionContent),
+        _key: `content-${Date.now()}-${Math.random()}`,
+      };
+      // Insert after the selected index; fall back to end of list
+      const insertAt = selectedContentIndex !== null ? selectedContentIndex + 1 : explanation.length;
+      const updatedExplanation = [
+        ...explanation.slice(0, insertAt),
+        newItem,
+        ...explanation.slice(insertAt),
+      ];
+      const updatedFiles = [
+        ...explanationFiles.slice(0, insertAt),
+        null,
+        ...explanationFiles.slice(insertAt),
+      ];
+      setExplanation(updatedExplanation);
+      setExplanationFiles(updatedFiles);
+      setSelectedContentIndex(insertAt);
+    } catch (error) {
+      alert(`Failed to paste: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
   const getMissionsForInstruction = (instructionId: string) => {
     return missions.filter((mission) => mission.instructions?.some(([id]) => id === instructionId));
   };
@@ -2175,16 +2222,27 @@ function EditInstructionForm({
                 >
                   Explanation Content
                 </h2>
-                <button
-                  type="button"
-                  onClick={handleCopySelectedItem}
-                  className={styles.addButton}
-                  disabled={selectedContentIndex === null}
-                  title="Copy selected content item as JSON"
-                  style={{ fontSize: "0.875rem" }}
-                >
-                  {isCopied ? "✓ Copied!" : "📋 Copy Selected"}
-                </button>
+                <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                  <button
+                    type="button"
+                    onClick={handleCopySelectedItem}
+                    className={styles.addButton}
+                    disabled={selectedContentIndex === null}
+                    title="Copy selected content item as JSON"
+                    style={{ fontSize: "0.875rem" }}
+                  >
+                    {isCopied ? "✓ Copied!" : "📋 Copy Selected"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePasteContentItem}
+                    className={styles.addButton}
+                    title="Paste content item from clipboard JSON — inserts after the selected item"
+                    style={{ fontSize: "0.875rem" }}
+                  >
+                    📥 Paste After Selected
+                  </button>
+                </div>
               </div>
               {explanation.map((item, index) => (
                 <ExplanationContentItem
