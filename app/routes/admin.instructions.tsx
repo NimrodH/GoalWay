@@ -901,7 +901,11 @@ function ExplanationContentItem({
   };
 
   return (
-    <div className={styles.contentItem} style={{ border: isSelected ? "2px solid var(--color-accent-9)" : undefined }}>
+    <div
+      className={styles.contentItem}
+      data-content-index={index}
+      style={{ border: isSelected ? "2px solid var(--color-accent-9)" : undefined }}
+    >
       <div className={styles.contentItemHeader}>
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
           <input
@@ -1936,6 +1940,12 @@ function EditInstructionForm({
       setExplanation(updatedExplanation);
       setExplanationFiles(updatedFiles);
       setSelectedContentIndex(insertAt);
+
+      // Scroll the pasted item into view after React re-renders
+      setTimeout(() => {
+        const el = document.querySelector(`[data-content-index="${insertAt}"]`);
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
     } catch (error) {
       alert(`Failed to paste: ${error instanceof Error ? error.message : String(error)}`);
     }
