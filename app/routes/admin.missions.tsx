@@ -2254,12 +2254,7 @@ function EditMissionForm({
                 </div>
                 <div className={styles.div10}>
                   <div className={classNames(styles.formGroup, styles.div8)}>
-                    <label className={styles.label}>
-                      Mission ID{" "}
-                      <span style={{ fontSize: "0.75rem", color: "var(--color-neutral-10)", fontWeight: 400 }}>
-                        (read-only)
-                      </span>
-                    </label>
+                    <label className={styles.label}>Mission ID </label>
                     <input
                       type="text"
                       className={styles.input}
