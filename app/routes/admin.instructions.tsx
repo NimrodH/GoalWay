@@ -1634,8 +1634,21 @@ function EditInstructionForm({
   };
 
   const handleSelectInstruction = (instructionId: string) => {
-    clearActionData();
     updateFormFields(instructionId);
+    // Update the URL so the instructionId is preserved when navigating back from preview.
+    // Use replace so we don't push an extra history entry on every click.
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (instructionId) {
+          next.set("instructionId", instructionId);
+        } else {
+          next.delete("instructionId");
+        }
+        return next;
+      },
+      { replace: true },
+    );
   };
 
   const handleAddNote = async () => {

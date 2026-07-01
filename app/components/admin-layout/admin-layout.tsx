@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import { useAuth } from "~/hooks/use-auth";
 import { initSupabase } from "~/lib/supabase";
 import { AppNavigation } from "~/components/app-navigation/app-navigation";
@@ -37,6 +37,7 @@ export function AdminLayout<TLoaderData extends AdminLayoutLoaderData>({
   children: (props: AdminLayoutRenderProps) => React.ReactNode;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
 
@@ -121,7 +122,9 @@ export function AdminLayout<TLoaderData extends AdminLayoutLoaderData>({
   };
 
   const clearActionData = () => {
-    navigate(`${currentPath}?lang=${loaderData.language}`, { replace: true });
+    // Navigate to current URL (preserving all existing params like missionId / instructionId)
+    // to clear stale actionData without stripping query params from the browser history.
+    navigate(location.pathname + location.search, { replace: true });
   };
 
   const switchLanguage = (newLang: string) => {

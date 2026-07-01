@@ -489,7 +489,6 @@ function EditMissionForm({
   };
 
   const handleSelectMission = (missionId: string) => {
-    clearActionData();
     updateMissionFormFields(missionId);
     // Keep the URL ?missionId= in sync so AppNavigation's "Open Preview" button
     // always reflects the currently selected mission without a stale value.
