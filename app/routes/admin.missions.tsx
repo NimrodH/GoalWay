@@ -1216,14 +1216,6 @@ function EditMissionForm({
             </button>
             <button
               type="button"
-              onClick={handleSelectLastMission}
-              className={styles.addButton}
-              disabled={!localStorage.getItem("lastSelectedMissionId")}
-            >
-              Select Last Mission
-            </button>
-            <button
-              type="button"
               onClick={handleClearForNewMission}
               className={styles.addButton}
               disabled={missionFetcher.state !== "idle" || !session}
@@ -1362,6 +1354,14 @@ function EditMissionForm({
                 >
                   {filteredMissionIds.length} / {allMissionIds.length}
                 </span>
+                <button
+                  type="button"
+                  onClick={handleSelectLastMission}
+                  className={styles.addButton}
+                  disabled={!localStorage.getItem("lastSelectedMissionId")}
+                >
+                  Select Last Mission
+                </button>
               </div>
               <select
                 className={styles.input}
@@ -2254,7 +2254,12 @@ function EditMissionForm({
                 </div>
                 <div className={styles.div10}>
                   <div className={classNames(styles.formGroup, styles.div8)}>
-                    <label className={styles.label}>Mission ID <span style={{ fontSize: "0.75rem", color: "var(--color-neutral-10)", fontWeight: 400 }}>(read-only)</span></label>
+                    <label className={styles.label}>
+                      Mission ID{" "}
+                      <span style={{ fontSize: "0.75rem", color: "var(--color-neutral-10)", fontWeight: 400 }}>
+                        (read-only)
+                      </span>
+                    </label>
                     <input
                       type="text"
                       className={styles.input}
