@@ -2254,12 +2254,14 @@ function EditMissionForm({
                 </div>
                 <div className={styles.div10}>
                   <div className={classNames(styles.formGroup, styles.div8)}>
-                    <label className={styles.label}>Mission ID</label>
+                    <label className={styles.label}>Mission ID <span style={{ fontSize: "0.75rem", color: "var(--color-neutral-10)", fontWeight: 400 }}>(read-only)</span></label>
                     <input
                       type="text"
                       className={styles.input}
                       value={id}
-                      onChange={(e) => setId(e.target.value)}
+                      readOnly
+                      style={{ cursor: "default", opacity: 0.65 }}
+                      title="Mission ID is read-only — assigned automatically by the system"
                       placeholder="e.g., security-basics"
                     />
                   </div>
