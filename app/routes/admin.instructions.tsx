@@ -2346,13 +2346,14 @@ function EditInstructionForm({
               <div className={styles.div5}>
                 <div>
                   <div className={classNames(styles.formGroup, styles.div9)}>
-                    <label className={styles.label}>Instruction ID</label>
+                    <label className={styles.label}>Instruction ID <span style={{ fontWeight: 400, opacity: 0.6, fontSize: "0.85em" }}>(read-only)</span></label>
                     <input
                       type="text"
                       className={styles.input}
                       value={id}
-                      onChange={(e) => setId(e.target.value)}
-                      placeholder="e.g., 9"
+                      readOnly
+                      style={{ cursor: "default", opacity: 0.65 }}
+                      title="Instruction ID is read-only — assigned automatically by the system"
                     />
                   </div>
                 </div>
