@@ -272,6 +272,114 @@ type MissionInstruction =
   | ElseEntry
   | TempEntry;
 
+type LinkedMissionExpansion = {
+  instructions: MissionInstruction[];
+  rawInstructions: [string, string?][];
+  parentOf: Map<string, string>;
+  childrenOf: Map<string, string[]>;
+  elseChildrenOf: Map<string, string[]>;
+  elseIdOf: Map<string, string>;
+  depthOf: Map<string, number>;
+  insideIfBlock: Set<string>;
+};
+
+function buildLinkedMissionData(
+  rawInstructions: [string, string?][],
+  dbInstructions: Instruction[]
+): LinkedMissionExpansion {
+  const instructions = rawInstructions
+    .map(([id, customTitle]) => {
+      if (id.startsWith("comment-") || id === "0") {
+        return { id, title: customTitle || "", description: "", status: "comment" as const, type: "comment" as const, explanation: [] as [] };
+      }
+      if (id.startsWith("if-")) {
+        return { id, title: customTitle || "IF", description: "", status: "if" as const, type: "if" as const, explanation: [] as [] };
+      }
+      if (id.startsWith("end-if-")) {
+        return { id, title: "", description: "", status: "end-if" as const, type: "end-if" as const, explanation: [] as [] };
+      }
+      if (id.startsWith("else-")) {
+        return { id, title: customTitle || "ELSE", description: "", status: "else" as const, type: "else" as const, explanation: [] as [] };
+      }
+      if (/^T\d+$/.test(id)) {
+        return { id, title: customTitle || id, description: "", status: "temp" as const, type: "temp" as const, explanation: [] as [] };
+      }
+      const baseId = id.includes("#") ? id.split("#")[0] : id;
+      const instruction = dbInstructions.find((inst) => inst.id === baseId);
+      if (!instruction) return null;
+      const resolved = customTitle ? { ...instruction, title: customTitle } : instruction;
+      return id !== baseId ? { ...resolved, id } : resolved;
+    })
+    .filter(Boolean) as MissionInstruction[];
+
+  const parentOf = new Map<string, string>();
+  const childrenOf = new Map<string, string[]>();
+  const elseChildrenOf = new Map<string, string[]>();
+  const elseIdOf = new Map<string, string>();
+  const depthOf = new Map<string, number>();
+  const stack: string[] = [];
+  const inElseBranch = new Set<string>();
+
+  for (const [id] of rawInstructions) {
+    if (id.startsWith("if-")) {
+      const depth = stack.length;
+      depthOf.set(id, depth);
+      if (stack.length > 0) {
+        const parentId = stack[stack.length - 1];
+        parentOf.set(id, parentId);
+        if (inElseBranch.has(parentId)) {
+          const siblings = elseChildrenOf.get(parentId) ?? [];
+          siblings.push(id);
+          elseChildrenOf.set(parentId, siblings);
+        } else {
+          const siblings = childrenOf.get(parentId) ?? [];
+          siblings.push(id);
+          childrenOf.set(parentId, siblings);
+        }
+      }
+      childrenOf.set(id, childrenOf.get(id) ?? []);
+      elseChildrenOf.set(id, elseChildrenOf.get(id) ?? []);
+      stack.push(id);
+    } else if (id.startsWith("else-")) {
+      if (stack.length > 0) {
+        const ifId = stack[stack.length - 1];
+        inElseBranch.add(ifId);
+        elseIdOf.set(ifId, id);
+        parentOf.set(id, ifId);
+        const siblings = childrenOf.get(ifId) ?? [];
+        siblings.push(id);
+        childrenOf.set(ifId, siblings);
+      }
+    } else if (id.startsWith("end-if-")) {
+      const closed = stack.pop();
+      if (closed) inElseBranch.delete(closed);
+    } else if (stack.length > 0) {
+      const parentId = stack[stack.length - 1];
+      parentOf.set(id, parentId);
+      if (inElseBranch.has(parentId)) {
+        const siblings = elseChildrenOf.get(parentId) ?? [];
+        siblings.push(id);
+        elseChildrenOf.set(parentId, siblings);
+      } else {
+        const siblings = childrenOf.get(parentId) ?? [];
+        siblings.push(id);
+        childrenOf.set(parentId, siblings);
+      }
+    }
+  }
+
+  return {
+    instructions,
+    rawInstructions,
+    parentOf,
+    childrenOf,
+    elseChildrenOf,
+    elseIdOf,
+    depthOf,
+    insideIfBlock: new Set<string>(parentOf.keys()),
+  };
+}
+
 export default function MissionPage({ loaderData, params }: Route.ComponentProps) {
   const { mission, instructions, allMissions, isPreview, adminNotes: initialAdminNotes, allInstructionIds, allInstructionsList } = loaderData;
   const { session } = useAuth();
@@ -608,7 +716,8 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
   // Tracks selected instruction inside each expanded sub-mission, keyed by the parent link instruction id
   const [selectedLinkedInstructionId, setSelectedLinkedInstructionId] = useState<Map<string, string | null>>(new Map());
-  const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
+  const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, LinkedMissionExpansion>>(new Map());
+  const [linkedExpandedIfBlocks, setLinkedExpandedIfBlocks] = useState<Map<string, Map<string, "if" | "else">>>(new Map());
   const [loadingLinkInstructions, setLoadingLinkInstructions] = useState<Set<string>>(new Set());
   const [completedInstructions, setCompletedInstructions] = useState<Set<string>>(new Set());
   // Map<ifId, 'if' | 'else'> — tracks which branch is active (null/missing = collapsed)
@@ -704,6 +813,11 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
       const newMap = new Map(expandedLinkInstructions);
       newMap.delete(instructionId);
       setExpandedLinkInstructions(newMap);
+      setLinkedExpandedIfBlocks((prev) => {
+        const next = new Map(prev);
+        next.delete(instructionId);
+        return next;
+      });
     } else {
       setLoadingLinkInstructions(new Set([...loadingLinkInstructions, instructionId]));
 
@@ -718,16 +832,10 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
         const linkedMission = linkedMissionData.mission;
         const linkedInstructions = linkedMissionData.instructions;
 
-        const linkedMissionInstructions = linkedMission.instructions
-          .map(([id, customTitle]: [string, string?]) => {
-            const instruction = linkedInstructions.find((inst: Instruction) => inst.id === id);
-            if (!instruction) return null;
-            return customTitle ? { ...instruction, title: customTitle } : instruction;
-          })
-          .filter(Boolean) as Instruction[];
+        const expansion = buildLinkedMissionData(linkedMission.instructions, linkedInstructions);
 
         const newMap = new Map(expandedLinkInstructions);
-        newMap.set(instructionId, linkedMissionInstructions);
+        newMap.set(instructionId, expansion);
         setExpandedLinkInstructions(newMap);
       } catch (error) {
         console.error("Error fetching linked mission:", error);
@@ -739,7 +847,57 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
     }
   };
 
-  const handleLinkedInstructionClick = (parentLinkId: string, linkedInstruction: Instruction, event?: React.MouseEvent) => {
+  const toggleLinkedIfBlock = (parentLinkId: string, ifId: string, branch: "if" | "else" = "if") => {
+    const expansion = expandedLinkInstructions.get(parentLinkId);
+    setLinkedExpandedIfBlocks((prev) => {
+      const next = new Map(prev);
+      const linkBlocks = new Map(next.get(parentLinkId) ?? []);
+      const isCollapsing = linkBlocks.get(ifId) === branch;
+      if (isCollapsing) {
+        linkBlocks.delete(ifId);
+      } else {
+        linkBlocks.set(ifId, branch);
+      }
+      if (expansion) {
+        const collectLinkedDescendants = (id: string): string[] => {
+          const result: string[] = [];
+          const queue = [...(expansion.childrenOf.get(id) ?? []), ...(expansion.elseChildrenOf.get(id) ?? [])];
+          while (queue.length > 0) {
+            const cid = queue.shift()!;
+            if (cid.startsWith("if-")) {
+              result.push(cid);
+              queue.push(...(expansion.childrenOf.get(cid) ?? []));
+              queue.push(...(expansion.elseChildrenOf.get(cid) ?? []));
+            }
+          }
+          return result;
+        };
+        for (const descendantId of collectLinkedDescendants(ifId)) {
+          linkBlocks.delete(descendantId);
+        }
+      }
+      next.set(parentLinkId, linkBlocks);
+      return next;
+    });
+  };
+
+  const handleLinkedInstructionClick = (parentLinkId: string, linkedInstruction: MissionInstruction, event?: React.MouseEvent) => {
+    // Non-interactive entry types — delegate IF toggle, skip others
+    if ("type" in linkedInstruction) {
+      if (linkedInstruction.type === "if") {
+        toggleLinkedIfBlock(parentLinkId, linkedInstruction.id, "if");
+        return;
+      }
+      if (
+        linkedInstruction.type === "comment" ||
+        linkedInstruction.type === "else" ||
+        linkedInstruction.type === "end-if" ||
+        linkedInstruction.type === "temp"
+      ) {
+        return;
+      }
+    }
+
     if (event?.shiftKey) {
       navigate(`/admin/instructions?instructionId=${linkedInstruction.id}`);
       return;
@@ -850,6 +1008,28 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
       }
     }
   }, [selectedLinkedInstructionId]);
+
+  // Compute per-linked-mission IF/ELSE visibility state
+  const linkedMissionIfStates = new Map<string, { hiddenByIf: Set<string>; linkIfBlocks: Map<string, "if" | "else"> }>();
+  for (const [parentLinkId, expansion] of expandedLinkInstructions) {
+    const linkIfBlocks = linkedExpandedIfBlocks.get(parentLinkId) ?? new Map<string, "if" | "else">();
+    const linkedHiddenByIf = new Set<string>();
+    for (const [ifId, children] of expansion.childrenOf) {
+      const activeBranch = linkIfBlocks.get(ifId);
+      if (!activeBranch) {
+        for (const id of children) linkedHiddenByIf.add(id);
+        for (const id of expansion.elseChildrenOf.get(ifId) ?? []) linkedHiddenByIf.add(id);
+      } else if (activeBranch === "if") {
+        for (const id of expansion.elseChildrenOf.get(ifId) ?? []) linkedHiddenByIf.add(id);
+      } else {
+        for (const id of children) {
+          const elseId = expansion.elseIdOf.get(ifId);
+          if (id !== elseId) linkedHiddenByIf.add(id);
+        }
+      }
+    }
+    linkedMissionIfStates.set(parentLinkId, { hiddenByIf: linkedHiddenByIf, linkIfBlocks });
+  }
 
   return (
     <>
@@ -1349,37 +1529,162 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                   </div>
 
                   {/* Render expanded linked mission instructions */}
-                  {isLinkExpanded && expandedInstructions && (
-                    <div style={{ marginLeft: "2rem", marginTop: "0.5rem", marginBottom: "1rem" }}>
-                      {expandedInstructions.map((linkedInstruction, linkedIndex) => {
-                        const linkedSelected =
-                          selectedLinkedInstructionId.get(instruction.id) === linkedInstruction.id;
-                        return (
-                          <div
-                            key={`${instruction.id}-${linkedInstruction.id}`}
-                            className={styles.instructionItem}
-                            data-instruction-id={`linked-${instruction.id}-${linkedInstruction.id}`}
-                          >
-                            <InstructionListItem
-                              title={linkedInstruction.title}
-                              description={linkedInstruction.description}
-                              selected={linkedSelected}
-                              instructionType={linkedInstruction.type}
-                              explanation={linkedInstruction.explanation}
-                              orderNumber={linkedIndex + 1}
-                              isCompleted={completedInstructions.has(`${instruction.id}-${linkedInstruction.id}`)}
-                              onClick={(event) => handleLinkedInstructionClick(instruction.id, linkedInstruction, event)}
-                            />
-                            {linkedSelected && linkedInstruction.type !== "link" && (
-                              <div className={styles.mobileExplanation}>
-                                <ExplanationDisplay instruction={linkedInstruction} captionVisible={captionVisible} />
+                  {isLinkExpanded && expandedInstructions && (() => {
+                    const linkedState = linkedMissionIfStates.get(instruction.id) ?? {
+                      hiddenByIf: new Set<string>(),
+                      linkIfBlocks: new Map<string, "if" | "else">(),
+                    };
+                    let linkedOrderCounter = 0;
+                    return (
+                      <div style={{ marginLeft: "2rem", marginTop: "0.5rem", marginBottom: "1rem" }}>
+                        {expandedInstructions.instructions.map((linkedInstruction) => {
+                          const lid = linkedInstruction.id;
+                          const isLinkedComment = "type" in linkedInstruction && linkedInstruction.type === "comment";
+                          const isLinkedIf = "type" in linkedInstruction && linkedInstruction.type === "if";
+                          const isLinkedEndIf = "type" in linkedInstruction && linkedInstruction.type === "end-if";
+                          const isLinkedElse = "type" in linkedInstruction && linkedInstruction.type === "else";
+                          const isLinkedTemp = "type" in linkedInstruction && linkedInstruction.type === "temp";
+
+                          // Else separator is rendered as part of the IF row
+                          if (isLinkedElse) return null;
+                          // Hidden by a collapsed IF block
+                          if (linkedState.hiddenByIf.has(lid)) return null;
+
+                          if (!isLinkedComment && !isLinkedIf && !isLinkedEndIf && !isLinkedElse) {
+                            linkedOrderCounter++;
+                          }
+                          const linkedOrderNumber = linkedOrderCounter;
+
+                          const linkedSelected = selectedLinkedInstructionId.get(instruction.id) === lid;
+                          const linkedActiveBranch = isLinkedIf ? linkedState.linkIfBlocks.get(lid) : undefined;
+                          const linkedIsIfExpanded = isLinkedIf && linkedActiveBranch !== undefined;
+                          const linkedDepth = expandedInstructions.depthOf.get(lid) ?? 0;
+                          const linkedInstrDepth = (() => {
+                            let p = expandedInstructions.parentOf.get(lid);
+                            let d = 0;
+                            while (p) { d++; p = expandedInstructions.parentOf.get(p); }
+                            return d;
+                          })();
+
+                          // ---- Comment ----
+                          if (isLinkedComment) {
+                            return (
+                              <div key={`${instruction.id}-${lid}`} className={styles.instructionItem}>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    padding: "var(--space-3) var(--space-4)",
+                                    color: "var(--color-accent-11)",
+                                    fontStyle: "italic",
+                                    fontSize: "0.9rem",
+                                    cursor: "default",
+                                    opacity: 0.8,
+                                  }}
+                                >
+                                  <span style={{ marginRight: "var(--space-2)", flexShrink: 0 }}>💬</span>
+                                  <div className={styles.commentMarkdown}>
+                                    <Markdown remarkPlugins={[remarkBreaks]}>{linkedInstruction.title}</Markdown>
+                                  </div>
+                                </div>
                               </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                            );
+                          }
+
+                          // ---- IF block toggle ----
+                          if (isLinkedIf) {
+                            const linkedElseId = expandedInstructions.elseIdOf.get(lid);
+                            const hasLinkedElse = Boolean(linkedElseId);
+                            const linkedElseEntry = hasLinkedElse
+                              ? expandedInstructions.instructions.find((m) => m && "type" in m && m.type === "else" && m.id === linkedElseId)
+                              : null;
+                            const linkedElseTitle = linkedElseEntry && "title" in linkedElseEntry ? linkedElseEntry.title : "ELSE";
+                            return (
+                              <div
+                                key={`${instruction.id}-${lid}`}
+                                className={styles.instructionItem}
+                                data-instruction-id={`linked-${instruction.id}-${lid}`}
+                                style={linkedDepth > 0 ? { paddingLeft: `calc(${linkedDepth} * var(--space-5))` } : undefined}
+                              >
+                                {hasLinkedElse ? (
+                                  <div className={styles.ifElseRow}>
+                                    <button
+                                      onClick={() => toggleLinkedIfBlock(instruction.id, lid, "if")}
+                                      className={`${styles.ifBlockButton} ${styles.ifElseHalf} ${linkedDepth > 0 ? styles.ifBlockButtonNested : ""} ${linkedActiveBranch === "if" ? styles.ifBranchActive : ""}`}
+                                      aria-expanded={linkedActiveBranch === "if"}
+                                    >
+                                      <GitBranch size={linkedDepth > 0 ? 15 : 18} className={styles.ifBlockIcon} />
+                                      <span className={styles.ifBlockTitle}>{linkedInstruction.title}</span>
+                                      {linkedActiveBranch === "if" ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                    </button>
+                                    <button
+                                      onClick={() => toggleLinkedIfBlock(instruction.id, lid, "else")}
+                                      className={`${styles.ifBlockButton} ${styles.ifElseHalf} ${styles.elseBlockButton} ${linkedDepth > 0 ? styles.ifBlockButtonNested : ""} ${linkedActiveBranch === "else" ? styles.elseBranchActive : ""}`}
+                                      aria-expanded={linkedActiveBranch === "else"}
+                                    >
+                                      <GitBranch size={linkedDepth > 0 ? 15 : 18} className={styles.ifBlockIcon} />
+                                      <span className={styles.ifBlockTitle}>{linkedElseTitle}</span>
+                                      {linkedActiveBranch === "else" ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => toggleLinkedIfBlock(instruction.id, lid, "if")}
+                                    className={`${styles.ifBlockButton} ${linkedDepth > 0 ? styles.ifBlockButtonNested : ""}`}
+                                    aria-expanded={linkedIsIfExpanded}
+                                  >
+                                    <GitBranch size={linkedDepth > 0 ? 15 : 18} className={styles.ifBlockIcon} />
+                                    <span className={styles.ifBlockTitle}>{linkedInstruction.title}</span>
+                                    {linkedIsIfExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          // ---- END-IF divider ----
+                          if (isLinkedEndIf) {
+                            const matchingIfId = lid.replace(/^end-if-/, "if-");
+                            if (!linkedState.linkIfBlocks.has(matchingIfId)) return null;
+                            return <div key={`${instruction.id}-${lid}`} className={styles.endIfDivider} aria-hidden="true" />;
+                          }
+
+                          // ---- Regular / temp instruction ----
+                          return (
+                            <div
+                              key={`${instruction.id}-${lid}`}
+                              style={linkedInstrDepth > 0 ? { paddingLeft: `calc(${linkedInstrDepth} * var(--space-5))` } : undefined}
+                            >
+                              <div
+                                className={styles.instructionItem}
+                                data-instruction-id={`linked-${instruction.id}-${lid}`}
+                              >
+                                <InstructionListItem
+                                  title={linkedInstruction.title}
+                                  description={linkedInstruction.description}
+                                  selected={linkedSelected}
+                                  instructionType={"type" in linkedInstruction && linkedInstruction.type !== "temp" ? linkedInstruction.type : undefined}
+                                  explanation={linkedInstruction.explanation as Instruction["explanation"]}
+                                  orderNumber={linkedOrderNumber}
+                                  isCompleted={completedInstructions.has(lid)}
+                                  isInsideIfBlock={expandedInstructions.insideIfBlock.has(lid)}
+                                  onClick={(event) => handleLinkedInstructionClick(instruction.id, linkedInstruction, event)}
+                                />
+                                {linkedSelected && !isLinkedTemp &&
+                                  ("type" in linkedInstruction ? linkedInstruction.type !== "link" : true) &&
+                                  Array.isArray(linkedInstruction.explanation) &&
+                                  (linkedInstruction.explanation as unknown[]).length > 0 && (
+                                  <div className={styles.mobileExplanation}>
+                                    <ExplanationDisplay instruction={linkedInstruction as Instruction} captionVisible={captionVisible} />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}

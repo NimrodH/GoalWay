@@ -10,8 +10,10 @@ export async function loader({ params }: Route.LoaderArgs) {
     return data({ error: "Mission not found" }, { status: 404 });
   }
 
-  const instructionIds = mission.instructions.map(([id]) => id);
-  const instructions = await getInstructionsByIds(instructionIds);
+  // Strip duplicate-occurrence suffixes (#2, #3, …) and de-duplicate before querying the DB
+  const rawIds = mission.instructions.map(([id]) => id);
+  const uniqueBaseIds = [...new Set(rawIds.map((id) => (id.includes("#") ? id.split("#")[0] : id)))];
+  const instructions = await getInstructionsByIds(uniqueBaseIds);
 
   return data({ mission, instructions });
 }
