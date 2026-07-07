@@ -175,6 +175,8 @@ function EditMissionForm({
   const [filterMissionName, setFilterMissionName] = useState("");
   const [filterMissionDesc, setFilterMissionDesc] = useState("");
   const [filterMissionOrg, setFilterMissionOrg] = useState("");
+  const [showLinkEditMenu, setShowLinkEditMenu] = useState(false);
+  const linkEditMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (selectedMissionId) {
@@ -194,6 +196,17 @@ function EditMissionForm({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionData]);
+
+  useEffect(() => {
+    if (!showLinkEditMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (linkEditMenuRef.current && !linkEditMenuRef.current.contains(e.target as Node)) {
+        setShowLinkEditMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showLinkEditMenu]);
 
   useEffect(() => {
     const missionIdFromUrl = searchParams.get("missionId");
@@ -790,6 +803,17 @@ function EditMissionForm({
     formData.append("accessToken", session.access_token || "");
     adminNotesFetcher.submit(formData, { method: "post" });
   };
+
+  // Derived: detect whether the currently selected mission instruction is a "link" type
+  const selectedBaseIdForLink = selectedMissionInstruction?.includes("#")
+    ? selectedMissionInstruction.split("#")[0]
+    : selectedMissionInstruction;
+  const allInstructionsForLang = language === "he" ? instructionsHe : instructionsEn;
+  const selectedInstructionObj = selectedBaseIdForLink
+    ? allInstructionsForLang.find((i) => i.id === selectedBaseIdForLink)
+    : null;
+  const isSelectedLinkType = selectedInstructionObj?.type === "link" && !!selectedInstructionObj?.missionId;
+  const selectedLinkMissionId = isSelectedLinkType ? selectedInstructionObj?.missionId : undefined;
 
   const handleEditInstruction = (instructionId: string) => {
     const isTemp = /^T\d+$/.test(instructionId);
@@ -1810,34 +1834,73 @@ function EditMissionForm({
                     JSON
                   </button>
                   <div style={{ display: "flex", gap: "var(--space-0)" }} className={styles0.div1}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (selectedMissionInstruction) {
-                          handleEditInstruction(selectedMissionInstruction);
-                        } else {
-                          alert("Please select an instruction from the list using the radio button first");
+                    <div ref={linkEditMenuRef} className={styles0.linkEditMenuWrapper}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!selectedMissionInstruction) {
+                            alert("Please select an instruction from the list using the radio button first");
+                            return;
+                          }
+                          if (isSelectedLinkType) {
+                            setShowLinkEditMenu((prev) => !prev);
+                          } else {
+                            handleEditInstruction(selectedMissionInstruction);
+                          }
+                        }}
+                        className={styles.addButton}
+                        disabled={
+                          !selectedMissionInstruction ||
+                          createAndEditFetcher.state !== "idle" ||
+                          selectedMissionInstruction.startsWith("if-") ||
+                          selectedMissionInstruction.startsWith("end-if-") ||
+                          selectedMissionInstruction.startsWith("else-")
                         }
-                      }}
-                      className={styles.addButton}
-                      disabled={
-                        !selectedMissionInstruction ||
-                        createAndEditFetcher.state !== "idle" ||
-                        selectedMissionInstruction.startsWith("if-") ||
-                        selectedMissionInstruction.startsWith("end-if-") ||
-                        selectedMissionInstruction.startsWith("else-")
-                      }
-                      style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                      title={
-                        selectedMissionInstruction && /^T\d+$/.test(selectedMissionInstruction)
-                          ? "Create a real instruction from this temporary entry and open it for editing"
-                          : "Edit this instruction"
-                      }
-                    >
-                      {createAndEditFetcher.state !== "idle" && pendingTempEdit?.tempId === selectedMissionInstruction
-                        ? "Creating..."
-                        : "Edit"}
-                    </button>
+                        style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                        title={
+                          isSelectedLinkType
+                            ? "This is a link instruction — click to choose an action"
+                            : selectedMissionInstruction && /^T\d+$/.test(selectedMissionInstruction)
+                            ? "Create a real instruction from this temporary entry and open it for editing"
+                            : "Edit this instruction"
+                        }
+                      >
+                        {createAndEditFetcher.state !== "idle" && pendingTempEdit?.tempId === selectedMissionInstruction
+                          ? "Creating..."
+                          : isSelectedLinkType
+                          ? "Edit ▾"
+                          : "Edit"}
+                      </button>
+                      {showLinkEditMenu && isSelectedLinkType && (
+                        <div className={styles0.linkEditDropdown}>
+                          <button
+                            type="button"
+                            className={styles0.linkEditDropdownItem}
+                            onClick={() => {
+                              setShowLinkEditMenu(false);
+                              onNavigationRequest(() => {
+                                if (selectedMissionId) {
+                                  localStorage.setItem("lastSelectedMissionId", selectedMissionId);
+                                }
+                                window.location.href = `/admin/missions?lang=${language}&missionId=${selectedLinkMissionId}`;
+                              });
+                            }}
+                          >
+                            🔗 Navigate to linked mission
+                          </button>
+                          <button
+                            type="button"
+                            className={styles0.linkEditDropdownItem}
+                            onClick={() => {
+                              setShowLinkEditMenu(false);
+                              handleEditInstruction(selectedMissionInstruction!);
+                            }}
+                          >
+                            ✏️ Edit link instruction
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => {

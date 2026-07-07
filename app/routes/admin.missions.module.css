@@ -1,3 +1,44 @@
 .div1 {
   margin-left: var(--space-2);
 }
+
+.linkEditMenuWrapper {
+  position: relative;
+}
+
+.linkEditDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: var(--color-neutral-1);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-2);
+  z-index: 100;
+  min-width: 210px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.linkEditDropdownItem {
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-neutral-4);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--color-neutral-11);
+  white-space: nowrap;
+  width: 100%;
+}
+
+.linkEditDropdownItem:last-child {
+  border-bottom: none;
+}
+
+.linkEditDropdownItem:hover {
+  background: var(--color-neutral-3);
+  color: var(--color-neutral-12);
+}
