@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Fragment } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import type { Annotation, BadgeSide } from "~/services/instructions.server";
@@ -179,16 +179,58 @@ export function ImageAnnotationView({
               const ah = ann.height;
 
               if (ann.isRedaction) {
+                const rcx = ax + aw / 2;
+                const rcy = ay + ah / 2;
+                // Font size: 30% of rect height, capped at 4.5 SVG-y-units
+                const redactFontSize = Math.min(ah * 0.3, 4.5);
+                // Contrast text: dark text for light (#d4d4d4) redactions, white for everything else
+                const textFill = (ann.color === "#d4d4d4" || !ann.color) ? "#222" : "rgba(255,255,255,0.95)";
+                const lines = ann.text ? ann.text.split("\n").filter((l) => l.length > 0) : [];
+                const lineH = redactFontSize * 1.35;
+                const totalTextH = lines.length * lineH;
+                const textStartY = rcy - totalTextH / 2 + lineH * 0.5;
+
                 return (
-                  <rect
-                    key={ann.id}
-                    x={ax}
-                    y={ay}
-                    width={aw}
-                    height={ah}
-                    fill={ann.color || "#d4d4d4"}
-                    stroke="none"
-                  />
+                  <Fragment key={ann.id}>
+                    {lines.length > 0 && (
+                      <clipPath id={`redact-clip-${ann.id}`}>
+                        <rect
+                          x={ax + 1}
+                          y={ay + 1}
+                          width={Math.max(0, aw - 2)}
+                          height={Math.max(0, ah - 2)}
+                        />
+                      </clipPath>
+                    )}
+                    <rect
+                      x={ax}
+                      y={ay}
+                      width={aw}
+                      height={ah}
+                      fill={ann.color || "#d4d4d4"}
+                      stroke="none"
+                    />
+                    {lines.map((line, i) => {
+                      const lineY = textStartY + i * lineH;
+                      return (
+                        <text
+                          key={i}
+                          x={rcx}
+                          y={lineY}
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fill={textFill}
+                          fontSize={redactFontSize}
+                          fontWeight="600"
+                          clipPath={`url(#redact-clip-${ann.id})`}
+                          transform={`translate(${rcx},${lineY}) scale(${textScaleX},1) translate(${-rcx},${-lineY})`}
+                          style={{ fontFamily: "system-ui, sans-serif", userSelect: "none" }}
+                        >
+                          {line}
+                        </text>
+                      );
+                    })}
+                  </Fragment>
                 );
               }
 

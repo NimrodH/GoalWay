@@ -391,7 +391,7 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
                 return (
                   <div
                     key={ann.id}
-                    className={`${styles.annotationRow} ${styles.redactionRow} ${isSelected ? styles.annotationRowSelected : ""}`}
+                    className={`${styles.annotationRow} ${styles.redactionRow} ${isSelected ? styles.redactionRowSelected : ""}`}
                     onClick={() => setSelectedId(isSelected ? null : ann.id)}
                   >
                     <div className={styles.annTopRow}>
@@ -412,6 +412,16 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
                         ✕
                       </button>
                     </div>
+                    {isSelected && (
+                      <textarea
+                        className={styles.annTextarea}
+                        placeholder="Label text (shown on redaction block)…"
+                        value={ann.text ?? ""}
+                        rows={2}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => updateAnnotationText(ann.id, e.target.value)}
+                      />
+                    )}
                   </div>
                 );
               }

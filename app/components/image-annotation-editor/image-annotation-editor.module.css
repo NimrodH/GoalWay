@@ -348,6 +348,12 @@
   flex-shrink: 0;
 }
 
+.redactionRowSelected {
+  border-color: #888 !important;
+  background: #e8e8e8 !important;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.12);
+}
+
 .redactionCount {
   font-weight: 400;
   color: var(--color-neutral-9);
