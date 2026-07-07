@@ -231,6 +231,19 @@ function ImageLibraryDialog({
 
   if (!isOpen) return null;
 
+  const filteredImages = images.filter((image) => {
+    const cat = imageCategoriesMap[image.path];
+    if (softwareFilter && cat?.software !== softwareFilter) return false;
+    if (moduleFilter && cat?.module !== moduleFilter) return false;
+    if (screenFilter && cat?.screen !== screenFilter) return false;
+    if (itemFilter && cat?.item !== itemFilter) return false;
+    if (!imageNameFilter.trim()) return true;
+    const term = imageNameFilter.toLowerCase().trim();
+    if (image.name.toLowerCase().includes(term)) return true;
+    const kws = cat?.keywords ?? [];
+    return kws.some((kw) => kw.toLowerCase().includes(term));
+  });
+
   return (
     <div className={styles.dialogOverlay} onClick={onClose}>
       <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
@@ -384,6 +397,7 @@ function ImageLibraryDialog({
                           returnInstructionId !== undefined && returnContentIndex !== undefined
                             ? `&returnInstructionId=${encodeURIComponent(returnInstructionId)}&returnContentIndex=${returnContentIndex}&returnLang=${returnLang ?? "en"}`
                             : "";
+                        sessionStorage.setItem("libraryFilteredImages", JSON.stringify(filteredImages));
                         window.location.href = `/instructions-with-images?imageUrl=${encodeURIComponent(selectedImage.url)}${returnParams}`;
                       }
                     }}
@@ -407,22 +421,7 @@ function ImageLibraryDialog({
             </div>
 
             <div className={styles.imageGrid}>
-              {images
-                .filter((image) => {
-                  const cat = imageCategoriesMap[image.path];
-
-                  if (softwareFilter && cat?.software !== softwareFilter) return false;
-                  if (moduleFilter && cat?.module !== moduleFilter) return false;
-                  if (screenFilter && cat?.screen !== screenFilter) return false;
-                  if (itemFilter && cat?.item !== itemFilter) return false;
-
-                  if (!imageNameFilter.trim()) return true;
-                  const term = imageNameFilter.toLowerCase().trim();
-                  if (image.name.toLowerCase().includes(term)) return true;
-                  const kws = cat?.keywords ?? [];
-                  return kws.some((kw) => kw.toLowerCase().includes(term));
-                })
-                .map((image) => {
+              {filteredImages.map((image) => {
                   const isUsed = isImageUsed(image.url);
                   const isSelected = selectedImages.has(image.path);
                   const cat = imageCategoriesMap[image.path];
@@ -437,6 +436,7 @@ function ImageLibraryDialog({
                           returnInstructionId !== undefined && returnContentIndex !== undefined
                             ? `&returnInstructionId=${encodeURIComponent(returnInstructionId)}&returnContentIndex=${returnContentIndex}&returnLang=${returnLang ?? "en"}`
                             : "";
+                        sessionStorage.setItem("libraryFilteredImages", JSON.stringify(filteredImages));
                         window.location.href = `/instructions-with-images?imageUrl=${encodeURIComponent(image.url)}${returnParams}`;
                       }}
                       style={{

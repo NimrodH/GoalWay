@@ -334,7 +334,7 @@ function ImageLibraryDialog({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSelectImage: (url: string) => void;
+  onSelectImage: (url: string, filteredList: Array<{ name: string; url: string; path: string }>) => void;
   instructions: any[];
   instructionsHe: any[];
   mode?: "navigate" | "replace";
@@ -637,7 +637,7 @@ function ImageLibraryDialog({
                       const selectedImagePath = Array.from(selectedImages)[0];
                       const selectedImage = images.find((img) => img.path === selectedImagePath);
                       if (selectedImage) {
-                        onSelectImage(selectedImage.url);
+                        onSelectImage(selectedImage.url, filteredImages);
                         onClose();
                       }
                     }}
@@ -671,7 +671,7 @@ function ImageLibraryDialog({
                     key={image.path}
                     className={styles.imageGridItem}
                     onClick={() => {
-                      onSelectImage(image.url);
+                      onSelectImage(image.url, filteredImages);
                       onClose();
                     }}
                     style={{
@@ -872,8 +872,24 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
     initSupabase();
   }, [supabaseUrl, supabaseKey]);
 
-  // Load library images for inline prev/next navigation
+  // Load library images for inline prev/next navigation.
+  // If the admin library dialog saved a filtered list in sessionStorage, use that
+  // so prev/next navigates only within the filtered subset.
   useEffect(() => {
+    const persisted = sessionStorage.getItem("libraryFilteredImages");
+    if (persisted) {
+      sessionStorage.removeItem("libraryFilteredImages");
+      try {
+        const parsed = JSON.parse(persisted) as Array<{ name: string; url: string; path: string }>;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setLibraryImages(parsed);
+          setLibraryImagesLoaded(true);
+          return;
+        }
+      } catch {
+        // ignore malformed data, fall through to load all images
+      }
+    }
     listAllImages().then((result) => {
       if (!result.error) {
         setLibraryImages(result.images);
@@ -1032,8 +1048,9 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
     }
   };
 
-  const handleSelectFromLibrary = (url: string) => {
+  const handleSelectFromLibrary = (url: string, filteredList: Array<{ name: string; url: string; path: string }>) => {
     if (libraryMode === "navigate") {
+      setLibraryImages(filteredList);
       setSearchParams(buildNavParams(url));
     } else {
       setImagePreview(url);
