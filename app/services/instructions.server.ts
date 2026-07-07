@@ -14,6 +14,8 @@ export interface Annotation {
   text?: string;      // optional markdown description shown below the image
   /** When true, renders as an opaque light-gray redaction block with no badge/number */
   isRedaction?: boolean;
+  /** Font size (in SVG y-units) for text rendered on a redaction block. Auto-computed when absent. */
+  fontSize?: number;
 }
 
 export interface InstructionContent {

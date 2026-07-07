@@ -284,6 +284,10 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
     onChange(annotations.map((a) => (a.id === id ? { ...a, text } : a)));
   };
 
+  const updateAnnotationFontSize = (id: string, fontSize: number) => {
+    onChange(annotations.map((a) => (a.id === id ? { ...a, fontSize } : a)));
+  };
+
   // Ghost rect while drawing
   const ghostRect = draw && draw.active
     ? {
@@ -413,14 +417,34 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
                       </button>
                     </div>
                     {isSelected && (
-                      <textarea
-                        className={styles.annTextarea}
-                        placeholder="Label text (shown on redaction block)…"
-                        value={ann.text ?? ""}
-                        rows={2}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => updateAnnotationText(ann.id, e.target.value)}
-                      />
+                      <div className={styles.redactControls}>
+                        <textarea
+                          className={styles.annTextarea}
+                          placeholder="Label text (shown on redaction block)…"
+                          value={ann.text ?? ""}
+                          rows={2}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => updateAnnotationText(ann.id, e.target.value)}
+                        />
+                        <div
+                          className={styles.fontSizeRow}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span className={styles.controlLabel}>Font size</span>
+                          <input
+                            type="range"
+                            className={styles.fontSizeSlider}
+                            min={1}
+                            max={10}
+                            step={0.5}
+                            value={ann.fontSize ?? Math.min(ann.height * 0.3, 4.5)}
+                            onChange={(e) => updateAnnotationFontSize(ann.id, parseFloat(e.target.value))}
+                          />
+                          <span className={styles.fontSizeValue}>
+                            {(ann.fontSize ?? Math.min(ann.height * 0.3, 4.5)).toFixed(1)}
+                          </span>
+                        </div>
+                      </div>
                     )}
                   </div>
                 );

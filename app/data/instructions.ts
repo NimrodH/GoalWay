@@ -9,6 +9,10 @@ export interface Annotation {
   label: number;      // sequential number shown on the badge
   color?: string;     // hex color string, e.g. "#e5484d"
   badgeSide?: BadgeSide; // which corner the badge sits on (default top-left)
+  text?: string;
+  isRedaction?: boolean;
+  /** Font size (in SVG y-units) for text rendered on a redaction block. Auto-computed when absent. */
+  fontSize?: number;
 }
 
 export interface InstructionContent {

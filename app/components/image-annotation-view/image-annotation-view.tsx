@@ -181,8 +181,8 @@ export function ImageAnnotationView({
               if (ann.isRedaction) {
                 const rcx = ax + aw / 2;
                 const rcy = ay + ah / 2;
-                // Font size: 30% of rect height, capped at 4.5 SVG-y-units
-                const redactFontSize = Math.min(ah * 0.3, 4.5);
+                // Font size: use stored value or auto-compute (30% of rect height, capped at 4.5 SVG-y-units)
+                const redactFontSize = ann.fontSize ?? Math.min(ah * 0.3, 4.5);
                 // Contrast text: dark text for light (#d4d4d4) redactions, white for everything else
                 const textFill = (ann.color === "#d4d4d4" || !ann.color) ? "#222" : "rgba(255,255,255,0.95)";
                 const lines = ann.text ? ann.text.split("\n").filter((l) => l.length > 0) : [];
