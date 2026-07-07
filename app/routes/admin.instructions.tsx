@@ -1940,16 +1940,8 @@ function EditInstructionForm({
       };
       // Insert after the selected index; fall back to end of list
       const insertAt = selectedContentIndex !== null ? selectedContentIndex + 1 : explanation.length;
-      const updatedExplanation = [
-        ...explanation.slice(0, insertAt),
-        newItem,
-        ...explanation.slice(insertAt),
-      ];
-      const updatedFiles = [
-        ...explanationFiles.slice(0, insertAt),
-        null,
-        ...explanationFiles.slice(insertAt),
-      ];
+      const updatedExplanation = [...explanation.slice(0, insertAt), newItem, ...explanation.slice(insertAt)];
+      const updatedFiles = [...explanationFiles.slice(0, insertAt), null, ...explanationFiles.slice(insertAt)];
       setExplanation(updatedExplanation);
       setExplanationFiles(updatedFiles);
       setSelectedContentIndex(insertAt);
@@ -2346,7 +2338,7 @@ function EditInstructionForm({
               <div className={styles.div5}>
                 <div>
                   <div className={classNames(styles.formGroup, styles.div9)}>
-                    <label className={styles.label}>Instruction ID <span style={{ fontWeight: 400, opacity: 0.6, fontSize: "0.85em" }}>(read-only)</span></label>
+                    <label className={styles.label}>Instruction ID </label>
                     <input
                       type="text"
                       className={styles.input}
