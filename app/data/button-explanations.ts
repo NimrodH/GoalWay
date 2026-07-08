@@ -296,4 +296,42 @@ export const BUTTON_EXPLANATIONS: Record<string, ButtonExplanation> = {
     description:
       "Uses AI to translate the mission title and description into the target language, then switches the editor view to that language. This allows you to quickly localise your mission content.",
   },
+
+  // ── Admin › User Management page ───────────────────────────────────────────
+
+  "user-mgmt-delete-org": {
+    title: "Delete Organization",
+    description:
+      "Permanently removes the organization from the system. This will NOT delete users, but any users assigned to this organization will become 'Pending' again and lose access to organization-specific missions. This action cannot be undone.",
+  },
+
+  "user-mgmt-add-org": {
+    title: "Add Organization",
+    description:
+      "Creates a new organization. If you leave the Slug field empty, one will be automatically generated based on the name (e.g., 'My Org' becomes 'my-org'). Organizations are used to group users and control mission access.",
+  },
+
+  "user-mgmt-assign-user": {
+    title: "Assign to Organization",
+    description:
+      "Finalizes the registration of a new user by assigning them to an organization. Once assigned, the user will move out of the 'Pending' list and will be able to see missions shared with their organization.",
+  },
+
+  "user-mgmt-clear-filters": {
+    title: "Clear Matrix Filters",
+    description:
+      "Resets all search criteria (Name, Description, Organization) in the Mission Access Matrix to show the full list of active missions.",
+  },
+
+  "user-mgmt-save-access": {
+    title: "Save Access Settings",
+    description:
+      "Persists the 'Example' (Public) status and the specific organization access list for this mission. These changes take effect immediately for all users.",
+  },
+
+  "user-mgmt-org-multiselect": {
+    title: "Manage Organization Access",
+    description:
+      "Opens a dropdown to toggle access for specific organizations. 'None' means the mission is only visible to Admins; selecting multiple organizations allows for shared access across different teams.",
+  },
 };

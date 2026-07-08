@@ -117,6 +117,7 @@ function OrganizationsManager({
               onClick={() => handleDelete(org)}
               disabled={isSubmitting || !accessToken}
               title="Delete organization"
+              data-explanation-id="user-mgmt-delete-org"
             >
               <Trash2 size={14} />
             </button>
@@ -143,6 +144,7 @@ function OrganizationsManager({
           className={styles.addOrgButton}
           onClick={handleAdd}
           disabled={!newName.trim() || isSubmitting || !accessToken}
+          data-explanation-id="user-mgmt-add-org"
         >
           <Plus size={14} />
           Add
@@ -241,6 +243,7 @@ function PendingUsersSection({
                   className={styles.assignButton}
                   onClick={() => handleAssign(user.id)}
                   disabled={!selectedOrgs[user.id] || isSaving || !accessToken}
+                  data-explanation-id="user-mgmt-assign-user"
                 >
                   {isSaving ? "Saving…" : "Assign"}
                 </button>
@@ -295,6 +298,7 @@ function OrgMultiSelect({
         className={styles.multiSelectTrigger}
         onClick={() => setOpen((v) => !v)}
         type="button"
+        data-explanation-id="user-mgmt-org-multiselect"
       >
         <span className={styles.multiSelectLabel}>{label}</span>
         <ChevronDown size={14} className={open ? styles.chevronOpen : undefined} />
@@ -480,7 +484,12 @@ function MissionAccessMatrix({
         </div>
 
         {hasAnyFilter && (
-          <button className={styles.clearFiltersButton} onClick={clearFilters} title="Clear all filters">
+          <button
+            className={styles.clearFiltersButton}
+            onClick={clearFilters}
+            title="Clear all filters"
+            data-explanation-id="user-mgmt-clear-filters"
+          >
             <X size={13} />
             Clear
           </button>
@@ -540,6 +549,7 @@ function MissionAccessMatrix({
                       className={styles.saveRowButton}
                       onClick={() => saveRow(mission.id)}
                       disabled={isSaving || !accessToken}
+                      data-explanation-id="user-mgmt-save-access"
                     >
                       {isSaving ? "…" : isSaved ? "✓ Saved" : "Save"}
                     </button>
