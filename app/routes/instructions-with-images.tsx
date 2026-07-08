@@ -365,7 +365,11 @@ function ImageLibraryDialog({
   const availableModule = useMemo(() => {
     const set = new Set<string>();
     Object.values(imageCategoriesMap).forEach((cat) => {
-      if (softwareFilter && cat.software !== softwareFilter) return;
+      if (softwareFilter === "none") {
+        if (cat.software) return;
+      } else if (softwareFilter && cat.software !== softwareFilter) {
+        return;
+      }
       if (cat.module) set.add(cat.module);
     });
     return Array.from(set).sort();
@@ -374,7 +378,11 @@ function ImageLibraryDialog({
   const availableScreen = useMemo(() => {
     const set = new Set<string>();
     Object.values(imageCategoriesMap).forEach((cat) => {
-      if (softwareFilter && cat.software !== softwareFilter) return;
+      if (softwareFilter === "none") {
+        if (cat.software) return;
+      } else if (softwareFilter && cat.software !== softwareFilter) {
+        return;
+      }
       if (moduleFilter && cat.module !== moduleFilter) return;
       if (cat.screen) set.add(cat.screen);
     });
@@ -384,7 +392,11 @@ function ImageLibraryDialog({
   const availableItem = useMemo(() => {
     const set = new Set<string>();
     Object.values(imageCategoriesMap).forEach((cat) => {
-      if (softwareFilter && cat.software !== softwareFilter) return;
+      if (softwareFilter === "none") {
+        if (cat.software) return;
+      } else if (softwareFilter && cat.software !== softwareFilter) {
+        return;
+      }
       if (moduleFilter && cat.module !== moduleFilter) return;
       if (screenFilter && cat.screen !== screenFilter) return;
       if (cat.item) set.add(cat.item);
@@ -489,7 +501,11 @@ function ImageLibraryDialog({
 
   const filteredImages = images.filter((image) => {
     const cat = imageCategoriesMap[image.path];
-    if (softwareFilter && cat?.software !== softwareFilter) return false;
+    if (softwareFilter === "none") {
+      if (cat?.software) return false;
+    } else if (softwareFilter && cat?.software !== softwareFilter) {
+      return false;
+    }
     if (moduleFilter && cat?.module !== moduleFilter) return false;
     if (screenFilter && cat?.screen !== screenFilter) return false;
     if (itemFilter && cat?.item !== itemFilter) return false;
@@ -553,6 +569,7 @@ function ImageLibraryDialog({
                   style={{ width: "140px", fontSize: "0.875rem" }}
                 >
                   <option value="">All Software</option>
+                  <option value="none">None</option>
                   {availableSoftware.map((s) => (
                     <option key={s} value={s}>
                       {s}
