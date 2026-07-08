@@ -191,16 +191,6 @@ export function ImageAnnotationView({
 
                 return (
                   <Fragment key={ann.id}>
-                    {lines.length > 0 && (
-                      <clipPath id={`redact-clip-${ann.id}`}>
-                        <rect
-                          x={ax}
-                          y={ay}
-                          width={aw}
-                          height={ah}
-                        />
-                      </clipPath>
-                    )}
                     <rect
                       x={ax}
                       y={ay}
@@ -212,18 +202,22 @@ export function ImageAnnotationView({
                     {lines.map((line, i) => {
                       const lineY = textStartY + i * lineH;
                       const cx = ax + aw / 2;
+                      // To keep text centered at cx while scaling it by textScaleX,
+                      // we need to adjust the x coordinate.
+                      // x_scaled = x * textScaleX  => x = cx / textScaleX
+                      const transformedX = cx / textScaleX;
+
                       return (
                         <text
                           key={i}
-                          x={cx}
+                          x={transformedX}
                           y={lineY}
                           textAnchor="middle"
                           dominantBaseline="central"
                           fill={textFill}
                           fontSize={redactFontSize}
                           fontWeight="600"
-                          clipPath={`url(#redact-clip-${ann.id})`}
-                          transform={`translate(${cx},${lineY}) scale(${textScaleX},1) translate(${-cx},${-lineY})`}
+                          transform={`scale(${textScaleX}, 1)`}
                           style={{ fontFamily: "system-ui, sans-serif", userSelect: "none" }}
                         >
                           {line}
