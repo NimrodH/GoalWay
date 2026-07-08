@@ -179,7 +179,6 @@ export function ImageAnnotationView({
               const ah = ann.height;
 
               if (ann.isRedaction) {
-                const rcx = ax + aw / 2;
                 const rcy = ay + ah / 2;
                 // Font size: use stored value or auto-compute (85% of rect height, capped at 12 SVG-y-units)
                 const redactFontSize = ann.fontSize ?? Math.min(ah * 0.85, 12);
@@ -215,15 +214,16 @@ export function ImageAnnotationView({
                       return (
                         <text
                           key={i}
-                          x={rcx}
+                          x={ax}
                           y={lineY}
-                          textAnchor="middle"
+                          textAnchor="start"
                           dominantBaseline="central"
                           fill={textFill}
                           fontSize={redactFontSize}
                           fontWeight="600"
                           clipPath={`url(#redact-clip-${ann.id})`}
-                          transform={`translate(${rcx},${lineY}) scale(${textScaleX},1) translate(${-rcx},${-lineY})`}
+                          textLength={aw}
+                          lengthAdjust="spacingAndGlyphs"
                           style={{ fontFamily: "system-ui, sans-serif", userSelect: "none" }}
                         >
                           {line}
