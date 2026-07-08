@@ -35,13 +35,21 @@
   width: 100%;
   background: var(--color-neutral-3);
   border-radius: var(--radius-3);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-3);
   border: 1px solid var(--color-neutral-6);
   position: relative;
+  /* Cap height so the image + toolbar always fit within the viewport */
+  max-height: calc(100vh - 240px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .image {
-  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
   height: auto;
   object-fit: contain;
   display: block;
@@ -855,7 +863,7 @@
   }
 
   .imageContainer {
-    /* full image always visible — no height cap */
+    max-height: calc(100svh - 200px);
   }
 
   .sectionHeader {
