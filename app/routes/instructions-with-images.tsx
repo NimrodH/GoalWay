@@ -1435,16 +1435,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
             <div className={styles.keywordsSectionHeader}>
               <span className={styles.keywordsSectionTitle}>🏷️ Image Categories & Keywords</span>
               <div style={{ display: "flex", gap: "var(--space-2)" }}>
-                {!isCurrentImageUsed && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteCurrentImage}
-                    className={styles.deleteButton}
-                    disabled={isDeletingImage || !session}
-                  >
-                    {isDeletingImage ? "Deleting..." : "🗑️ Delete Image"}
-                  </button>
-                )}
+
                 <button
                   type="button"
                   onClick={handleSaveKeywords}
@@ -1703,6 +1694,16 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                 ? `Instructions Using This Image (${filteredInstructions.length} found)`
                 : "Available Instructions"}
             </h2>
+            {imageUrl && !isCurrentImageUsed && (
+              <button
+                type="button"
+                onClick={handleDeleteCurrentImage}
+                className={styles.deleteButton}
+                disabled={isDeletingImage || !session}
+              >
+                {isDeletingImage ? "Deleting..." : "🗑️ Delete Image"}
+              </button>
+            )}
             {filteredInstructions.length > 0 && (
               <div className={styles.selectionInfo}>
                 <Checkbox
