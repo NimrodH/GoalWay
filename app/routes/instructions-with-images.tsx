@@ -1284,11 +1284,9 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
       <div className={styles.content}>
         <header className={styles.header}>
           <p className={styles.subtitle}>
-            {imageUrl && hasReturnContext
-              ? `Browse and click "Select & Return" to insert into instruction ${returnInstructionId}`
-              : imageUrl
-                ? `Instructions using this image (${filteredInstructions.length} found)`
-                : "Follow these step-by-step instructions to complete your task"}
+            {imageUrl
+              ? `Instructions using this image (${filteredInstructions.length} found)`
+              : "Follow these step-by-step instructions to complete your task"}
           </p>
         </header>
 
@@ -1323,7 +1321,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                 className={styles.selectImageButton}
                 title={hasReturnContext ? "Select this image and insert into instruction" : "Select this image"}
               >
-                {hasReturnContext ? "Select & Return" : "Select"}
+                {hasReturnContext ? `Select & Return into ${returnInstructionId}` : "Select"}
               </button>
             </div>
           )}
