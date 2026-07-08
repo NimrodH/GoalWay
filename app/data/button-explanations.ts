@@ -133,4 +133,167 @@ export const BUTTON_EXPLANATIONS: Record<string, ButtonExplanation> = {
     description:
       "Permanently removes all selected images from storage. Use with caution as this action cannot be undone.",
   },
+
+  // ── Admin › Mission Editing page ───────────────────────────────────────────
+
+  "admin-mission-save-db": {
+    title: "Save to Database",
+    description:
+      "Persists all changes made to the mission — including title, description, and the sequence of instructions — to the database. If you have made changes to the instruction list order, this is where you lock them in.",
+  },
+
+  "admin-mission-delete": {
+    title: "Delete Mission",
+    description:
+      "Permanently removes the mission from the system. This action cannot be undone. All instruction sequences within this mission will be lost, although the individual instructions themselves remain in the library.",
+  },
+
+  "admin-mission-duplicate": {
+    title: "Duplicate Mission",
+    description:
+      "Creates a new mission with the exact same title, description, and instruction sequence. The new mission will be assigned a unique ID, allowing you to branch off from a template or existing flow.",
+  },
+
+  "admin-mission-create-new": {
+    title: "Create New Mission",
+    description:
+      "Resets the form to create a fresh mission. You will be assigned a new unique ID after saving.",
+  },
+
+  "admin-mission-drawio": {
+    title: "Import Draw.io",
+    description:
+      "Allows you to import a flowchart exported from Draw.io (in XML format). The system will attempt to parse the nodes and edges to automatically generate an instruction sequence with IF/ELSE logic based on the diagram.",
+  },
+
+  "admin-mission-export": {
+    title: "Export Mission Bundle",
+    description:
+      "Downloads a single JSON file containing the mission data and the full content of every instruction referenced within it. This bundle can be imported into another environment (e.g. from Staging to Production) to perfectly replicate the mission.",
+  },
+
+  "admin-mission-import": {
+    title: "Import Mission Bundle",
+    description:
+      "Uploads a mission bundle JSON file. This will overwrite the mission and all its constituent instructions in the current database using the IDs provided in the file. Use with caution.",
+  },
+
+  "admin-mission-filter-clear": {
+    title: "Clear Mission Filters",
+    description:
+      "Resets all mission search filters (Name, Description, Organization) to show the full list of available missions.",
+  },
+
+  "admin-mission-select-last": {
+    title: "Select Last Mission",
+    description:
+      "Quickly jumps back to the mission you were most recently editing in this session. Useful for navigating back and forth between instructions and missions.",
+  },
+
+  "admin-mission-available-edit": {
+    title: "Edit Selected Instruction",
+    description:
+      "Opens the currently selected available instruction in the Instruction Editor. This allows you to tweak the content of a step without losing your place in the mission editor.",
+  },
+
+  "admin-mission-available-clear": {
+    title: "Clear Instruction Filter",
+    description:
+      "Resets the search box in the Available Instructions list, showing all instructions in the library.",
+  },
+
+  "admin-mission-remove": {
+    title: "Remove from Mission (← Del)",
+    description:
+      "Removes the selected instruction or logic block from the mission sequence. The instruction itself remains in the library; it is only disconnected from this specific mission.",
+  },
+
+  "admin-mission-add": {
+    title: "Add to Mission (Add →)",
+    description:
+      "Appends the selected instructions from the library to the mission sequence. If an instruction is already in the sequence, it will be added again with a suffix (e.g. #2) to allow for repeating steps.",
+  },
+
+  "admin-mission-link": {
+    title: "Link to Real ID",
+    description:
+      "Replaces a temporary placeholder entry (T1, T2...) with a real instruction ID from the library. This is useful when you have sketched out a flow with placeholders and are now ready to map them to actual content.",
+  },
+
+  "admin-mission-add-if": {
+    title: "Add IF Condition",
+    description:
+      "Inserts a conditional IF block into the sequence. You can use this to create branching paths in the mission based on user choices or system states.",
+  },
+
+  "admin-mission-add-endif": {
+    title: "Add END-IF Marker",
+    description:
+      "Closes the currently open IF block. Every IF must eventually have a matching END-IF to ensure the flow remains logical.",
+  },
+
+  "admin-mission-add-else": {
+    title: "Add ELSE Branch",
+    description:
+      "Inserts an alternative path into an IF block. Instructions between the IF and ELSE are executed if the condition is true; instructions between ELSE and END-IF are executed if the condition is false.",
+  },
+
+  "admin-mission-add-comment": {
+    title: "Add Admin Comment",
+    description:
+      "Inserts a non-executable comment into the mission sequence. These comments are only visible to admins in this editor and help document the purpose of specific logic branches.",
+  },
+
+  "admin-mission-add-new-instruction": {
+    title: "Add New Instruction",
+    description:
+      "Creates a temporary instruction placeholder and adds it to the sequence. You can later 'Edit' this to turn it into a real database record.",
+  },
+
+  "admin-mission-move-up": {
+    title: "Move Up (↑)",
+    description:
+      "Shifts the selected instruction or logic block one position earlier in the mission sequence.",
+  },
+
+  "admin-mission-move-down": {
+    title: "Move Down (↓)",
+    description:
+      "Shifts the selected instruction or logic block one position later in the mission sequence.",
+  },
+
+  "admin-mission-view-json": {
+    title: "View Instruction JSON",
+    description:
+      "Opens a raw JSON editor for the selected instruction. Power users can use this to quickly fix metadata or complex data structures without using the full UI.",
+  },
+
+  "admin-mission-edit-instruction": {
+    title: "Edit Instruction Details",
+    description:
+      "Navigates to the Instruction Editor for the selected step. If the step is a 'Link' to another mission, this provides options to either edit the link itself or navigate to the target mission.",
+  },
+
+  "admin-mission-rename-local": {
+    title: "Rename (Local Override)",
+    description:
+      "Allows you to set a custom title for this specific occurrence of the instruction within this mission. The original instruction title in the library remains unchanged.",
+  },
+
+  "admin-mission-fix-duplicates": {
+    title: "Fix Duplicate IDs",
+    description:
+      "Scans the current JSON representation of the mission and automatically assigns #2, #3 suffixes to any duplicate instruction IDs to ensure the sequence is valid.",
+  },
+  "admin-mission-apply-json": {
+    title: "Apply JSON Changes",
+    description:
+      "Parses the text in the JSON editor and updates the form fields above. This is a local update only — you must still click 'Save to Database' to persist these changes.",
+  },
+
+  "admin-mission-translate-switch": {
+    title: "Translate & Switch Language",
+    description:
+      "Uses AI to translate the mission title and description into the target language, then switches the editor view to that language. This allows you to quickly localise your mission content.",
+  },
 };

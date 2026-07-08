@@ -72,6 +72,7 @@ function AuthenticatedForm({
         className={styles.submitButton}
         disabled={disabled || !session}
         data-admin-primary-save="true"
+        data-explanation-id="admin-mission-save-db"
       >
         Save to Database ({language === "he" ? "Hebrew" : "English"})
       </button>
@@ -1226,6 +1227,7 @@ function EditMissionForm({
               onClick={handleDeleteMission}
               className={styles.removeButton}
               disabled={!selectedMissionId || deleteMissionFetcher.state !== "idle" || !session}
+              data-explanation-id="admin-mission-delete"
             >
               {deleteMissionFetcher.state !== "idle" ? "Deleting..." : "Delete"}
             </button>
@@ -1235,6 +1237,7 @@ function EditMissionForm({
               className={styles.addButton}
               disabled={!selectedMissionId || duplicateMissionFetcher.state !== "idle" || !session}
               title="Create a copy of the selected mission with a new ID"
+              data-explanation-id="admin-mission-duplicate"
             >
               {duplicateMissionFetcher.state !== "idle" ? "Duplicating..." : "Duplicate Mission"}
             </button>
@@ -1243,6 +1246,7 @@ function EditMissionForm({
               onClick={handleClearForNewMission}
               className={styles.addButton}
               disabled={missionFetcher.state !== "idle" || !session}
+              data-explanation-id="admin-mission-create-new"
             >
               {missionFetcher.state !== "idle" ? "Creating..." : "+ Create New Mission"}
             </button>
@@ -1253,6 +1257,7 @@ function EditMissionForm({
               disabled={drawioImportFetcher.state !== "idle" || !session}
               title="Import a draw.io flowchart and create a new mission from it"
               style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+              data-explanation-id="admin-mission-drawio"
             >
               {drawioImportFetcher.state !== "idle" ? "Creating..." : "📊 draw.io"}
             </button>
@@ -1263,6 +1268,7 @@ function EditMissionForm({
               disabled={!selectedMissionId}
               title="Export this mission and all its instructions to a JSON file"
               style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+              data-explanation-id="admin-mission-export"
             >
               ⬇ Export
             </button>
@@ -1273,6 +1279,7 @@ function EditMissionForm({
               disabled={importBundleFetcher.state !== "idle" || !session}
               title="Import a previously exported mission bundle JSON file — overwrites existing records by ID"
               style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+              data-explanation-id="admin-mission-import"
             >
               {importBundleFetcher.state !== "idle" ? "Importing..." : "⬆ Import"}
             </button>
@@ -1369,6 +1376,7 @@ function EditMissionForm({
                     }}
                     className={styles.addButton}
                     style={{ flexShrink: 0, marginRight: 0 }}
+                    data-explanation-id="admin-mission-filter-clear"
                   >
                     ✕ Clear
                   </button>
@@ -1383,6 +1391,7 @@ function EditMissionForm({
                   onClick={handleSelectLastMission}
                   className={styles.addButton}
                   disabled={!localStorage.getItem("lastSelectedMissionId")}
+                  data-explanation-id="admin-mission-select-last"
                 >
                   Select Last Mission
                 </button>
@@ -1514,6 +1523,7 @@ function EditMissionForm({
                     className={styles.addButton}
                     disabled={!instructionFilter}
                     style={{ minWidth: "80px" }}
+                    data-explanation-id="admin-mission-available-clear"
                   >
                     Clear
                   </button>
@@ -1534,6 +1544,7 @@ function EditMissionForm({
                           ? "Open selected instruction in the Instructions editor"
                           : `Select only 1 instruction (${selectedAvailableInstructions.length} selected)`
                     }
+                    data-explanation-id="admin-mission-available-edit"
                   >
                     {selectedAvailableInstructions.length === 0
                       ? "Edit"
@@ -1639,6 +1650,7 @@ function EditMissionForm({
                   className={styles.addButton}
                   style={{ width: "80px" }}
                   disabled={!selectedMissionInstruction}
+                  data-explanation-id="admin-mission-remove"
                 >
                   ← Del
                 </button>
@@ -1683,6 +1695,7 @@ function EditMissionForm({
                   className={styles.addButton}
                   style={{ width: "80px" }}
                   disabled={selectedAvailableInstructions.length === 0}
+                  data-explanation-id="admin-mission-add"
                 >
                   Add →
                 </button>
@@ -1725,6 +1738,7 @@ function EditMissionForm({
                   }
                   style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
                   title="Replace the selected temporary entry's ID with the selected available instruction's ID (keeps local title)"
+                  data-explanation-id="admin-mission-link"
                 >
                   Link →
                 </button>
@@ -1735,6 +1749,7 @@ function EditMissionForm({
                   disabled={!selectedMissionId || !session}
                   title="Insert an IF conditional block after the selected instruction"
                   style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)", marginTop: "var(--space-2)" }}
+                  data-explanation-id="admin-mission-add-if"
                 >
                   🔀 IF
                 </button>
@@ -1745,6 +1760,7 @@ function EditMissionForm({
                   disabled={!selectedMissionId || !session}
                   title="Insert an END-IF marker after the selected instruction"
                   style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                  data-explanation-id="admin-mission-add-endif"
                 >
                   🔁 END-IF
                 </button>
@@ -1755,6 +1771,7 @@ function EditMissionForm({
                   disabled={!selectedMissionId || !session}
                   title="Insert an ELSE branch into the selected IF…END-IF block (select the IF row, a row inside it, or the END-IF row)"
                   style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                  data-explanation-id="admin-mission-add-else"
                 >
                   ↔️ ELSE
                 </button>
@@ -1764,6 +1781,7 @@ function EditMissionForm({
                   className={styles.addButton}
                   disabled={!selectedMissionId || !session}
                   style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                  data-explanation-id="admin-mission-add-comment"
                 >
                   💬 Comment
                 </button>
@@ -1773,6 +1791,7 @@ function EditMissionForm({
                   className={styles.addButton}
                   disabled={!selectedMissionId || !session}
                   style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                  data-explanation-id="admin-mission-add-new-instruction"
                 >
                   + New
                 </button>
@@ -1799,6 +1818,7 @@ function EditMissionForm({
                     }
                     title="Move selected instruction down"
                     style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                    data-explanation-id="admin-mission-move-down"
                   >
                     ↓ Down
                   </button>
@@ -1812,6 +1832,7 @@ function EditMissionForm({
                     }
                     title="Move selected instruction up"
                     style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                    data-explanation-id="admin-mission-move-up"
                   >
                     ↑ Up
                   </button>
@@ -1830,6 +1851,7 @@ function EditMissionForm({
                     }
                     style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
                     title="View and edit the raw JSON for this instruction"
+                    data-explanation-id="admin-mission-view-json"
                   >
                     JSON
                   </button>
@@ -1864,6 +1886,7 @@ function EditMissionForm({
                             ? "Create a real instruction from this temporary entry and open it for editing"
                             : "Edit this instruction"
                         }
+                        data-explanation-id="admin-mission-edit-instruction"
                       >
                         {createAndEditFetcher.state !== "idle" && pendingTempEdit?.tempId === selectedMissionInstruction
                           ? "Creating..."
@@ -1919,6 +1942,7 @@ function EditMissionForm({
                       className={styles.addButton}
                       disabled={!selectedMissionInstruction}
                       style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
+                      data-explanation-id="admin-mission-rename-local"
                     >
                       Rename
                     </button>
@@ -2607,6 +2631,7 @@ function EditMissionForm({
                   className={styles.addButton}
                   style={{ fontSize: "0.8125rem", padding: "var(--space-1) var(--space-3)" }}
                   title="Scan the instructions array and assign #2, #3 … suffixes to any duplicate IDs. Does not save — click Apply JSON then Save to persist."
+                  data-explanation-id="admin-mission-fix-duplicates"
                 >
                   🔧 Fix Duplicate IDs
                 </button>
@@ -2615,6 +2640,7 @@ function EditMissionForm({
                   onClick={handleApplyCodeEditor}
                   className={styles.submitButton}
                   style={{ fontSize: "0.8125rem", padding: "var(--space-1) var(--space-3)" }}
+                  data-explanation-id="admin-mission-apply-json"
                 >
                   Apply JSON
                 </button>
@@ -2654,6 +2680,7 @@ function EditMissionForm({
                 className={styles.addButton}
                 disabled={isTranslating || !title || !description}
                 style={{ flex: 1 }}
+                data-explanation-id="admin-mission-translate-switch"
               >
                 {isTranslating ? "Translating..." : `Translate to ${language === "en" ? "Hebrew" : "English"} & Switch`}
               </button>
