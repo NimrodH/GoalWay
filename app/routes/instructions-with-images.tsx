@@ -644,6 +644,7 @@ function ImageLibraryDialog({
                     className={styles.submitButton}
                     disabled={selectedImages.size !== 1}
                     style={{ minWidth: "100px" }}
+                    data-explanation-id="iwi-library-select"
                   >
                     ✓ Select
                   </button>
@@ -653,6 +654,7 @@ function ImageLibraryDialog({
                     className={styles.deleteButton}
                     disabled={selectedImages.size === 0 || isDeleting}
                     style={{ minWidth: "100px" }}
+                    data-explanation-id="iwi-library-delete-selected"
                   >
                     {isDeleting ? "Deleting..." : "Delete Selected"}
                   </button>
@@ -1312,6 +1314,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                 }}
                 className={styles.selectImageButton}
                 title={hasReturnContext ? "Select this image and insert into instruction" : "Select this image"}
+                data-explanation-id="iwi-select-image"
               >
                 {hasReturnContext ? `Select & Return into ${returnInstructionId}` : "Select"}
               </button>
@@ -1329,6 +1332,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                 setShowImageLibrary(true);
               }}
               className={styles.actionBackButton}
+              data-explanation-id="iwi-open-library"
             >
               ← Library
             </button>
@@ -1340,6 +1344,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                 }}
                 className={styles.cancelReturnButton}
                 title="Return to instruction without selecting an image"
+                data-explanation-id="iwi-cancel-return"
               >
                 Cancel & Return
               </button>
@@ -1348,6 +1353,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               type="button"
               onClick={() => setIsRenaming((v) => !v)}
               className={`${styles.actionToggleButton} ${isRenaming ? styles.actionToggleActive : ""}`}
+              data-explanation-id="iwi-toggle-rename"
             >
               ✏️ Rename Image
             </button>
@@ -1355,6 +1361,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               type="button"
               onClick={() => setShowReplaceSection((v) => !v)}
               className={`${styles.actionToggleButton} ${showReplaceSection ? styles.actionToggleActive : ""}`}
+              data-explanation-id="iwi-toggle-replace"
             >
               🔄 Replace Image
             </button>
@@ -1362,6 +1369,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               type="button"
               onClick={() => setShowKeywordsSection((v) => !v)}
               className={`${styles.actionToggleButton} ${showKeywordsSection ? styles.actionToggleActive : ""}`}
+              data-explanation-id="iwi-toggle-keywords"
             >
               🏷️ Keywords
             </button>
@@ -1374,6 +1382,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                   disabled={libraryIndex === 0}
                   className={styles.toolbarNavButton}
                   title="Previous image"
+                  data-explanation-id="iwi-nav-prev"
                 >
                   ←
                 </button>
@@ -1386,6 +1395,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                   disabled={libraryIndex === libraryImages.length - 1}
                   className={styles.toolbarNavButton}
                   title="Next image"
+                  data-explanation-id="iwi-nav-next"
                 >
                   →
                 </button>
@@ -1415,6 +1425,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
               onClick={handleRenameImage}
               className={styles.renameConfirmButton}
               disabled={!renameValue.trim() || renameFetcher.state !== "idle"}
+              data-explanation-id="iwi-confirm-rename"
             >
               {renameFetcher.state !== "idle" ? "Renaming..." : "Confirm"}
             </button>
@@ -1441,6 +1452,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                   onClick={handleSaveKeywords}
                   className={styles.keywordSaveButton}
                   disabled={!session || keywordsFetcher.state !== "idle"}
+                  data-explanation-id="iwi-save-keywords"
                 >
                   {keywordsFetcher.state !== "idle" ? "Saving..." : "💾 Save"}
                 </button>
@@ -1622,10 +1634,16 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                       setShowImageLibrary(true);
                     }}
                     className={styles.libraryButton}
+                    data-explanation-id="iwi-open-library"
                   >
                     📚 Select from Library
                   </button>
-                  <button type="button" onClick={handlePasteFromClipboard} className={styles.pasteButton}>
+                  <button
+                    type="button"
+                    onClick={handlePasteFromClipboard}
+                    className={styles.pasteButton}
+                    data-explanation-id="iwi-paste-clipboard"
+                  >
                     📋 Paste from Clipboard
                   </button>
                 </div>
@@ -1658,6 +1676,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                 type="button"
                 onClick={handleReplaceImage}
                 className={styles.replaceButton}
+                data-explanation-id="iwi-execute-replace"
                 disabled={
                   loading ||
                   !session ||
@@ -1700,6 +1719,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                 onClick={handleDeleteCurrentImage}
                 className={styles.deleteButton}
                 disabled={isDeletingImage || !session}
+                data-explanation-id="iwi-delete-image"
               >
                 {isDeletingImage ? "Deleting..." : "🗑️ Delete Image"}
               </button>
