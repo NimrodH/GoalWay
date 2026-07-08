@@ -334,4 +334,90 @@ export const BUTTON_EXPLANATIONS: Record<string, ButtonExplanation> = {
     description:
       "Opens a dropdown to toggle access for specific organizations. 'None' means the mission is only visible to Admins; selecting multiple organizations allows for shared access across different teams.",
   },
+
+  // ── Admin › Instruction Editor ─────────────────────────────────────────────
+
+  "admin-instruction-save": {
+    title: "Save Instruction",
+    description:
+      "Persists all changes — title, description, and the full sequence of text/image steps — to the database. If you have pending image uploads, they will be processed before the final record is saved.",
+  },
+
+  "admin-instruction-add-text": {
+    title: "Add Text Block",
+    description:
+      "Inserts a new text area into the instruction. Use this for descriptive steps, warnings, or conceptual explanations that don't require a visual aid.",
+  },
+
+  "admin-instruction-add-image": {
+    title: "Add Image Block",
+    description:
+      "Inserts a new image placeholder. You can then upload a file, paste from your clipboard, or pick an existing screenshot from the system library.",
+  },
+
+  "admin-instruction-copy-json": {
+    title: "Copy Block (JSON)",
+    description:
+      "Serializes the currently selected content block (including its text, image URL, and annotations) into a JSON string and copies it to your clipboard. Useful for duplicating complex steps across different instructions.",
+  },
+
+  "admin-instruction-paste-json": {
+    title: "Paste Block (JSON)",
+    description:
+      "Reads a content block JSON from your clipboard and inserts it into the current instruction. This will perfectly replicate the text, image, and all annotations from the source block.",
+  },
+
+  "admin-instruction-move-up": {
+    title: "Move Block Up",
+    description:
+      "Shifts the selected text or image block one position higher in the instruction sequence.",
+  },
+
+  "admin-instruction-move-down": {
+    title: "Move Block Down",
+    description:
+      "Shifts the selected text or image block one position lower in the instruction sequence.",
+  },
+
+  "admin-instruction-remove-block": {
+    title: "Remove Block",
+    description:
+      "Permanently removes the selected content block from this instruction. If the block contains an image URL, the image remains in the library; only this reference is deleted.",
+  },
+
+  "admin-instruction-library": {
+    title: "Open Library",
+    description:
+      "Opens the global image library. You can search by software, module, or keyword to find and reuse an existing screenshot instead of uploading a duplicate.",
+  },
+
+  "admin-instruction-paste-clipboard": {
+    title: "Paste from Clipboard",
+    description:
+      "Directly uploads an image currently held in your system clipboard. This is the fastest way to move screenshots from your capture tool into the editor.",
+  },
+
+  "admin-instruction-annotate": {
+    title: "Annotate Image",
+    description:
+      "Opens the Annotation Editor for this image. You can draw numbered rectangles (hotspots) to highlight specific UI elements mentioned in your text description.",
+  },
+
+  "admin-instruction-view-usage": {
+    title: "View Image Usage",
+    description:
+      "Opens a list of all instructions that currently use this specific image URL. This helps you understand the impact of replacing or deleting an image.",
+  },
+
+  "admin-instruction-save-metadata": {
+    title: "Save Metadata",
+    description:
+      "Updates the categorization (Software, Module, Screen) and keywords for this image in the library. This doesn't affect the current instruction but makes the image easier for others to find later.",
+  },
+
+  "admin-instruction-translate": {
+    title: "Translate & Switch",
+    description:
+      "Uses AI to translate the title, description, and all text blocks into the target language, then switches the editor view. Always review AI translations for technical accuracy.",
+  },
 };

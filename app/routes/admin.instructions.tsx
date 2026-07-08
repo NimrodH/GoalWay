@@ -925,6 +925,7 @@ function ExplanationContentItem({
             disabled={!canMoveUp}
             title="Move block up"
             style={{ padding: "var(--space-1) var(--space-2)", fontSize: "0.875rem", lineHeight: 1 }}
+            data-explanation-id="admin-instruction-move-up"
           >
             ↑
           </button>
@@ -935,10 +936,15 @@ function ExplanationContentItem({
             disabled={!canMoveDown}
             title="Move block down"
             style={{ padding: "var(--space-1) var(--space-2)", fontSize: "0.875rem", lineHeight: 1 }}
+            data-explanation-id="admin-instruction-move-down"
           >
             ↓
           </button>
-          <button className={styles.removeButton} onClick={() => onRemove(index)}>
+          <button
+            className={styles.removeButton}
+            onClick={() => onRemove(index)}
+            data-explanation-id="admin-instruction-remove-block"
+          >
             Remove
           </button>
         </div>
@@ -1202,6 +1208,7 @@ function ExplanationContentItem({
                       className={styles.addButton}
                       disabled={isSavingKeywords || keywordsFetcher.state !== "idle"}
                       style={{ fontSize: "0.8125rem" }}
+                      data-explanation-id="admin-instruction-save-metadata"
                     >
                       {isSavingKeywords || keywordsFetcher.state !== "idle" ? "Saving..." : "💾 Save Keywords"}
                     </button>
@@ -1253,10 +1260,17 @@ function ExplanationContentItem({
                     setShowImageLibrary(true);
                   }}
                   className={styles.addButton}
+                  data-explanation-id="admin-instruction-library"
                 >
                   📚 Select from Library
                 </button>
-                <button type="button" onClick={handlePasteFromClipboard} className={styles.addButton} data-paste-button>
+                <button
+                  type="button"
+                  onClick={handlePasteFromClipboard}
+                  className={styles.addButton}
+                  data-paste-button
+                  data-explanation-id="admin-instruction-paste-clipboard"
+                >
                   📋 Paste from Clipboard
                 </button>
                 <input type="file" accept="image/*" onChange={handleImageChange} className={styles.input} />
@@ -1286,6 +1300,7 @@ function ExplanationContentItem({
                 className={styles.addButton}
                 style={{ fontWeight: 600 }}
                 title="Add numbered rectangles to this image"
+                data-explanation-id="admin-instruction-annotate"
               >
                 📐 Annotate ({item.annotations?.length ?? 0})
               </button>
@@ -1304,6 +1319,7 @@ function ExplanationContentItem({
                 }}
                 className={styles.addButton}
                 style={{ display: "inline-block" }}
+                data-explanation-id="admin-instruction-view-usage"
               >
                 🔍 View Instructions with This Image
               </button>
@@ -2249,6 +2265,7 @@ function EditInstructionForm({
                     disabled={selectedContentIndex === null}
                     title="Copy selected content item as JSON"
                     style={{ fontSize: "0.875rem" }}
+                    data-explanation-id="admin-instruction-copy-json"
                   >
                     {isCopied ? "✓ Copied!" : "📋 Copy Selected"}
                   </button>
@@ -2258,6 +2275,7 @@ function EditInstructionForm({
                     className={styles.addButton}
                     title="Paste content item from clipboard JSON — inserts after the selected item"
                     style={{ fontSize: "0.875rem" }}
+                    data-explanation-id="admin-instruction-paste-json"
                   >
                     📥 Paste After Selected
                   </button>
@@ -2291,10 +2309,18 @@ function EditInstructionForm({
                 />
               ))}
               <div className={styles.addContentButtons}>
-                <button className={styles.addButton} onClick={() => addContent("text")}>
+                <button
+                  className={styles.addButton}
+                  onClick={() => addContent("text")}
+                  data-explanation-id="admin-instruction-add-text"
+                >
                   + Add Text
                 </button>
-                <button className={styles.addButton} onClick={() => addContent("image")}>
+                <button
+                  className={styles.addButton}
+                  onClick={() => addContent("image")}
+                  data-explanation-id="admin-instruction-add-image"
+                >
                   + Add Image
                 </button>
                 <button className={styles.addButton} onClick={() => addContent("video")}>
@@ -2657,6 +2683,7 @@ function EditInstructionForm({
                 className={styles.addButton}
                 disabled={isTranslating || !title}
                 style={{ flex: 1 }}
+                data-explanation-id="admin-instruction-translate"
               >
                 {isTranslating ? "Translating..." : `Translate to ${language === "en" ? "Hebrew" : "English"} & Switch`}
               </button>
@@ -2669,6 +2696,7 @@ function EditInstructionForm({
                 disabled={!selectedInstructionId || !session || isSavingWithUploads || saveFetcher.state !== "idle"}
                 onClick={handleSaveWithUploads}
                 data-admin-primary-save="true"
+                data-explanation-id="admin-instruction-save"
               >
                 {isSavingWithUploads || saveFetcher.state !== "idle"
                   ? "Saving..."
