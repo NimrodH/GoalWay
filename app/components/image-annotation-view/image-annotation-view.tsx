@@ -195,9 +195,9 @@ export function ImageAnnotationView({
                       <clipPath id={`redact-clip-${ann.id}`}>
                         <rect
                           x={ax}
-                          y={ay + 0.05}
+                          y={ay}
                           width={aw}
-                          height={Math.max(0, ah - 0.1)}
+                          height={ah}
                         />
                       </clipPath>
                     )}
@@ -211,19 +211,19 @@ export function ImageAnnotationView({
                     />
                     {lines.map((line, i) => {
                       const lineY = textStartY + i * lineH;
+                      const cx = ax + aw / 2;
                       return (
                         <text
                           key={i}
-                          x={ax}
+                          x={cx}
                           y={lineY}
-                          textAnchor="start"
+                          textAnchor="middle"
                           dominantBaseline="central"
                           fill={textFill}
                           fontSize={redactFontSize}
                           fontWeight="600"
                           clipPath={`url(#redact-clip-${ann.id})`}
-                          textLength={aw}
-                          lengthAdjust="spacingAndGlyphs"
+                          transform={`translate(${cx},${lineY}) scale(${textScaleX},1) translate(${-cx},${-lineY})`}
                           style={{ fontFamily: "system-ui, sans-serif", userSelect: "none" }}
                         >
                           {line}
