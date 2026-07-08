@@ -181,12 +181,12 @@ export function ImageAnnotationView({
               if (ann.isRedaction) {
                 const rcx = ax + aw / 2;
                 const rcy = ay + ah / 2;
-                // Font size: use stored value or auto-compute (70% of rect height, capped at 10 SVG-y-units)
-                const redactFontSize = ann.fontSize ?? Math.min(ah * 0.7, 10);
+                // Font size: use stored value or auto-compute (85% of rect height, capped at 12 SVG-y-units)
+                const redactFontSize = ann.fontSize ?? Math.min(ah * 0.85, 12);
                 // Contrast text: dark text for light (#d4d4d4) redactions, white for everything else
                 const textFill = (ann.color === "#d4d4d4" || !ann.color) ? "#222" : "rgba(255,255,255,0.95)";
                 const lines = ann.text ? ann.text.split("\n").filter((l) => l.length > 0) : [];
-                const lineH = redactFontSize * 1.2;
+                const lineH = redactFontSize * 1.15;
                 const totalTextH = lines.length * lineH;
                 const textStartY = rcy - totalTextH / 2 + lineH * 0.5;
 
@@ -195,10 +195,10 @@ export function ImageAnnotationView({
                     {lines.length > 0 && (
                       <clipPath id={`redact-clip-${ann.id}`}>
                         <rect
-                          x={ax + 0.2}
-                          y={ay + 0.1}
-                          width={Math.max(0, aw - 0.4)}
-                          height={Math.max(0, ah - 0.2)}
+                          x={ax}
+                          y={ay + 0.05}
+                          width={aw}
+                          height={Math.max(0, ah - 0.1)}
                         />
                       </clipPath>
                     )}
