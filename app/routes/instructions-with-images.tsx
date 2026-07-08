@@ -1296,29 +1296,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
         <div className={styles.imageContainer}>
           <img src={displayImageUrl} alt="Instructions overview" className={styles.image} />
 
-          {/* Library inline navigation: prev / next */}
-          {libraryImagesLoaded && imageUrl && libraryIndex >= 0 && libraryImages.length > 1 && (
-            <>
-              <button
-                onClick={handlePrevLibraryImage}
-                disabled={libraryIndex === 0}
-                className={styles.imageNavButton}
-                style={{ position: "absolute", left: "var(--space-4)", top: "50%", transform: "translateY(-50%)" }}
-                title="Previous image"
-              >
-                ←
-              </button>
-              <button
-                onClick={handleNextLibraryImage}
-                disabled={libraryIndex === libraryImages.length - 1}
-                className={styles.imageNavButton}
-                style={{ position: "absolute", right: "var(--space-4)", top: "50%", transform: "translateY(-50%)" }}
-                title="Next image"
-              >
-                →
-              </button>
-            </>
-          )}
+
           {/* Counter + Select shown when library browsing OR when returning to admin */}
           {libraryImagesLoaded && imageUrl && ((libraryIndex >= 0 && libraryImages.length > 1) || hasReturnContext) && (
             <div
@@ -1332,21 +1310,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
                 alignItems: "center",
               }}
             >
-              {libraryIndex >= 0 && libraryImages.length > 1 && (
-                <div
-                  style={{
-                    background: "rgba(0, 0, 0, 0.7)",
-                    color: "white",
-                    padding: "var(--space-2) var(--space-3)",
-                    borderRadius: "var(--radius-2)",
-                    fontSize: "0.875rem",
-                    fontFamily: "var(--font-body)",
-                    fontWeight: 600,
-                  }}
-                >
-                  {libraryIndex + 1} / {libraryImages.length}
-                </div>
-              )}
+
               <button
                 onClick={() => {
                   const selectedUrl = libraryIndex >= 0 ? libraryImages[libraryIndex].url : (imageUrl ?? "");
@@ -1411,6 +1375,32 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
             >
               🏷️ Keywords
             </button>
+            {libraryImagesLoaded && libraryIndex >= 0 && libraryImages.length > 1 && (
+              <>
+                <div className={styles.toolbarNavSeparator} />
+                <button
+                  type="button"
+                  onClick={handlePrevLibraryImage}
+                  disabled={libraryIndex === 0}
+                  className={styles.toolbarNavButton}
+                  title="Previous image"
+                >
+                  ←
+                </button>
+                <span className={styles.toolbarNavCounter}>
+                  {libraryIndex + 1} / {libraryImages.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleNextLibraryImage}
+                  disabled={libraryIndex === libraryImages.length - 1}
+                  className={styles.toolbarNavButton}
+                  title="Next image"
+                >
+                  →
+                </button>
+              </>
+            )}
           </div>
         )}
 
