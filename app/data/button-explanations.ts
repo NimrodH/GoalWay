@@ -239,9 +239,9 @@ export const BUTTON_EXPLANATIONS: Record<string, ButtonExplanation> = {
   },
 
   "admin-mission-add-comment": {
-    title: "Add Admin Comment",
+    title: "Add Comment",
     description:
-      "Inserts a non-executable comment into the mission sequence. These comments are only visible to admins in this editor and help document the purpose of specific logic branches.",
+      "Inserts a non-executable comment into the mission sequence. These comments are visible to end-users in the mission view and help provide additional context or guidance between instruction steps.",
   },
 
   "admin-mission-add-new-instruction": {

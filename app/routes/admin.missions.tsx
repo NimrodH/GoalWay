@@ -2715,52 +2715,6 @@ function EditMissionForm({
         </>
       )}
 
-      {showCommentDialog && (
-        <div className={styles.dialogOverlay} onClick={() => setShowCommentDialog(false)}>
-          <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.dialogHeader}>
-              <h2 className={styles.dialogTitle}>Add Comment</h2>
-              <button className={styles.dialogClose} onClick={() => setShowCommentDialog(false)}>
-                ✕
-              </button>
-            </div>
-            <div style={{ padding: "var(--space-4)" }}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Comment Text</label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Enter comment text..."
-                  autoFocus
-                />
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  gap: "var(--space-2)",
-                  justifyContent: "flex-end",
-                  marginTop: "var(--space-4)",
-                }}
-              >
-                <button type="button" onClick={() => setShowCommentDialog(false)} className={styles.removeButton}>
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddComment}
-                  className={styles.submitButton}
-                  disabled={!commentText.trim()}
-                >
-                  Add Comment
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {showRenameDialog && (
         <div className={styles.dialogOverlay} onClick={() => setShowRenameDialog(false)}>
           <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
@@ -2822,15 +2776,15 @@ function EditMissionForm({
         <div className={styles.dialogOverlay} onClick={() => setShowCommentDialog(false)}>
           <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.dialogHeader}>
-              <h2 className={styles.dialogTitle}>Add Comment to Mission</h2>
+              <h2 className={styles.dialogTitle}>Add Comment</h2>
               <button className={styles.dialogClose} onClick={() => setShowCommentDialog(false)}>
                 ✕
               </button>
             </div>
             <div style={{ padding: "var(--space-4)" }}>
               <p style={{ marginBottom: "var(--space-3)", color: "var(--color-neutral-11)" }}>
-                Add a comment that will appear in the mission's instruction list. Comments are mission-specific and are
-                not saved to the instructions table.
+                Add a comment that will appear in the mission's instruction list. These comments are visible to end
+                users.
               </p>
               <div className={styles.formGroup}>
                 <label className={styles.label}>Comment Text</label>
