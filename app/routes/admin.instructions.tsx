@@ -2062,6 +2062,7 @@ function EditInstructionForm({
               onClick={handleDeleteInstruction}
               className={styles.removeButton}
               disabled={!selectedInstructionId || deleteInstructionFetcher.state !== "idle" || !session}
+              data-explanation-id="admin-delete-instruction"
             >
               {deleteInstructionFetcher.state !== "idle" ? "Deleting..." : "Delete"}
             </button>
@@ -2070,6 +2071,7 @@ function EditInstructionForm({
               onClick={() => setShowReplaceDialog(true)}
               className={styles.addButton}
               disabled={!selectedInstructionId || !session}
+              data-explanation-id="admin-replace-instruction-in-missions"
             >
               Replace In all missions
             </button>
@@ -2078,6 +2080,7 @@ function EditInstructionForm({
               onClick={handleDuplicateInstruction}
               className={styles.addButton}
               disabled={!selectedInstructionId || duplicateInstructionFetcher.state !== "idle" || !session}
+              data-explanation-id="admin-duplicate-instruction"
             >
               {duplicateInstructionFetcher.state !== "idle" ? "Duplicating..." : "⎘ Duplicate Instruction"}
             </button>
@@ -2086,6 +2089,7 @@ function EditInstructionForm({
               onClick={handleAddNewInstruction}
               className={styles.addButton}
               disabled={fetcher.state !== "idle" || !session}
+              data-explanation-id="admin-add-new-instruction"
             >
               {fetcher.state !== "idle" ? "Creating..." : "+ Add New Instruction"}
             </button>

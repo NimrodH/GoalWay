@@ -10,6 +10,7 @@ import {
 
 import type { Route } from "./+types/root";
 import { Toaster } from "./components/ui/toaster/toaster";
+import { ButtonExplanationProvider } from "./components/button-explanation-provider/button-explanation-provider";
 import colorSchemeApi from "@dazl/color-scheme/client?url";
 
 import "./styles/reset.css";
@@ -79,7 +80,11 @@ export default function App() {
   // useEffect fires.  The function is idempotent, so repeated calls are safe.
   initSupabase(supabaseUrl, supabaseKey);
 
-  return <Outlet />;
+  return (
+    <ButtonExplanationProvider>
+      <Outlet />
+    </ButtonExplanationProvider>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
