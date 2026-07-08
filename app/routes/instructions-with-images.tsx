@@ -1282,14 +1282,6 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
     <div className={styles.container}>
       <AppNavigation />
       <div className={styles.content}>
-        <header className={styles.header}>
-          <p className={styles.subtitle}>
-            {imageUrl
-              ? `Instructions using this image (${filteredInstructions.length} found)`
-              : "Follow these step-by-step instructions to complete your task"}
-          </p>
-        </header>
-
         {/* Single picture at the top */}
         <div className={styles.imageContainer}>
           <img src={displayImageUrl} alt="Instructions overview" className={styles.image} />
@@ -1707,7 +1699,9 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
         <div className={styles.instructionsList}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>
-              {imageUrl ? "Instructions Using This Image" : "Available Instructions"}
+              {imageUrl
+                ? `Instructions Using This Image (${filteredInstructions.length} found)`
+                : "Available Instructions"}
             </h2>
             {filteredInstructions.length > 0 && (
               <div className={styles.selectionInfo}>
