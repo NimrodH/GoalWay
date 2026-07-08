@@ -960,33 +960,31 @@ function ExplanationContentItem({
       ) : item.type === "image" ? (
         <div>
           {/* ── Advanced toggle ──────────────────────────────────────── */}
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-2)" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-2)", gap: "var(--space-2)" }}>
             <button
               type="button"
               onClick={() => setShowAdvanced((v) => !v)}
               className={styles.addButton}
               style={{ fontSize: "0.8125rem" }}
             >
-              {showAdvanced ? "▲ Hide Advanced" : "▼ Advanced"}
+              {showAdvanced ? "▲ Hide Image Details" : "▼ Image Details"}
             </button>
-            {!showUploadSource && !showAdvanced && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (hasUnsavedChanges) {
-                    const proceed = window.confirm(
-                      "You have unsaved changes to this instruction.\n\nChanging the image will reset the upload panel and your changes may be lost.\n\nDo you want to continue without saving?",
-                    );
-                    if (!proceed) return;
-                  }
-                  setShowUploadSource(true);
-                }}
-                className={styles.addButton}
-                style={{ fontSize: "0.8125rem" }}
-              >
-                🔄 Change Image
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (!showUploadSource && hasUnsavedChanges) {
+                  const proceed = window.confirm(
+                    "You have unsaved changes to this instruction.\n\nChanging the image will reset the upload panel and your changes may be lost.\n\nDo you want to continue without saving?",
+                  );
+                  if (!proceed) return;
+                }
+                setShowUploadSource((v) => !v);
+              }}
+              className={styles.addButton}
+              style={{ fontSize: "0.8125rem" }}
+            >
+              {showUploadSource ? "▲ Hide Change Image" : "🔄 Change Image"}
+            </button>
           </div>
 
           {showAdvanced && (
@@ -1246,8 +1244,8 @@ function ExplanationContentItem({
             </div>
           )}
 
-          {/* ── Upload source buttons — hidden after selection ──────── */}
-          {(showUploadSource || showAdvanced) && (
+          {/* ── Upload source buttons ─────────────────────────────────── */}
+          {showUploadSource && (
             <div className={styles.formGroup} style={{ marginTop: "var(--space-3)" }}>
               <label className={styles.label}>Upload New Image or Select from Library</label>
               <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
