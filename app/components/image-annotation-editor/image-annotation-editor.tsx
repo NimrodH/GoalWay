@@ -437,11 +437,11 @@ export function ImageAnnotationEditor({ src, annotations, onChange, onClose }: I
                             min={1}
                             max={10}
                             step={0.5}
-                            value={ann.fontSize ?? Math.min(ann.height * 0.3, 4.5)}
+                            value={ann.fontSize ?? Math.min(ann.height * 0.7, 10)}
                             onChange={(e) => updateAnnotationFontSize(ann.id, parseFloat(e.target.value))}
                           />
                           <span className={styles.fontSizeValue}>
-                            {(ann.fontSize ?? Math.min(ann.height * 0.3, 4.5)).toFixed(1)}
+                            {(ann.fontSize ?? Math.min(ann.height * 0.7, 10)).toFixed(1)}
                           </span>
                         </div>
                       </div>
