@@ -297,6 +297,36 @@ export const BUTTON_EXPLANATIONS: Record<string, ButtonExplanation> = {
       "Uses AI to translate the mission title and description into the target language, then switches the editor view to that language. This allows you to quickly localise your mission content.",
   },
 
+  "admin-mission-status": {
+    title: "Mission Status / Visibility",
+    description:
+      "Controls the visibility of this mission. 'Hide' effectively archives the mission, removing it from all user lists but preserving its data. 'For all' publishes it to all active organizations. Specific organization options allow for targeted deployment to subset of users.",
+  },
+
+  "admin-mission-is-example": {
+    title: "Example Flag",
+    description:
+      "Toggles the 'Example' status. Example missions are often highlighted or separated in the user interface to distinguish between real operational tasks and training/reference material.",
+  },
+
+  "admin-mission-add-note": {
+    title: "Add Admin Note",
+    description:
+      "Opens a text area to add a persistent administrative note to this mission. These notes are only visible to other admins in this editor and are useful for tracking mission changes, pending tasks, or technical quirks.",
+  },
+
+  "admin-mission-edit-note": {
+    title: "Edit Admin Note",
+    description:
+      "Allows you to modify an existing admin note. Use this to update progress or clarify earlier comments.",
+  },
+
+  "admin-mission-delete-note": {
+    title: "Delete Admin Note",
+    description:
+      "Permanently removes the admin note from this mission record.",
+  },
+
   // ── Admin › User Management page ───────────────────────────────────────────
 
   "user-mgmt-delete-org": {

@@ -2361,6 +2361,7 @@ function EditMissionForm({
                         className={styles.input}
                         value={status}
                         onChange={(e) => setStatus(e.target.value as "Hide" | "For all" | "Only Adama" | "Only Bazn")}
+                        data-explanation-id="admin-mission-status"
                       >
                         <option value="Hide">Hide</option>
                         <option value="For all">For all</option>
@@ -2384,6 +2385,7 @@ function EditMissionForm({
                           checked={isExample}
                           onChange={(e) => setIsExample(e.target.checked)}
                           style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                          data-explanation-id="admin-mission-is-example"
                         />
                         Example
                       </label>
@@ -2434,6 +2436,7 @@ function EditMissionForm({
                   className={styles.addButton}
                   disabled={!session}
                   style={{ fontSize: "0.8125rem" }}
+                  data-explanation-id="admin-mission-add-note"
                 >
                   {showNoteInput ? "Cancel" : "+ Admin Note"}
                 </button>
@@ -2473,6 +2476,7 @@ function EditMissionForm({
                       className={styles.submitButton}
                       disabled={!newNoteText.trim() || adminNotesFetcher.state !== "idle"}
                       style={{ fontSize: "0.8125rem", padding: "var(--space-2) var(--space-4)" }}
+                      data-explanation-id="admin-mission-add-note"
                     >
                       {adminNotesFetcher.state !== "idle" ? "Saving..." : "Add Note"}
                     </button>
@@ -2579,6 +2583,7 @@ function EditMissionForm({
                               padding: "var(--space-1) var(--space-2)",
                             }}
                             title="Edit note"
+                            data-explanation-id="admin-mission-edit-note"
                           >
                             Edit
                           </button>
@@ -2593,6 +2598,7 @@ function EditMissionForm({
                               padding: "var(--space-1) var(--space-2)",
                             }}
                             title="Remove note"
+                            data-explanation-id="admin-mission-delete-note"
                           >
                             ✕
                           </button>
