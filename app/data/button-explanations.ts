@@ -450,4 +450,10 @@ export const BUTTON_EXPLANATIONS: Record<string, ButtonExplanation> = {
     description:
       "Uses AI to translate the title, description, and all text blocks into the target language, then switches the editor view. Always review AI translations for technical accuracy.",
   },
+
+  "admin-instruction-change-image": {
+    title: "Change Image",
+    description:
+      "Toggles the image replacement panel. From here you can upload a new file from your device, paste an image directly from your clipboard, or pick an alternative screenshot from the global image library. The current image URL will be overwritten once you confirm the new source.",
+  },
 };

@@ -982,6 +982,7 @@ function ExplanationContentItem({
               }}
               className={styles.addButton}
               style={{ fontSize: "0.8125rem" }}
+              data-explanation-id="admin-instruction-change-image"
             >
               {showUploadSource ? "▲ Hide Change Image" : "🔄 Change Image"}
             </button>
