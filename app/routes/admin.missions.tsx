@@ -816,6 +816,18 @@ function EditMissionForm({
   const isSelectedLinkType = selectedInstructionObj?.type === "link" && !!selectedInstructionObj?.missionId;
   const selectedLinkMissionId = isSelectedLinkType ? selectedInstructionObj?.missionId : undefined;
 
+  // Derived: missions that the currently selected mission links TO (via link-type instructions)
+  const linkedOutMissionIds = Array.from(
+    new Set(
+      selectedInstructions.flatMap(([instrId]) => {
+        const baseId = instrId.includes("#") ? instrId.split("#")[0] : instrId;
+        const instr = instructionsEn.find((i) => i.id === baseId);
+        if (instr?.type === "link" && instr.missionId) return [instr.missionId];
+        return [];
+      }),
+    ),
+  );
+
   const handleEditInstruction = (instructionId: string) => {
     const isTemp = /^T\d+$/.test(instructionId);
     // Strip the duplicate suffix (#2, #3, …) to get the real instruction ID
@@ -2403,6 +2415,41 @@ function EditMissionForm({
                   placeholder="Enter mission description..."
                 />
               </div>
+
+              {linkedOutMissionIds.length > 0 && (
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Links to Missions</label>
+                  <div
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--color-neutral-11)",
+                      padding: "var(--space-2) 0",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {linkedOutMissionIds.map((missionId, idx) => {
+                      const m = missions.find((mm) => mm.id === missionId);
+                      return (
+                        <span key={missionId}>
+                          {idx > 0 && ", "}
+                          <strong
+                            style={{
+                              cursor: "pointer",
+                              textDecoration: "underline",
+                              color: "var(--color-accent-11)",
+                            }}
+                            onClick={() => handleSelectMission(missionId)}
+                            title={`Go to mission ${missionId}`}
+                          >
+                            {missionId}
+                          </strong>
+                          {m ? ` (${m.title})` : ""}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
