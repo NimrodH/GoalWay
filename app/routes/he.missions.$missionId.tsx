@@ -286,8 +286,21 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
           childrenOf.set(ifId, siblings);
         }
       } else if (id.startsWith("end-if-")) {
-        const closed = stack.pop();
-        if (closed) inElseBranch.delete(closed);
+        // Validate the end-if ID against the stack top before popping.
+        const expectedIfId = "if-" + id.slice("end-if-".length);
+        if (stack.length > 0) {
+          if (stack[stack.length - 1] === expectedIfId) {
+            const closed = stack.pop()!;
+            inElseBranch.delete(closed);
+          } else {
+            const matchIdx = stack.lastIndexOf(expectedIfId);
+            if (matchIdx !== -1) {
+              const removed = stack.splice(matchIdx);
+              for (const r of removed) inElseBranch.delete(r);
+            }
+            // If not found at all, this end-if is orphaned — skip it
+          }
+        }
       } else if (stack.length > 0) {
         const parentId = stack[stack.length - 1];
         parentOf.set(id, parentId);
