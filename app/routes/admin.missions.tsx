@@ -292,8 +292,9 @@ function EditMissionForm({
   };
 
   const handleAddIf = () => {
-    const ifId = `if-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const defaultText = "IF";
+    const suffix = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const ifId = `if-${suffix}`;
+    const endIfId = `end-if-${suffix}`;
 
     let updatedInstructions: Array<[string, string?]>;
     if (selectedMissionInstruction) {
@@ -301,39 +302,18 @@ function EditMissionForm({
       if (selectedIndex !== -1) {
         updatedInstructions = [
           ...selectedInstructions.slice(0, selectedIndex + 1),
-          [ifId, defaultText],
-          ...selectedInstructions.slice(selectedIndex + 1),
-        ];
-      } else {
-        updatedInstructions = [...selectedInstructions, [ifId, defaultText]];
-      }
-    } else {
-      updatedInstructions = [...selectedInstructions, [ifId, defaultText]];
-    }
-    setSelectedInstructions(updatedInstructions);
-    setSelectedMissionInstruction(ifId);
-  };
-
-  const handleAddEndIf = () => {
-    const endIfId = `end-if-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-    let updatedInstructions: Array<[string, string?]>;
-    if (selectedMissionInstruction) {
-      const selectedIndex = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
-      if (selectedIndex !== -1) {
-        updatedInstructions = [
-          ...selectedInstructions.slice(0, selectedIndex + 1),
+          [ifId, "IF"],
           [endIfId],
           ...selectedInstructions.slice(selectedIndex + 1),
         ];
       } else {
-        updatedInstructions = [...selectedInstructions, [endIfId]];
+        updatedInstructions = [...selectedInstructions, [ifId, "IF"], [endIfId]];
       }
     } else {
-      updatedInstructions = [...selectedInstructions, [endIfId]];
+      updatedInstructions = [...selectedInstructions, [ifId, "IF"], [endIfId]];
     }
     setSelectedInstructions(updatedInstructions);
-    setSelectedMissionInstruction(endIfId);
+    setSelectedMissionInstruction(ifId);
   };
 
   const handleAddElse = () => {
@@ -1649,12 +1629,21 @@ function EditMissionForm({
                   type="button"
                   onClick={() => {
                     if (selectedMissionInstruction) {
-                      const idx = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
-                      if (idx !== -1) {
-                        setSelectedInstructions([
-                          ...selectedInstructions.slice(0, idx),
-                          ...selectedInstructions.slice(idx + 1),
-                        ]);
+                      if (selectedMissionInstruction.startsWith("if-")) {
+                        // Remove IF and its matching END-IF together
+                        const suffix = selectedMissionInstruction.replace(/^if-/, "");
+                        const endIfId = `end-if-${suffix}`;
+                        setSelectedInstructions(
+                          selectedInstructions.filter(([id]) => id !== selectedMissionInstruction && id !== endIfId),
+                        );
+                      } else {
+                        const idx = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
+                        if (idx !== -1) {
+                          setSelectedInstructions([
+                            ...selectedInstructions.slice(0, idx),
+                            ...selectedInstructions.slice(idx + 1),
+                          ]);
+                        }
                       }
                       setSelectedMissionInstruction(null);
                     }
@@ -1764,17 +1753,6 @@ function EditMissionForm({
                   data-explanation-id="admin-mission-add-if"
                 >
                   🔀 IF
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddEndIf}
-                  className={styles.addButton}
-                  disabled={!selectedMissionId || !session}
-                  title="Insert an END-IF marker after the selected instruction"
-                  style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
-                  data-explanation-id="admin-mission-add-endif"
-                >
-                  🔁 END-IF
                 </button>
                 <button
                   type="button"
@@ -1987,6 +1965,31 @@ function EditMissionForm({
                       }
                     }
 
+                    // Build a pair-index map so each IF and its matching END-IF share the same visual badge
+                    const ifPairMap = new Map<string, number>(); // id → 1-based pair number
+                    let pairCounter = 0;
+                    const pairStack: Array<{ ifId: string; pairIdx: number }> = [];
+                    for (const [id] of selectedInstructions) {
+                      if (id.startsWith("if-")) {
+                        pairCounter++;
+                        pairStack.push({ ifId: id, pairIdx: pairCounter });
+                        ifPairMap.set(id, pairCounter);
+                      } else if (id.startsWith("end-if-")) {
+                        const top = pairStack[pairStack.length - 1];
+                        if (top) {
+                          ifPairMap.set(id, top.pairIdx);
+                          pairStack.pop();
+                        }
+                      }
+                    }
+                    const PAIR_COLORS = [
+                      { bg: "var(--indigo-4)", color: "var(--indigo-11)" },
+                      { bg: "var(--teal-4)", color: "var(--teal-11)" },
+                      { bg: "var(--crimson-4)", color: "var(--crimson-11)" },
+                      { bg: "var(--amber-4)", color: "var(--amber-11)" },
+                      { bg: "var(--violet-4)", color: "var(--violet-11)" },
+                    ];
+
                     // Build a map: instructionId → owning if- id (for collapse logic)
                     // Also track which else- belongs to which if-
                     const ownerIfMap = new Map<string, string>(); // rowId → ifId that owns/hides it
@@ -2112,6 +2115,9 @@ function EditMissionForm({
                       const indentLevel = depthMap.get(instructionId) ?? 0;
                       const isCollapsed = isIf && collapsedIfIds.has(instructionId);
                       const isElseCollapsed = isElse && collapsedElseIds.has(instructionId);
+                      const pairIdx = isIf || isEndIf ? ifPairMap.get(instructionId) : undefined;
+                      const pairColor =
+                        pairIdx !== undefined ? PAIR_COLORS[(pairIdx - 1) % PAIR_COLORS.length] : null;
                       // Count hidden IF-branch children (up to ELSE if present, else up to END-IF)
                       let hiddenCount = 0;
                       if (isCollapsed) {
@@ -2199,9 +2205,53 @@ function EditMissionForm({
                                   {isCollapsed ? "▶" : "▼"}
                                 </button>
                                 <span style={{ color: "var(--color-success-11)", fontWeight: 700 }}>🔀 IF:</span>
+                                {pairColor && (
+                                  <span
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      minWidth: "16px",
+                                      height: "16px",
+                                      borderRadius: "50%",
+                                      fontSize: "0.65rem",
+                                      fontWeight: 700,
+                                      lineHeight: 1,
+                                      flexShrink: 0,
+                                      padding: "0 3px",
+                                      background: pairColor.bg,
+                                      color: pairColor.color,
+                                    }}
+                                    title={`IF block #${pairIdx}`}
+                                  >
+                                    {pairIdx}
+                                  </span>
+                                )}
                               </>
                             ) : isEndIf ? (
-                              <span style={{ color: "var(--color-neutral-10)", fontWeight: 600, opacity: 0.7 }}>
+                              <span style={{ display: "flex", alignItems: "center", gap: "4px", color: "var(--color-neutral-10)", fontWeight: 600, opacity: 0.7 }}>
+                                {pairColor && (
+                                  <span
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      minWidth: "16px",
+                                      height: "16px",
+                                      borderRadius: "50%",
+                                      fontSize: "0.65rem",
+                                      fontWeight: 700,
+                                      lineHeight: 1,
+                                      flexShrink: 0,
+                                      padding: "0 3px",
+                                      background: pairColor.bg,
+                                      color: pairColor.color,
+                                    }}
+                                    title={`END-IF for block #${pairIdx}`}
+                                  >
+                                    {pairIdx}
+                                  </span>
+                                )}
                                 🔁 END-IF{customTitle && customTitle !== "END-IF" ? `: ${customTitle}` : ""}
                               </span>
                             ) : isElse ? (
