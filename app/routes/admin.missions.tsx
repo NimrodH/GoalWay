@@ -60,7 +60,7 @@ function AuthenticatedForm({
   const { session } = useAuth();
 
   return (
-    <Form method="post" style={{ marginTop: "var(--space-4)" }}>
+    <Form method="post" preventScrollReset style={{ marginTop: "var(--space-4)" }}>
       <input type="hidden" name="actionType" value={actionType} />
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="dataEn" value={data} />
