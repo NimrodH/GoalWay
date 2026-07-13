@@ -51,21 +51,27 @@ export function AdminLayout<TLoaderData extends AdminLayoutLoaderData>({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        // Prevent the browser "Save Page As" dialog in all focus states,
+        // including contentEditable elements. We register in the capture phase
+        // so this fires before any child handler (even one that calls stopPropagation).
         e.preventDefault();
+        e.stopPropagation();
 
-        const primarySaveButton = document.querySelector('[data-admin-primary-save="true"]') as HTMLButtonElement | null;
-        const fallbackSubmitButton = document.querySelector('button[type="submit"]') as HTMLButtonElement | null;
-        const saveButton = primarySaveButton ?? fallbackSubmitButton;
+        const primarySaveButton = document.querySelector(
+          '[data-admin-primary-save="true"]'
+        ) as HTMLButtonElement | null;
 
-        if (saveButton && !saveButton.disabled) {
-          saveButton.click();
+        if (primarySaveButton && !primarySaveButton.disabled) {
+          primarySaveButton.click();
         }
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
+    // { capture: true } — fires during the capture (top-down) phase, before any
+    // element-level listener runs, guaranteeing preventDefault() always executes.
+    document.addEventListener("keydown", handleKeyDown, { capture: true });
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown, { capture: true });
     };
   }, []);
 
@@ -92,12 +98,12 @@ export function AdminLayout<TLoaderData extends AdminLayoutLoaderData>({
   };
 
   const saveAndNavigate = () => {
-    const primarySaveButton = document.querySelector('[data-admin-primary-save="true"]') as HTMLButtonElement | null;
-    const fallbackSubmitButton = document.querySelector('button[type="submit"]') as HTMLButtonElement | null;
-    const saveButton = primarySaveButton ?? fallbackSubmitButton;
+    const primarySaveButton = document.querySelector(
+      '[data-admin-primary-save="true"]'
+    ) as HTMLButtonElement | null;
 
-    if (saveButton && !saveButton.disabled) {
-      saveButton.click();
+    if (primarySaveButton && !primarySaveButton.disabled) {
+      primarySaveButton.click();
     }
 
     setTimeout(() => {
