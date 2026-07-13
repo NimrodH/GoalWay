@@ -322,100 +322,68 @@ function EditMissionForm({
       return;
     }
 
-    // Find the IF block that the currently selected item belongs to.
-    // Accepted selections: the if- row itself, any instruction inside it, or the matching end-if- row.
     const selId = selectedMissionInstruction;
-    let matchingIfIndex = -1;
-    let matchingEndIfIndex = -1;
+    let targetIfIndex = -1;
+    let targetEndIfIndex = -1;
 
-    // Walk through the list to find a matching IF → END-IF pair that contains the selection
-    const stack: Array<{ ifId: string; ifIndex: number }> = [];
-    for (let i = 0; i < selectedInstructions.length; i++) {
-      const [id] = selectedInstructions[i];
-      if (id.startsWith("if-")) {
-        stack.push({ ifId: id, ifIndex: i });
-      } else if (id.startsWith("end-if-")) {
-        const top = stack.pop();
-        if (top) {
-          // The end-if suffix should match the if suffix
-          const matchingEndIf = id.replace(/^end-if-/, "") === top.ifId.replace(/^if-/, "");
-          const sameTimestamp = id.split("-").slice(2).join("-") === top.ifId.split("-").slice(1).join("-");
-          // Check if selection is this IF, this END-IF, or anything between
-          const isInRange =
-            i >= top.ifIndex &&
-            (selId === top.ifId ||
-              selId === id ||
-              selectedInstructions.slice(top.ifIndex + 1, i).some(([sid]) => sid === selId));
-          if (isInRange && (matchingEndIf || sameTimestamp || selId === top.ifId || selId === id)) {
-            matchingIfIndex = top.ifIndex;
-            matchingEndIfIndex = i;
-          }
-        }
-      }
-    }
-
-    // Simpler fallback: if selected is an if- itself, find its end-if
-    if (matchingIfIndex === -1 && selId.startsWith("if-")) {
-      matchingIfIndex = selectedInstructions.findIndex(([id]) => id === selId);
+    if (selId.startsWith("if-")) {
+      // Selected is an IF row — that's the target
       const suffix = selId.replace(/^if-/, "");
-      matchingEndIfIndex = selectedInstructions.findIndex(([id]) => id === `end-if-${suffix}`);
-    }
-
-    // Simpler fallback: if selected is an end-if- itself, find its if
-    if (matchingIfIndex === -1 && selId.startsWith("end-if-")) {
-      matchingEndIfIndex = selectedInstructions.findIndex(([id]) => id === selId);
+      targetIfIndex = selectedInstructions.findIndex(([id]) => id === selId);
+      targetEndIfIndex = selectedInstructions.findIndex(([id]) => id === `end-if-${suffix}`);
+    } else if (selId.startsWith("end-if-")) {
+      // Selected is an END-IF row — find its matching IF by suffix
       const suffix = selId.replace(/^end-if-/, "");
-      matchingIfIndex = selectedInstructions.findIndex(([id]) => id === `if-${suffix}`);
-    }
-
-    if (matchingIfIndex === -1 || matchingEndIfIndex === -1) {
-      // Try: selected is inside an IF block — find the enclosing if-/end-if- pair
-      const stack2: Array<{ ifId: string; ifIndex: number }> = [];
-      let found = false;
+      targetEndIfIndex = selectedInstructions.findIndex(([id]) => id === selId);
+      targetIfIndex = selectedInstructions.findIndex(([id]) => id === `if-${suffix}`);
+    } else {
+      // Selected is a regular instruction, ELSE row, or comment —
+      // find the INNERMOST enclosing IF by walking the list and tracking a stack.
+      // When the selection is encountered, the top of the stack is the innermost IF.
+      const stack: Array<{ ifId: string; ifIndex: number }> = [];
       for (let i = 0; i < selectedInstructions.length; i++) {
         const [id] = selectedInstructions[i];
         if (id.startsWith("if-")) {
-          stack2.push({ ifId: id, ifIndex: i });
+          stack.push({ ifId: id, ifIndex: i });
         } else if (id.startsWith("end-if-")) {
-          const top = stack2[stack2.length - 1];
-          if (top) {
-            // Check if our selection was inside this block
-            if (selectedInstructions.slice(top.ifIndex + 1, i).some(([sid]) => sid === selId)) {
-              matchingIfIndex = top.ifIndex;
-              matchingEndIfIndex = i;
-              found = true;
-            }
+          const suffix = id.replace(/^end-if-/, "");
+          const top = stack[stack.length - 1];
+          if (top && top.ifId === `if-${suffix}`) stack.pop();
+        } else if (id === selId) {
+          if (stack.length > 0) {
+            const innermost = stack[stack.length - 1];
+            targetIfIndex = innermost.ifIndex;
+            const suffix = innermost.ifId.replace(/^if-/, "");
+            targetEndIfIndex = selectedInstructions.findIndex(([eid]) => eid === `end-if-${suffix}`);
           }
-          stack2.pop();
+          break;
         }
-        if (found) break;
       }
     }
 
-    if (matchingIfIndex === -1 || matchingEndIfIndex === -1) {
-      alert(
-        "Could not find a matching IF…END-IF pair. Select the IF row, a row inside the IF block, or the END-IF row.",
-      );
+    if (targetIfIndex === -1 || targetEndIfIndex === -1) {
+      alert("Could not find a matching IF…END-IF pair. Select the IF row, a row inside the IF block, or the END-IF row.");
       return;
     }
 
-    // Check if there's already an else- between this if and end-if
-    const ifId = selectedInstructions[matchingIfIndex][0];
+    const ifId = selectedInstructions[targetIfIndex][0];
     const suffix = ifId.replace(/^if-/, "");
+
+    // Check if there's already an ELSE for this specific IF
     const existingElse = selectedInstructions
-      .slice(matchingIfIndex + 1, matchingEndIfIndex)
+      .slice(targetIfIndex + 1, targetEndIfIndex)
       .find(([id]) => id === `else-${suffix}`);
     if (existingElse) {
       alert("This IF block already has an ELSE branch.");
       return;
     }
 
-    // Insert ELSE just before END-IF
+    // Insert ELSE just before the matching END-IF
     const elseId = `else-${suffix}`;
     const updatedInstructions = [
-      ...selectedInstructions.slice(0, matchingEndIfIndex),
+      ...selectedInstructions.slice(0, targetEndIfIndex),
       [elseId] as [string, string?],
-      ...selectedInstructions.slice(matchingEndIfIndex),
+      ...selectedInstructions.slice(targetEndIfIndex),
     ];
     setSelectedInstructions(updatedInstructions);
     setSelectedMissionInstruction(elseId);
