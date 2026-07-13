@@ -1630,11 +1630,30 @@ function EditMissionForm({
                   onClick={() => {
                     if (selectedMissionInstruction) {
                       if (selectedMissionInstruction.startsWith("if-")) {
-                        // Remove IF and its matching END-IF together
+                        // Remove IF, its matching ELSE, and its matching END-IF together.
+                        // ELSE always shares the same suffix as the IF (assigned at creation).
+                        // END-IF may differ on old missions, so use a structural stack-walk.
                         const suffix = selectedMissionInstruction.replace(/^if-/, "");
-                        const endIfId = `end-if-${suffix}`;
+                        const elseId = `else-${suffix}`;
+                        const endIfIdBySuffix = `end-if-${suffix}`;
+
+                        // Stack-walk to find the structurally matched END-IF
+                        const ifIndex = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
+                        let matchedEndIfId = endIfIdBySuffix;
+                        let depth = 0;
+                        for (let i = ifIndex; i < selectedInstructions.length; i++) {
+                          const [id] = selectedInstructions[i];
+                          if (id.startsWith("if-")) depth++;
+                          else if (id.startsWith("end-if-")) {
+                            depth--;
+                            if (depth === 0) { matchedEndIfId = id; break; }
+                          }
+                        }
+
                         setSelectedInstructions(
-                          selectedInstructions.filter(([id]) => id !== selectedMissionInstruction && id !== endIfId),
+                          selectedInstructions.filter(
+                            ([id]) => id !== selectedMissionInstruction && id !== matchedEndIfId && id !== elseId,
+                          ),
                         );
                       } else {
                         const idx = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
