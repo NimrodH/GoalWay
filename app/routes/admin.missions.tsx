@@ -574,6 +574,103 @@ function EditMissionForm({
     }
   };
 
+  /**
+   * Walk selectedInstructions using a positional stack to match IF↔END-IF pairs,
+   * then find each pair's direct ELSE (at depth+1, not inside a nested IF).
+   * Any trio where the three suffixes disagree gets a fresh consistent suffix.
+   * Operates on form state directly — the code editor syncs automatically.
+   * Purely local; user must click "Save to Database" to persist.
+   */
+  const handleMigrateIfSuffixes = () => {
+    const result: Array<[string, string?]> = selectedInstructions.map(([id, title]) =>
+      title !== undefined ? [id, title] : [id],
+    );
+
+    // Step 1: compute depth at each index so we can find DIRECT else entries
+    // (at depth = ifDepth+1, not inside any nested if block inside the pair).
+    const depthAtIndex: number[] = new Array(result.length).fill(0);
+    let depth = 0;
+    for (let i = 0; i < result.length; i++) {
+      const [id] = result[i];
+      if (id.startsWith("if-")) {
+        depthAtIndex[i] = depth;
+        depth++;
+      } else if (id.startsWith("end-if-")) {
+        depth--;
+        depthAtIndex[i] = depth;
+      } else {
+        depthAtIndex[i] = depth;
+      }
+    }
+
+    // Step 2: build IF↔END-IF pairs positionally (stack, not suffix)
+    const stack: Array<{ ifIndex: number }> = [];
+    const pairs: Array<{ ifIndex: number; endIfIndex: number; elseIndex: number | null }> = [];
+    for (let i = 0; i < result.length; i++) {
+      const [id] = result[i];
+      if (id.startsWith("if-")) {
+        stack.push({ ifIndex: i });
+      } else if (id.startsWith("end-if-")) {
+        const top = stack.pop();
+        if (top) {
+          // Find the direct ELSE: an else- row at exactly (ifDepth+1) that sits
+          // between this IF and END-IF and is not inside a nested block.
+          const ifDepth = depthAtIndex[top.ifIndex];
+          let elseIndex: number | null = null;
+          for (let j = top.ifIndex + 1; j < i; j++) {
+            const [eid] = result[j];
+            if (eid.startsWith("else-") && depthAtIndex[j] === ifDepth + 1) {
+              elseIndex = j;
+              break;
+            }
+          }
+          pairs.push({ ifIndex: top.ifIndex, endIfIndex: i, elseIndex });
+        }
+      }
+    }
+
+    // Step 3: fix any pair whose IF / ELSE / END-IF suffixes don't all agree
+    let changed = 0;
+    for (const pair of pairs) {
+      const ifId = result[pair.ifIndex][0];
+      const endIfId = result[pair.endIfIndex][0];
+      const ifSuffix = ifId.slice("if-".length);
+      const endIfSuffix = endIfId.slice("end-if-".length);
+      const elseId = pair.elseIndex !== null ? result[pair.elseIndex][0] : null;
+      const elseSuffix = elseId ? elseId.slice("else-".length) : null;
+
+      const isConsistent =
+        ifSuffix === endIfSuffix && (elseSuffix === null || elseSuffix === ifSuffix);
+
+      if (!isConsistent) {
+        changed++;
+        // Use a unique suffix; append the counter so rapid calls don't collide
+        const newSuffix = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-m${changed}`;
+        const [, ifTitle] = result[pair.ifIndex];
+        const [, endIfTitle] = result[pair.endIfIndex];
+        result[pair.ifIndex] = ifTitle !== undefined ? [`if-${newSuffix}`, ifTitle] : [`if-${newSuffix}`];
+        result[pair.endIfIndex] =
+          endIfTitle !== undefined ? [`end-if-${newSuffix}`, endIfTitle] : [`end-if-${newSuffix}`];
+        if (pair.elseIndex !== null) {
+          const [, elseTitle] = result[pair.elseIndex];
+          result[pair.elseIndex] =
+            elseTitle !== undefined ? [`else-${newSuffix}`, elseTitle] : [`else-${newSuffix}`];
+        }
+      }
+    }
+
+    if (changed === 0) {
+      alert("All IF/ELSE/END-IF blocks already have consistent suffixes. No migration needed.");
+      return;
+    }
+
+    setSelectedInstructions(result);
+    alert(
+      `Migrated ${changed} IF block${changed === 1 ? "" : "s"} to consistent suffixes. ` +
+        `Click "Save to Database" to persist the changes.`,
+    );
+  };
+
   useEffect(() => {
     if (missionFetcher.data && missionFetcher.state === "idle") {
       if (missionFetcher.data.success && missionFetcher.data.newMissionId) {
@@ -2696,6 +2793,16 @@ function EditMissionForm({
                   data-explanation-id="admin-mission-fix-duplicates"
                 >
                   🔧 Fix Duplicate IDs
+                </button>
+                <button
+                  type="button"
+                  onClick={handleMigrateIfSuffixes}
+                  className={styles.addButton}
+                  style={{ fontSize: "0.8125rem", padding: "var(--space-1) var(--space-3)" }}
+                  title="Scan IF/ELSE/END-IF blocks and assign consistent suffixes to any mismatched pairs (old-format missions). Does not save — click Save to Database to persist."
+                  data-explanation-id="admin-mission-migrate-if-suffixes"
+                >
+                  🔀 Fix IF Suffixes
                 </button>
                 <button
                   type="button"
