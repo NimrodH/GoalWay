@@ -2033,42 +2033,59 @@ function EditMissionForm({
                     }
 
                     // IF collapse: hide only the IF-branch (up to ELSE if present, else up to END-IF).
+                    // Stack-walk finds the structural ELSE (depth=1) and END-IF (depth=0).
+                    // ELSE can't be added to a nested IF, so depth=1 always means this IF's ELSE.
+                    // This also handles old missions where END-IF suffix differs from IF suffix.
                     const hiddenDueToIfCollapse = new Set<string>();
                     for (const ifId of collapsedIfIds) {
-                      const suffix = ifId.replace(/^if-/, "");
-                      const elseId = `else-${suffix}`;
-                      const endIfId = `end-if-${suffix}`;
-                      const hasElse = selectedInstructions.some(([id]) => id === elseId);
+                      const ifColIdx = selectedInstructions.findIndex(([id]) => id === ifId);
+                      if (ifColIdx === -1) continue;
+                      let colElseId: string | null = null;
+                      let colEndIfId: string | null = null;
+                      let colDepth = 0;
+                      for (let i = ifColIdx; i < selectedInstructions.length; i++) {
+                        const [id] = selectedInstructions[i];
+                        if (id === ifId) { colDepth = 1; continue; }
+                        if (id.startsWith("if-")) colDepth++;
+                        else if (id.startsWith("end-if-")) {
+                          colDepth--;
+                          if (colDepth === 0) { colEndIfId = id; break; }
+                        } else if (id.startsWith("else-") && colDepth === 1) {
+                          colElseId = id; // ELSE can't be in a nested IF, so this belongs to us
+                        }
+                      }
+                      const colStopId = colElseId ?? colEndIfId;
+                      if (!colStopId) continue;
                       let inside = false;
                       for (const [id] of selectedInstructions) {
-                        if (id === ifId) {
-                          inside = true;
-                          continue;
-                        }
-                        // Stop before ELSE (if present) or END-IF
-                        if (id === (hasElse ? elseId : endIfId)) {
-                          inside = false;
-                          break;
-                        }
+                        if (id === ifId) { inside = true; continue; }
+                        if (id === colStopId) { inside = false; break; }
                         if (inside) hiddenDueToIfCollapse.add(id);
                       }
                     }
 
                     // ELSE collapse: hide content between ELSE and END-IF.
+                    // Stack-walk starts at depth=1 (already inside the IF at ELSE position).
+                    // Finds the structural END-IF (depth→0), handles old-mission suffix mismatches.
                     const hiddenDueToElseCollapse = new Set<string>();
                     for (const elseId of collapsedElseIds) {
-                      const suffix = elseId.replace(/^else-/, "");
-                      const endIfId = `end-if-${suffix}`;
+                      const elseColIdx = selectedInstructions.findIndex(([id]) => id === elseId);
+                      if (elseColIdx === -1) continue;
+                      let elseColEndIfId: string | null = null;
+                      let elseColDepth = 1;
+                      for (let i = elseColIdx + 1; i < selectedInstructions.length; i++) {
+                        const [id] = selectedInstructions[i];
+                        if (id.startsWith("if-")) elseColDepth++;
+                        else if (id.startsWith("end-if-")) {
+                          elseColDepth--;
+                          if (elseColDepth === 0) { elseColEndIfId = id; break; }
+                        }
+                      }
+                      if (!elseColEndIfId) continue;
                       let inside = false;
                       for (const [id] of selectedInstructions) {
-                        if (id === elseId) {
-                          inside = true;
-                          continue;
-                        }
-                        if (id === endIfId) {
-                          inside = false;
-                          break;
-                        }
+                        if (id === elseId) { inside = true; continue; }
+                        if (id === elseColEndIfId) { inside = false; break; }
                         if (inside) hiddenDueToElseCollapse.add(id);
                       }
                     }
@@ -2138,34 +2155,51 @@ function EditMissionForm({
                       const pairColor =
                         pairIdx !== undefined ? PAIR_COLORS[(pairIdx - 1) % PAIR_COLORS.length] : null;
                       // Count hidden IF-branch children (up to ELSE if present, else up to END-IF)
+                      // Stack-walk: ELSE at depth=1 belongs to this IF; END-IF at depth=0 closes it.
                       let hiddenCount = 0;
                       if (isCollapsed) {
-                        const suffix = instructionId.replace(/^if-/, "");
-                        const elseId = `else-${suffix}`;
-                        const endIfId = `end-if-${suffix}`;
-                        const hasElse = selectedInstructions.some(([id]) => id === elseId);
+                        const cwIfIdx = selectedInstructions.findIndex(([id]) => id === instructionId);
+                        let cwElseId: string | null = null;
+                        let cwEndIfId: string | null = null;
+                        let cwDepth = 0;
+                        for (let i = cwIfIdx; i < selectedInstructions.length; i++) {
+                          const [id] = selectedInstructions[i];
+                          if (id === instructionId) { cwDepth = 1; continue; }
+                          if (id.startsWith("if-")) cwDepth++;
+                          else if (id.startsWith("end-if-")) {
+                            cwDepth--;
+                            if (cwDepth === 0) { cwEndIfId = id; break; }
+                          } else if (id.startsWith("else-") && cwDepth === 1) {
+                            cwElseId = id;
+                          }
+                        }
+                        const cwStopId = cwElseId ?? cwEndIfId;
                         let counting = false;
                         for (const [id] of selectedInstructions) {
-                          if (id === instructionId) {
-                            counting = true;
-                            continue;
-                          }
-                          if (id === (hasElse ? elseId : endIfId)) break;
+                          if (id === instructionId) { counting = true; continue; }
+                          if (cwStopId && id === cwStopId) break;
                           if (counting) hiddenCount++;
                         }
                       }
                       // Count hidden ELSE-branch children (ELSE to END-IF)
+                      // Stack-walk from ELSE at depth=1 to find the structural END-IF at depth=0.
                       let elseHiddenCount = 0;
                       if (isElseCollapsed) {
-                        const suffix = instructionId.replace(/^else-/, "");
-                        const endIfId = `end-if-${suffix}`;
+                        const ewElseIdx = selectedInstructions.findIndex(([id]) => id === instructionId);
+                        let ewEndIfId: string | null = null;
+                        let ewDepth = 1;
+                        for (let i = ewElseIdx + 1; i < selectedInstructions.length; i++) {
+                          const [id] = selectedInstructions[i];
+                          if (id.startsWith("if-")) ewDepth++;
+                          else if (id.startsWith("end-if-")) {
+                            ewDepth--;
+                            if (ewDepth === 0) { ewEndIfId = id; break; }
+                          }
+                        }
                         let counting = false;
                         for (const [id] of selectedInstructions) {
-                          if (id === instructionId) {
-                            counting = true;
-                            continue;
-                          }
-                          if (id === endIfId) break;
+                          if (id === instructionId) { counting = true; continue; }
+                          if (ewEndIfId && id === ewEndIfId) break;
                           if (counting) elseHiddenCount++;
                         }
                       }
