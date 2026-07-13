@@ -1450,8 +1450,19 @@ function EditInstructionForm({
   }, [actionData, selectedInstructionId]);
 
   useEffect(() => {
+    const savedScroll = sessionStorage.getItem("admin-instructions-scroll");
+    if (savedScroll !== null) {
+      sessionStorage.removeItem("admin-instructions-scroll");
+      const y = parseInt(savedScroll, 10);
+      // Use requestAnimationFrame to wait for layout before restoring
+      requestAnimationFrame(() => window.scrollTo(0, y));
+    }
+  }, []);
+
+  useEffect(() => {
     if (actionData?.success && actionData.message && id) {
       const timer = setTimeout(() => {
+        sessionStorage.setItem("admin-instructions-scroll", String(window.scrollY));
         window.location.href = `/admin/instructions?lang=${language}&instructionId=${id}`;
       }, 1000);
       return () => clearTimeout(timer);
@@ -1463,6 +1474,7 @@ function EditInstructionForm({
       if (saveFetcher.data.success) {
         onChangesDetected(false);
         const timer = setTimeout(() => {
+          sessionStorage.setItem("admin-instructions-scroll", String(window.scrollY));
           window.location.href = `/admin/instructions?lang=${language}&instructionId=${id}`;
         }, 1000);
         return () => clearTimeout(timer);
