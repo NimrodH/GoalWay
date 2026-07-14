@@ -1004,6 +1004,15 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
 
   const selectedInstruction = missionInstructions.find((inst) => inst?.id === selectedInstructionId) || null;
 
+  // An instruction has expandable content (shows an indicator) when it is a link type
+  // or has at least one explanation item — mirrors InstructionListItem's getIndicator() logic.
+  const selectedInstructionHasContent = selectedInstruction
+    ? (("type" in selectedInstruction && selectedInstruction.type === "link") ||
+        ("explanation" in selectedInstruction &&
+          Array.isArray((selectedInstruction as { explanation?: unknown[] }).explanation) &&
+          ((selectedInstruction as { explanation?: unknown[] }).explanation?.length ?? 0) > 0))
+    : false;
+
   // Don't pass comments, IF, ELSE, or temp entries to ExplanationDisplay
   const instructionToDisplay =
     selectedInstruction &&
@@ -1012,9 +1021,10 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
       ? null
       : selectedInstruction;
 
-  // Scroll selected master-mission instruction to top after render
+  // Scroll selected master-mission instruction to top after render —
+  // but only when the instruction actually has content to expand (has an indicator).
   useEffect(() => {
-    if (selectedInstructionId) {
+    if (selectedInstructionId && selectedInstructionHasContent) {
       requestAnimationFrame(() => {
         const element = document.querySelector(`[data-instruction-id="${selectedInstructionId}"]`);
         if (element) {
@@ -1022,7 +1032,7 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
         }
       });
     }
-  }, [selectedInstructionId]);
+  }, [selectedInstructionId, selectedInstructionHasContent]);
 
   // Scroll selected sub-mission instruction to top after render
   useEffect(() => {
