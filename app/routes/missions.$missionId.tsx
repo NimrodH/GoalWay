@@ -1438,7 +1438,7 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                     ) : (
                       <button
                         onClick={() => toggleIfBlock(instruction.id, "if")}
-                        className={`${styles.ifBlockButton} ${depth > 0 ? styles.ifBlockButtonNested : ""}`}
+                        className={`${styles.ifBlockButton} ${depth > 0 ? styles.ifBlockButtonNested : ""} ${isIfExpanded ? styles.ifBranchActive : ""}`}
                         aria-expanded={isIfExpanded}
                       >
                         <GitBranch size={depth > 0 ? 15 : 18} className={styles.ifBlockIcon} />
