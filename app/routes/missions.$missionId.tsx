@@ -1021,6 +1021,16 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
       ? null
       : selectedInstruction;
 
+  // Helper: sum the heights of all sticky headers so we can offset the scroll target,
+  // ensuring the clicked item row itself (not just its content) appears at the top.
+  const getStickyHeaderOffset = () => {
+    let offset = 0;
+    document.querySelectorAll<HTMLElement>("[data-sticky-header]").forEach((el) => {
+      offset += el.getBoundingClientRect().height;
+    });
+    return offset;
+  };
+
   // Scroll selected master-mission instruction to top after render —
   // but only when the instruction actually has content to expand (has an indicator).
   useEffect(() => {
@@ -1028,7 +1038,8 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
       requestAnimationFrame(() => {
         const element = document.querySelector(`[data-instruction-id="${selectedInstructionId}"]`);
         if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "start" });
+          const top = element.getBoundingClientRect().top + window.scrollY - getStickyHeaderOffset();
+          window.scrollTo({ top, behavior: "smooth" });
         }
       });
     }
@@ -1041,7 +1052,8 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
         requestAnimationFrame(() => {
           const element = document.querySelector(`[data-instruction-id="linked-${parentId}-${linkedId}"]`);
           if (element) {
-            element.scrollIntoView({ behavior: "smooth", block: "start" });
+            const top = element.getBoundingClientRect().top + window.scrollY - getStickyHeaderOffset();
+            window.scrollTo({ top, behavior: "smooth" });
           }
         });
         break;
@@ -1075,7 +1087,7 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
     <>
       {isPreview && (
         <>
-          <div className={styles.previewBar}>
+          <div className={styles.previewBar} data-sticky-header>
             <button
               onClick={() => navigate(`/admin/missions?missionId=${params.missionId}`)}
               className={styles.menuLink}
@@ -1315,7 +1327,7 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
       )}
       <div className={styles.container}>
         <section className={styles.instructionListSection}>
-          <div className={styles.headerWrapper}>
+          <div className={styles.headerWrapper} data-sticky-header>
             {!isPreview && (
               <Link to="/" className={styles.menuLink}>
                 <BookOpen size={18} />
