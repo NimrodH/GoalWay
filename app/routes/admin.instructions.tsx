@@ -670,7 +670,7 @@ function ExplanationContentItem({
     if (keywordsFetcher.data && keywordsFetcher.state === "idle") {
       const data = keywordsFetcher.data as any;
       if (data.success) {
-        // Success
+        setShowAdvanced(false);
       } else if (data.error) {
         alert(`Failed to save keywords: ${data.error}`);
       }
