@@ -135,7 +135,11 @@ export function AdminLayout<TLoaderData extends AdminLayoutLoaderData>({
 
   const switchLanguage = (newLang: string) => {
     onNavigationRequest(() => {
-      navigate(`${currentPath}?lang=${newLang}`);
+      // Preserve existing search params (e.g. instructionId) so the same
+      // record stays selected after the loader reloads with the new language.
+      const newParams = new URLSearchParams(location.search);
+      newParams.set("lang", newLang);
+      navigate(`${currentPath}?${newParams.toString()}`);
     });
   };
 

@@ -1430,6 +1430,9 @@ function EditInstructionForm({
   const [editingNoteText, setEditingNoteText] = useState("");
   const adminNotesFetcher = useFetcher<typeof action>();
   const [isCopied, setIsCopied] = useState(false);
+  // Track the previous language so we can detect a language switch and
+  // re-populate the form with the newly loaded language's instruction data.
+  const prevLanguageRef = useRef(language);
 
   useEffect(() => {
     if (selectedInstructionId) {
@@ -1509,6 +1512,24 @@ function EditInstructionForm({
       }
     }
   }, [searchParams, allInstructionIds, selectedInstructionId]);
+
+  // When the language prop changes (loader reloaded with new lang), re-populate
+  // the form fields from the freshly loaded `instructions` array so the user
+  // immediately sees the correct language's content for the selected instruction.
+  useEffect(() => {
+    if (prevLanguageRef.current !== language) {
+      prevLanguageRef.current = language;
+      if (selectedInstructionId) {
+        // Clear dirty-tracking so the re-populated form doesn't look "changed".
+        setOriginalCode("");
+        onChangesDetected(false);
+        updateFormFields(selectedInstructionId);
+      }
+    }
+  // `instructions` is intentionally included: it arrives together with `language`
+  // from the same loader response, guaranteeing the data is fresh when we read it.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language, instructions]);
 
   useEffect(() => {
     if (fetcher.data && fetcher.state === "idle") {
