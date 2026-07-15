@@ -1082,7 +1082,9 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
         if (existing) {
           await supabase.from("instructions").update({ data_he: instrHe, updated_at: new Date().toISOString() }).eq("id", instrId);
         } else {
-          await supabase.from("instructions").insert({ id: instrId, data_en: null, data_he: instrHe, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+          // Always provide a valid data_en — fall back to HE content so the instruction is
+          // never invisible to getAllInstructions() which filters out data_en === null rows.
+          await supabase.from("instructions").insert({ id: instrId, data_en: { ...instrHe }, data_he: instrHe, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
         }
       }
 
@@ -1428,7 +1430,9 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     if (!existingData) {
       const insertData: any = {
         id,
-        data_en: language === "en" ? instructionData : {},
+        // Always provide a valid data_en — when saving a HE-first instruction, copy the HE
+        // content as a placeholder so the row is never filtered out by getAllInstructions().
+        data_en: language === "en" ? instructionData : { ...instructionData },
         data_he: language === "he" ? instructionData : null,
         updated_at: new Date().toISOString(),
       };
