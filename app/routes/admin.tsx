@@ -593,7 +593,15 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
 
         for (const srcInstr of srcInstrs || []) {
           const tempInstrId = instrIdMap.get(srcInstr.id)!;
-          const newDataEn = srcInstr.data_en ? { ...srcInstr.data_en, id: tempInstrId } : null;
+          // If the original instruction has no data_en, fall back to data_he so the temp copy
+          // is always included by getAllInstructions (which filters on data_en !== null).
+          // Without this, instructions that only have Hebrew data would silently disappear
+          // from the mission instructions panel when the mission enters test mode.
+          const newDataEn = srcInstr.data_en
+            ? { ...srcInstr.data_en, id: tempInstrId }
+            : srcInstr.data_he
+              ? { ...(srcInstr.data_he as Record<string, unknown>), id: tempInstrId }
+              : null;
           const newDataHe = srcInstr.data_he ? { ...srcInstr.data_he, id: tempInstrId } : null;
           await supabase.from("instructions").insert({
             id: tempInstrId,
