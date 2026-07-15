@@ -891,12 +891,32 @@ function EditMissionForm({
     ),
   );
 
+  // Set of source instruction IDs that currently have an active temp shadow (owned by a test session).
+  // Built from instructionsEn which includes temp copies (is_temp=true) with sourceInstructionId set.
+  const instructionsWithTempShadow = new Set<string>(
+    instructionsEn
+      .filter((i) => i.isTemp && i.sourceInstructionId)
+      .map((i) => i.sourceInstructionId!),
+  );
+
   const handleEditInstruction = (instructionId: string) => {
     const isTemp = /^T\d+$/.test(instructionId);
     // Strip the duplicate suffix (#2, #3, …) to get the real instruction ID
     const baseId = instructionId.includes("#") ? instructionId.split("#")[0] : instructionId;
 
     if (!isTemp) {
+      // Guard: block direct edits when this instruction is locked inside an active test session.
+      // When Mission A is in test mode its instruction list already holds the temp IDs (e.g. "250"),
+      // so those won't appear in instructionsWithTempShadow (which contains source IDs like "5").
+      // Only Mission B's original ID "5" matches — and that is exactly what we want to block.
+      if (instructionsWithTempShadow.has(baseId)) {
+        alert(
+          `Instruction ${baseId} is currently locked in an active test mode session.\n\n` +
+            `To edit it, open the mission that is in test mode and edit it from there, ` +
+            `or discard / publish that test session first.`,
+        );
+        return;
+      }
       // Existing instruction — navigate directly
       if (selectedMissionId) {
         localStorage.setItem("lastSelectedMissionId", selectedMissionId);
