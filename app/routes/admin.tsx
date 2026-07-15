@@ -527,9 +527,10 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     if (!sourceMissionId) return { success: false, error: "Source mission ID is required" };
 
     try {
-      // Use admin client (service role) so we can read/write across RLS
       const { createClient } = await import("@supabase/supabase-js");
-      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+        global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      });
 
       // 1. Enforce one temp mission at a time
       const { data: existingTemp } = await supabase
@@ -671,7 +672,9 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
 
     try {
       const { createClient } = await import("@supabase/supabase-js");
-      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+        global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      });
 
       // 1. Fetch the temp mission
       const { data: tempRow, error: fetchErr } = await supabase
@@ -777,7 +780,9 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
 
     try {
       const { createClient } = await import("@supabase/supabase-js");
-      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+        global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      });
 
       // Fetch the temp mission
       const { data: tempRow, error: fetchErr } = await supabase
