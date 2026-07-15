@@ -32,14 +32,28 @@ export interface Instruction {
   explanation: InstructionContent[];
   type?: "default" | "link";
   missionId?: string;
+  /** Set to true for temporary test-mode copies — admin only */
+  isTemp?: boolean;
+  /** For temp instructions: the ID of the original instruction this was cloned from */
+  sourceInstructionId?: string | null;
 }
 
-export async function getAllInstructions(): Promise<Instruction[]> {
+/**
+ * Fetch all English instructions.
+ * @param includeTemp - When true, includes temporary test-mode instructions (admin only).
+ */
+export async function getAllInstructions(includeTemp = false): Promise<Instruction[]> {
   const supabase = getSupabase();
-  const { data, error } = await supabase
+  let query = supabase
     .from("instructions")
     .select("data_en")
     .order("created_at", { ascending: true });
+
+  if (!includeTemp) {
+    query = query.eq("is_temp", false);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching instructions:", error);
@@ -51,12 +65,22 @@ export async function getAllInstructions(): Promise<Instruction[]> {
     .map((row: any) => row.data_en as Instruction);
 }
 
-export async function getAllInstructionsHe(): Promise<Instruction[]> {
+/**
+ * Fetch all Hebrew instructions.
+ * @param includeTemp - When true, includes temporary test-mode instructions (admin only).
+ */
+export async function getAllInstructionsHe(includeTemp = false): Promise<Instruction[]> {
   const supabase = getSupabase();
-  const { data, error } = await supabase
+  let query = supabase
     .from("instructions")
     .select("data_he")
     .order("created_at", { ascending: true });
+
+  if (!includeTemp) {
+    query = query.eq("is_temp", false);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching Hebrew instructions:", error);
@@ -152,12 +176,22 @@ export async function getInstructionsByIdsHe(instructionIds: string[]): Promise<
     .filter((inst): inst is Instruction => inst !== undefined);
 }
 
-export async function getAllInstructionIds(): Promise<string[]> {
+/**
+ * Fetch all instruction IDs.
+ * @param includeTemp - When true, includes temporary test-mode instruction IDs (admin only).
+ */
+export async function getAllInstructionIds(includeTemp = false): Promise<string[]> {
   const supabase = getSupabase();
-  const { data, error } = await supabase
+  let query = supabase
     .from("instructions")
     .select("id")
     .order("created_at", { ascending: true });
+
+  if (!includeTemp) {
+    query = query.eq("is_temp", false);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching instruction IDs:", error);

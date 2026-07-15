@@ -7,6 +7,10 @@ export interface Mission {
   instructions: Array<[string, string?]>; // [instructionId, customTitle?]
   status?: "Hide" | "For all" | "Only Adama" | "Only Bazn";
   isExample?: boolean;
+  /** Set to true for temporary test-mode copies — admin only, never shown to users */
+  isTemp?: boolean;
+  /** For temp missions: the ID of the original mission this was cloned from */
+  sourceMissionId?: string | null;
 }
 
 // Legacy format from database (before migration)
@@ -39,12 +43,22 @@ function migrateLegacyMission(legacy: LegacyMission | Mission): Mission {
   };
 }
 
-export async function getAllMissions(): Promise<Mission[]> {
+/**
+ * Fetch all English missions.
+ * @param includeTemp - When true, includes temporary test-mode missions (admin only).
+ */
+export async function getAllMissions(includeTemp = false): Promise<Mission[]> {
   const supabase = getSupabase();
-  const { data, error } = await supabase
+  let query = supabase
     .from("missions")
-    .select("data_en, is_example")
+    .select("id, data_en, is_example, is_temp, source_mission_id")
     .order("created_at", { ascending: true });
+
+  if (!includeTemp) {
+    query = query.eq("is_temp", false);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching missions:", error);
@@ -56,15 +70,27 @@ export async function getAllMissions(): Promise<Mission[]> {
     .map((row: any) => ({
       ...migrateLegacyMission(row.data_en),
       isExample: row.is_example ?? false,
+      isTemp: row.is_temp ?? false,
+      sourceMissionId: row.source_mission_id ?? null,
     }));
 }
 
-export async function getAllMissionsHe(): Promise<Mission[]> {
+/**
+ * Fetch all Hebrew missions.
+ * @param includeTemp - When true, includes temporary test-mode missions (admin only).
+ */
+export async function getAllMissionsHe(includeTemp = false): Promise<Mission[]> {
   const supabase = getSupabase();
-  const { data, error } = await supabase
+  let query = supabase
     .from("missions")
-    .select("data_he, is_example")
+    .select("id, data_he, is_example, is_temp, source_mission_id")
     .order("created_at", { ascending: true });
+
+  if (!includeTemp) {
+    query = query.eq("is_temp", false);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching Hebrew missions:", error);
@@ -76,6 +102,8 @@ export async function getAllMissionsHe(): Promise<Mission[]> {
     .map((row: any) => ({
       ...migrateLegacyMission(row.data_he),
       isExample: row.is_example ?? false,
+      isTemp: row.is_temp ?? false,
+      sourceMissionId: row.source_mission_id ?? null,
     }));
 }
 
@@ -85,6 +113,7 @@ export async function getMissionById(missionId: string): Promise<Mission | null>
     .from("missions")
     .select("data_en")
     .eq("id", missionId)
+    .eq("is_temp", false)
     .single();
 
   if (error || !data?.data_en) {
@@ -101,6 +130,7 @@ export async function getMissionByIdHe(missionId: string): Promise<Mission | nul
     .from("missions")
     .select("data_he")
     .eq("id", missionId)
+    .eq("is_temp", false)
     .single();
 
   if (error || !data?.data_he) {
@@ -120,6 +150,7 @@ export async function getExampleMissionsHe(): Promise<Mission[]> {
     .from("missions")
     .select("data_he, is_example")
     .eq("is_example", true)
+    .eq("is_temp", false)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -158,6 +189,7 @@ export async function getMissionsForOrganizationHe(organizationId: string): Prom
     .from("missions")
     .select("data_he, is_example")
     .in("id", allowedIds)
+    .eq("is_temp", false)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -182,6 +214,7 @@ export async function getExampleMissions(): Promise<Mission[]> {
     .from("missions")
     .select("data_en, is_example")
     .eq("is_example", true)
+    .eq("is_temp", false)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -221,6 +254,7 @@ export async function getMissionsForOrganization(organizationId: string): Promis
     .from("missions")
     .select("data_en, is_example")
     .in("id", allowedIds)
+    .eq("is_temp", false)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -245,13 +279,14 @@ export async function checkMissionAccess(
 ): Promise<boolean> {
   const supabase = getSupabase();
 
-  // First, check if mission is an example (publicly accessible)
+  // First, check if mission is an example (publicly accessible) and not temp
   const { data: missionRow } = await supabase
     .from("missions")
-    .select("is_example")
+    .select("is_example, is_temp")
     .eq("id", missionId)
     .single();
 
+  if (missionRow?.is_temp) return false; // temp missions never accessible to users
   if (missionRow?.is_example) return true;
 
   // Otherwise check org access
@@ -267,12 +302,22 @@ export async function checkMissionAccess(
   return !!data;
 }
 
-export async function getAllMissionIds(): Promise<string[]> {
+/**
+ * Fetch all mission IDs.
+ * @param includeTemp - When true, includes temporary test-mode mission IDs (admin only).
+ */
+export async function getAllMissionIds(includeTemp = false): Promise<string[]> {
   const supabase = getSupabase();
-  const { data, error } = await supabase
+  let query = supabase
     .from("missions")
     .select("id")
     .order("created_at", { ascending: true });
+
+  if (!includeTemp) {
+    query = query.eq("is_temp", false);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching mission IDs:", error);

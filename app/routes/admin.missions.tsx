@@ -166,6 +166,7 @@ function EditMissionForm({
   const [jsonSaveError, setJsonSaveError] = useState<string | null>(null);
   const jsonFetcher = useFetcher<typeof action>();
   const duplicateMissionFetcher = useFetcher<typeof action>();
+  const testModeFetcher = useFetcher<typeof action>();
   const drawioImportFetcher = useFetcher<typeof action>();
   const importBundleFetcher = useFetcher<typeof action>();
   const [codeEditorValue, setCodeEditorValue] = useState("");
@@ -703,6 +704,23 @@ function EditMissionForm({
   }, [duplicateMissionFetcher.data, duplicateMissionFetcher.state, language]);
 
   useEffect(() => {
+    if (testModeFetcher.data && testModeFetcher.state === "idle") {
+      const result = testModeFetcher.data;
+      if (result.success) {
+        if (result.tempMissionId) {
+          // startTestMode succeeded — load the temp mission
+          window.location.href = `/admin/missions?lang=${language}&missionId=${result.tempMissionId}`;
+        } else if (result.sourceMissionId) {
+          // publishTestMode / discardTestMode succeeded — go back to the original
+          window.location.href = `/admin/missions?lang=${language}&missionId=${result.sourceMissionId}`;
+        }
+      } else if (result.error) {
+        alert(`Test mode error: ${result.error}`);
+      }
+    }
+  }, [testModeFetcher.data, testModeFetcher.state, language]);
+
+  useEffect(() => {
     if (importBundleFetcher.data && importBundleFetcher.state === "idle") {
       if (importBundleFetcher.data.success) {
         const missionId = importBundleFetcher.data.importedMissionId;
@@ -1213,6 +1231,80 @@ function EditMissionForm({
     input.click();
   };
 
+  // ─── Test Mode Handlers ───────────────────────────────────────────────────
+
+  // Derived: is the currently selected mission a temporary test copy?
+  const currentMissionMeta = missions.find((m) => m.id === selectedMissionId);
+  const isCurrentMissionTemp = currentMissionMeta?.isTemp === true;
+  const tempSourceMissionId = currentMissionMeta?.sourceMissionId ?? null;
+
+  // Is there already a temp version for the currently selected (non-temp) mission?
+  const existingTempForCurrent = missions.find(
+    (m) => m.isTemp && m.sourceMissionId === selectedMissionId,
+  );
+
+  const handleStartTestMode = () => {
+    if (!selectedMissionId) {
+      alert("Please select a mission first");
+      return;
+    }
+    if (!session) {
+      alert("You must be logged in");
+      return;
+    }
+    if (isCurrentMissionTemp) {
+      alert("You are already editing a test copy. Click \"Publish\" to apply or \"Discard\" to cancel.");
+      return;
+    }
+    if (existingTempForCurrent) {
+      const load = window.confirm(
+        `A test session already exists for this mission (temp ID: ${existingTempForCurrent.id}).\n\nClick OK to load it, or Cancel to stay here.`,
+      );
+      if (load) {
+        handleSelectMission(existingTempForCurrent.id);
+      }
+      return;
+    }
+    const confirmed = window.confirm(
+      `Start Test Mode for mission "${id} - ${title}"?\n\nThis will create a temporary copy of the mission and all its instructions. You can freely edit it and then publish your changes — or discard them without affecting the original.`,
+    );
+    if (!confirmed) return;
+
+    const formData = new FormData();
+    formData.append("actionType", "startTestMode");
+    formData.append("sourceMissionId", selectedMissionId);
+    formData.append("accessToken", session.access_token || "");
+    testModeFetcher.submit(formData, { method: "post" });
+  };
+
+  const handlePublishTestMode = () => {
+    if (!selectedMissionId || !isCurrentMissionTemp || !session) return;
+    const confirmed = window.confirm(
+      `Publish changes?\n\nThis will overwrite mission ${tempSourceMissionId} and all its instructions with the edited test copies, then delete the temporary records.\n\nThis cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    const formData = new FormData();
+    formData.append("actionType", "publishTestMode");
+    formData.append("tempMissionId", selectedMissionId);
+    formData.append("accessToken", session.access_token || "");
+    testModeFetcher.submit(formData, { method: "post" });
+  };
+
+  const handleDiscardTestMode = () => {
+    if (!selectedMissionId || !isCurrentMissionTemp || !session) return;
+    const confirmed = window.confirm(
+      "Discard test session?\n\nAll edits to the temporary copies will be lost and the original mission will remain unchanged.",
+    );
+    if (!confirmed) return;
+
+    const formData = new FormData();
+    formData.append("actionType", "discardTestMode");
+    formData.append("tempMissionId", selectedMissionId);
+    formData.append("accessToken", session.access_token || "");
+    testModeFetcher.submit(formData, { method: "post" });
+  };
+
   const handleDuplicateMission = () => {
     if (!selectedMissionId) {
       alert("Please select a mission first");
@@ -1230,8 +1322,14 @@ function EditMissionForm({
     duplicateMissionFetcher.submit(formData, { method: "post" });
   };
 
-  // Sorted and filtered mission IDs for the selection dropdown
+  // Sorted and filtered mission IDs for the selection dropdown.
+  // Temp missions always appear at the bottom of the list.
+  const tempMissionIdSet = new Set(missions.filter((m) => m.isTemp).map((m) => m.id));
   const sortedMissionIds = [...allMissionIds].sort((a, b) => {
+    const aIsTemp = tempMissionIdSet.has(a);
+    const bIsTemp = tempMissionIdSet.has(b);
+    if (aIsTemp && !bIsTemp) return 1;
+    if (!aIsTemp && bIsTemp) return -1;
     const numA = Number(a);
     const numB = Number(b);
     if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
@@ -1246,6 +1344,8 @@ function EditMissionForm({
   const nameLower = filterMissionName.trim().toLowerCase();
   const descLower = filterMissionDesc.trim().toLowerCase();
   const filteredMissionIds = sortedMissionIds.filter((missionId) => {
+    // Always show temp missions regardless of filters (they're special)
+    if (tempMissionIdSet.has(missionId)) return true;
     if (nameLower) {
       const mission = missions.find((m) => m.id === missionId);
       if (!(mission?.title || "").toLowerCase().includes(nameLower)) return false;
@@ -1298,6 +1398,54 @@ function EditMissionForm({
             >
               {duplicateMissionFetcher.state !== "idle" ? "Duplicating..." : "Duplicate Mission"}
             </button>
+            {/* ─── Test Mode buttons ─── */}
+            {isCurrentMissionTemp ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handlePublishTestMode}
+                  disabled={testModeFetcher.state !== "idle" || !session}
+                  title="Overwrite the original mission and instructions with the edited test copies, then delete the temporary records"
+                  style={{
+                    padding: "var(--space-1) var(--space-3)",
+                    borderRadius: "var(--radius-2)",
+                    border: "2px solid red",
+                    background: "transparent",
+                    color: "red",
+                    fontWeight: 700,
+                    cursor: testModeFetcher.state !== "idle" || !session ? "not-allowed" : "pointer",
+                    opacity: testModeFetcher.state !== "idle" || !session ? 0.5 : 1,
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  {testModeFetcher.state !== "idle" ? "Publishing..." : "🚀 Publish"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDiscardTestMode}
+                  className={styles.removeButton}
+                  disabled={testModeFetcher.state !== "idle" || !session}
+                  title="Discard the test session without affecting the original mission"
+                >
+                  {testModeFetcher.state !== "idle" ? "Discarding..." : "✕ Discard Test"}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={handleStartTestMode}
+                className={styles.addButton}
+                disabled={!selectedMissionId || testModeFetcher.state !== "idle" || !session || !!existingTempForCurrent}
+                title={
+                  existingTempForCurrent
+                    ? `A test session already exists (ID: ${existingTempForCurrent.id}) — click the button with the session loaded`
+                    : "Create a temporary copy of this mission and its instructions to safely test edits before publishing"
+                }
+                data-explanation-id="admin-mission-test-mode"
+              >
+                {testModeFetcher.state !== "idle" ? "Starting..." : existingTempForCurrent ? "🧪 Test Active" : "🧪 Test Mode"}
+              </button>
+            )}
             <button
               type="button"
               onClick={handleClearForNewMission}
@@ -1342,6 +1490,69 @@ function EditMissionForm({
             </button>
           </div>
         </div>
+
+        {/* ─── Test Mode Banner ─── */}
+        {isCurrentMissionTemp && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-3)",
+              background: "var(--amber-3)",
+              border: "1px solid var(--amber-7)",
+              borderRadius: "var(--radius-2)",
+              padding: "var(--space-2) var(--space-4)",
+              marginBottom: "var(--space-3)",
+              fontSize: "0.85rem",
+              color: "var(--amber-12)",
+              flexWrap: "wrap",
+            }}
+          >
+            <span style={{ fontSize: "1.1rem" }}>🧪</span>
+            <span>
+              <strong>TEST MODE</strong> — You are editing a temporary copy of mission{" "}
+              <strong>{tempSourceMissionId}</strong>. Changes here do{" "}
+              <em>not</em> affect the original until you click{" "}
+              <strong style={{ color: "red" }}>Publish</strong>.
+            </span>
+            <div style={{ display: "flex", gap: "var(--space-2)", marginLeft: "auto", flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={handlePublishTestMode}
+                disabled={testModeFetcher.state !== "idle" || !session}
+                style={{
+                  padding: "2px 12px",
+                  border: "2px solid red",
+                  borderRadius: "var(--radius-2)",
+                  background: "transparent",
+                  color: "red",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontSize: "0.82rem",
+                }}
+              >
+                🚀 Publish
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscardTestMode}
+                disabled={testModeFetcher.state !== "idle" || !session}
+                style={{
+                  padding: "2px 10px",
+                  border: "1px solid var(--amber-8)",
+                  borderRadius: "var(--radius-2)",
+                  background: "transparent",
+                  color: "var(--amber-12)",
+                  cursor: "pointer",
+                  fontSize: "0.82rem",
+                }}
+              >
+                ✕ Discard
+              </button>
+            </div>
+          </div>
+        )}
+
         {(() => {
           // Build a map: instruction ID → linked mission ID, for all link-type instructions.
           // A "link instruction" is an instruction with type="link" and a missionId field stored
@@ -1461,13 +1672,15 @@ function EditMissionForm({
                 <option value="">Select a mission...</option>
                 {filteredMissionIds.map((missionId) => {
                   const mission = missions.find((m) => m.id === missionId);
-                  const isHidden = mission?.status === "Hide";
-                  const isOrgAssigned = !isHidden && orgAssignedIds.has(missionId);
-                  const isLinked = !isHidden && !isOrgAssigned && linkedMissionIds.has(missionId);
-                  const prefix = isHidden ? "🔴 " : isOrgAssigned ? "🟢 " : isLinked ? "🟡 " : "";
+                  const isTemp = mission?.isTemp === true;
+                  const isHidden = !isTemp && mission?.status === "Hide";
+                  const isOrgAssigned = !isTemp && !isHidden && orgAssignedIds.has(missionId);
+                  const isLinked = !isTemp && !isHidden && !isOrgAssigned && linkedMissionIds.has(missionId);
+                  const prefix = isTemp ? "🧪 " : isHidden ? "🔴 " : isOrgAssigned ? "🟢 " : isLinked ? "🟡 " : "";
                   const linkers = reverseLinkedMap.get(missionId) ?? [];
-                  const optionTitle =
-                    isLinked && linkers.length > 0
+                  const optionTitle = isTemp
+                    ? `TEST COPY of mission ${mission?.sourceMissionId} — not visible to users`
+                    : isLinked && linkers.length > 0
                       ? `Linked from: ${linkers
                           .map((id) => {
                             const m = missions.find((m) => m.id === id);
@@ -1479,7 +1692,11 @@ function EditMissionForm({
                     <option key={missionId} value={missionId} title={optionTitle}>
                       {prefix}
                       {missionId}
-                      {mission ? ` - ${mission.title}` : " (No data for this language)"}
+                      {mission
+                        ? isTemp
+                          ? ` - [TEST] ${mission.title} (copy of ${mission.sourceMissionId})`
+                          : ` - ${mission.title}`
+                        : " (No data for this language)"}
                     </option>
                   );
                 })}

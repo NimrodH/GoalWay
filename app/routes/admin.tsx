@@ -42,18 +42,18 @@ export async function loader({ request }: Route.LoaderArgs) {
     missionAdminNotesRows,
     categoryValuesRaw,
   ] = await Promise.all([
-    language === "he" ? getAllInstructionsHe() : getAllInstructions(),
-    language === "he" ? getAllMissionsHe() : getAllMissions(),
-    getAllMissions(),
-    getAllMissionsHe(),
-    getAllInstructionIds(),
-    getAllMissionIds(),
-    getAllInstructions(),
-    getAllInstructionsHe(),
+    language === "he" ? getAllInstructionsHe(true) : getAllInstructions(true),
+    language === "he" ? getAllMissionsHe(true) : getAllMissions(true),
+    getAllMissions(true),
+    getAllMissionsHe(true),
+    getAllInstructionIds(true),
+    getAllMissionIds(true),
+    getAllInstructions(true),
+    getAllInstructionsHe(true),
     getOrganizations(),
     getAllUsers(),
-    adminClient.from("instructions").select("id, admin_notes"),
-    adminClient.from("missions").select("id, admin_notes"),
+    adminClient.from("instructions").select("id, admin_notes").eq("is_temp", false),
+    adminClient.from("missions").select("id, admin_notes").eq("is_temp", false),
     getAllCategoryValues(),
   ]);
 
@@ -73,7 +73,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const missionsWithAccess = await Promise.all(
     allMissions.map(async (m) => {
-      const allowedOrgIds = await getMissionOrganizations(m.id);
+      // Temp missions have no org access — skip the DB call
+      const allowedOrgIds = m.isTemp ? [] : await getMissionOrganizations(m.id);
       return { ...m, isExample: !!m.isExample, allowedOrgIds };
     }),
   );
@@ -111,6 +112,10 @@ export type ActionResult = {
   missionsUpdated?: number;
   importedMissionId?: string;
   importedInstructionCount?: number;
+  /** Returned by startTestMode — the new temp mission's ID */
+  tempMissionId?: string;
+  /** Returned by publishTestMode / discardTestMode — the original mission's ID */
+  sourceMissionId?: string;
 };
 
 export async function action({ request }: Route.ActionArgs): Promise<ActionResult> {
@@ -511,6 +516,318 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
       return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
   }
+
+  // ─── Test Mode ────────────────────────────────────────────────────────────
+
+  if (actionType === "startTestMode") {
+    const accessToken = formData.get("accessToken") as string | null;
+    const sourceMissionId = formData.get("sourceMissionId") as string | null;
+
+    if (!accessToken) return { success: false, error: "Unauthorized: Authentication required" };
+    if (!sourceMissionId) return { success: false, error: "Source mission ID is required" };
+
+    try {
+      // Use admin client (service role) so we can read/write across RLS
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
+
+      // 1. Enforce one temp mission at a time
+      const { data: existingTemp } = await supabase
+        .from("missions")
+        .select("id")
+        .eq("is_temp", true)
+        .limit(1);
+      if (existingTemp && existingTemp.length > 0) {
+        return {
+          success: false,
+          error: `A test session already exists (mission ${existingTemp[0].id}). Please publish or discard it first.`,
+        };
+      }
+
+      // 2. Fetch the source mission
+      const { data: sourceRow, error: fetchError } = await supabase
+        .from("missions")
+        .select("data_en, data_he, is_example, admin_notes")
+        .eq("id", sourceMissionId)
+        .single();
+
+      if (fetchError || !sourceRow) {
+        return { success: false, error: fetchError?.message || "Source mission not found" };
+      }
+
+      // 3. Collect unique real instruction IDs from both data_en and data_he
+      const specialPrefixes = ["if-", "end-if-", "else-", "comment-"];
+      const isTempId = (id: string) => id.startsWith("T") && /^T\d+$/.test(id);
+      const isSpecial = (id: string) =>
+        isTempId(id) || specialPrefixes.some((p) => id.startsWith(p)) || id === "0";
+
+      const collectIds = (instructions: Array<[string, string?]> = []) =>
+        instructions
+          .map(([id]) => (id.includes("#") ? id.split("#")[0] : id))
+          .filter((id) => !isSpecial(id));
+
+      const enIds = collectIds(sourceRow.data_en?.instructions);
+      const heIds = collectIds(sourceRow.data_he?.instructions);
+      const allOrigInstrIds = Array.from(new Set([...enIds, ...heIds]));
+
+      // 4. Generate new numeric IDs for temp instructions
+      const { data: allInstrRows } = await supabase.from("instructions").select("id");
+      const instrNumericIds = (allInstrRows || []).map((r: any) => parseInt(r.id, 10)).filter((n: number) => !isNaN(n));
+      let nextInstrId = (instrNumericIds.length > 0 ? Math.max(...instrNumericIds) : 0) + 1;
+
+      // origId → tempId
+      const instrIdMap = new Map<string, string>();
+      for (const origId of allOrigInstrIds) {
+        instrIdMap.set(origId, String(nextInstrId++));
+      }
+
+      // 5. Fetch and duplicate the source instructions
+      if (allOrigInstrIds.length > 0) {
+        const { data: srcInstrs } = await supabase
+          .from("instructions")
+          .select("id, data_en, data_he, admin_notes")
+          .in("id", allOrigInstrIds);
+
+        for (const srcInstr of srcInstrs || []) {
+          const tempInstrId = instrIdMap.get(srcInstr.id)!;
+          const newDataEn = srcInstr.data_en ? { ...srcInstr.data_en, id: tempInstrId } : null;
+          const newDataHe = srcInstr.data_he ? { ...srcInstr.data_he, id: tempInstrId } : null;
+          await supabase.from("instructions").insert({
+            id: tempInstrId,
+            data_en: newDataEn,
+            data_he: newDataHe,
+            is_temp: true,
+            source_instruction_id: srcInstr.id,
+            admin_notes: srcInstr.admin_notes ?? null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      // 6. Generate a new ID for the temp mission
+      const { data: allMissionRows } = await supabase.from("missions").select("id");
+      const missionNumericIds = (allMissionRows || []).map((r: any) => parseInt(r.id, 10)).filter((n: number) => !isNaN(n));
+      const tempMissionId = String((missionNumericIds.length > 0 ? Math.max(...missionNumericIds) : 0) + 1);
+
+      // 7. Remap instruction IDs in the mission arrays
+      const remapInstructions = (instructions: Array<[string, string?]> = []): Array<[string, string?]> =>
+        instructions.map(([id, title]) => {
+          const baseId = id.includes("#") ? id.split("#")[0] : id;
+          const suffix = id.includes("#") ? "#" + id.split("#")[1] : "";
+          const mappedId = instrIdMap.has(baseId) ? instrIdMap.get(baseId)! + suffix : id;
+          return title !== undefined ? [mappedId, title] : [mappedId];
+        });
+
+      const newDataEn = sourceRow.data_en
+        ? {
+            ...sourceRow.data_en,
+            id: tempMissionId,
+            instructions: remapInstructions(sourceRow.data_en.instructions),
+          }
+        : null;
+
+      const newDataHe = sourceRow.data_he
+        ? {
+            ...sourceRow.data_he,
+            id: tempMissionId,
+            instructions: remapInstructions(sourceRow.data_he.instructions),
+          }
+        : null;
+
+      const { error: insertError } = await supabase.from("missions").insert({
+        id: tempMissionId,
+        data_en: newDataEn,
+        data_he: newDataHe,
+        is_temp: true,
+        source_mission_id: sourceMissionId,
+        is_example: false,
+        admin_notes: sourceRow.admin_notes ?? null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+      if (insertError) {
+        return { success: false, error: insertError.message };
+      }
+
+      return {
+        success: true,
+        message: `Test session started as mission ${tempMissionId}.`,
+        tempMissionId,
+      };
+    } catch (error) {
+      console.error("Error in startTestMode:", error);
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
+  if (actionType === "publishTestMode") {
+    const accessToken = formData.get("accessToken") as string | null;
+    const tempMissionId = formData.get("tempMissionId") as string | null;
+
+    if (!accessToken) return { success: false, error: "Unauthorized: Authentication required" };
+    if (!tempMissionId) return { success: false, error: "Temp mission ID is required" };
+
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
+
+      // 1. Fetch the temp mission
+      const { data: tempRow, error: fetchErr } = await supabase
+        .from("missions")
+        .select("data_en, data_he, source_mission_id")
+        .eq("id", tempMissionId)
+        .eq("is_temp", true)
+        .single();
+
+      if (fetchErr || !tempRow) {
+        return { success: false, error: fetchErr?.message || "Temp mission not found" };
+      }
+
+      const sourceMissionId = tempRow.source_mission_id as string;
+
+      // 2. Collect all temp instruction IDs (base IDs only)
+      const specialPrefixes = ["if-", "end-if-", "else-", "comment-"];
+      const isTempId = (id: string) => id.startsWith("T") && /^T\d+$/.test(id);
+      const isSpecial = (id: string) =>
+        isTempId(id) || specialPrefixes.some((p) => id.startsWith(p)) || id === "0";
+
+      const collectIds = (instructions: Array<[string, string?]> = []) =>
+        instructions
+          .map(([id]) => (id.includes("#") ? id.split("#")[0] : id))
+          .filter((id) => !isSpecial(id));
+
+      const tempInstrIds = Array.from(
+        new Set([...collectIds(tempRow.data_en?.instructions), ...collectIds(tempRow.data_he?.instructions)]),
+      );
+
+      // 3. Fetch all temp instructions and build tempId → sourceId map
+      const tempToSourceMap = new Map<string, string>();
+      if (tempInstrIds.length > 0) {
+        const { data: tempInstrs } = await supabase
+          .from("instructions")
+          .select("id, data_en, data_he, source_instruction_id")
+          .in("id", tempInstrIds)
+          .eq("is_temp", true);
+
+        for (const ti of tempInstrs || []) {
+          const srcId = ti.source_instruction_id as string;
+          tempToSourceMap.set(ti.id, srcId);
+
+          // Write temp instruction data back to the source instruction
+          const updateInstrData: any = { updated_at: new Date().toISOString() };
+          if (ti.data_en) updateInstrData.data_en = { ...ti.data_en, id: srcId };
+          if (ti.data_he) updateInstrData.data_he = { ...ti.data_he, id: srcId };
+          await supabase.from("instructions").update(updateInstrData).eq("id", srcId);
+        }
+
+        // 4. Delete temp instructions
+        await supabase.from("instructions").delete().in("id", tempInstrIds);
+      }
+
+      // 5. Remap instruction IDs in the mission back to original IDs
+      const remapBack = (instructions: Array<[string, string?]> = []): Array<[string, string?]> =>
+        instructions.map(([id, title]) => {
+          const baseId = id.includes("#") ? id.split("#")[0] : id;
+          const suffix = id.includes("#") ? "#" + id.split("#")[1] : "";
+          const srcId = tempToSourceMap.has(baseId) ? tempToSourceMap.get(baseId)! + suffix : id;
+          return title !== undefined ? [srcId, title] : [srcId];
+        });
+
+      const updateMissionData: any = { updated_at: new Date().toISOString() };
+      if (tempRow.data_en) {
+        updateMissionData.data_en = {
+          ...tempRow.data_en,
+          id: sourceMissionId,
+          instructions: remapBack(tempRow.data_en.instructions),
+        };
+      }
+      if (tempRow.data_he) {
+        updateMissionData.data_he = {
+          ...tempRow.data_he,
+          id: sourceMissionId,
+          instructions: remapBack(tempRow.data_he.instructions),
+        };
+      }
+
+      // 6. Update the source mission with the temp mission's data
+      await supabase.from("missions").update(updateMissionData).eq("id", sourceMissionId);
+
+      // 7. Delete the temp mission
+      await supabase.from("missions").delete().eq("id", tempMissionId);
+
+      return {
+        success: true,
+        message: "Changes published to the original mission successfully!",
+        sourceMissionId,
+      };
+    } catch (error) {
+      console.error("Error in publishTestMode:", error);
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
+  if (actionType === "discardTestMode") {
+    const accessToken = formData.get("accessToken") as string | null;
+    const tempMissionId = formData.get("tempMissionId") as string | null;
+
+    if (!accessToken) return { success: false, error: "Unauthorized: Authentication required" };
+    if (!tempMissionId) return { success: false, error: "Temp mission ID is required" };
+
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
+
+      // Fetch the temp mission
+      const { data: tempRow, error: fetchErr } = await supabase
+        .from("missions")
+        .select("data_en, data_he, source_mission_id")
+        .eq("id", tempMissionId)
+        .eq("is_temp", true)
+        .single();
+
+      if (fetchErr || !tempRow) {
+        return { success: false, error: fetchErr?.message || "Temp mission not found" };
+      }
+
+      const sourceMissionId = tempRow.source_mission_id as string;
+
+      // Collect all temp instruction IDs
+      const specialPrefixes = ["if-", "end-if-", "else-", "comment-"];
+      const isTempId = (id: string) => id.startsWith("T") && /^T\d+$/.test(id);
+      const isSpecial = (id: string) =>
+        isTempId(id) || specialPrefixes.some((p) => id.startsWith(p)) || id === "0";
+
+      const collectIds = (instructions: Array<[string, string?]> = []) =>
+        instructions
+          .map(([id]) => (id.includes("#") ? id.split("#")[0] : id))
+          .filter((id) => !isSpecial(id));
+
+      const tempInstrIds = Array.from(
+        new Set([...collectIds(tempRow.data_en?.instructions), ...collectIds(tempRow.data_he?.instructions)]),
+      );
+
+      // Delete temp instructions
+      if (tempInstrIds.length > 0) {
+        await supabase.from("instructions").delete().in("id", tempInstrIds).eq("is_temp", true);
+      }
+
+      // Delete the temp mission
+      await supabase.from("missions").delete().eq("id", tempMissionId);
+
+      return {
+        success: true,
+        message: "Test session discarded. No changes were made to the original.",
+        sourceMissionId,
+      };
+    } catch (error) {
+      console.error("Error in discardTestMode:", error);
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
+  // ─── End Test Mode ────────────────────────────────────────────────────────
 
   if (actionType === "duplicateMission") {
     const accessToken = formData.get("accessToken") as string | null;
