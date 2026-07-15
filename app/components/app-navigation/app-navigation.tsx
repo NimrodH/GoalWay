@@ -6,6 +6,7 @@ interface AppNavigationProps {
   onNavigate?: (path: string) => boolean;
   adminTab?: string;
   pendingUsersCount?: number;
+  hasUnsavedChanges?: boolean;
 }
 
 const ADMIN_PAGES = [
@@ -14,7 +15,7 @@ const ADMIN_PAGES = [
   { value: "users", legacyValue: "users", label: "Users", path: "/admin/users" },
 ] as const;
 
-export function AppNavigation({ onNavigate, adminTab, pendingUsersCount = 0 }: AppNavigationProps = {}) {
+export function AppNavigation({ onNavigate, adminTab, pendingUsersCount = 0, hasUnsavedChanges = false }: AppNavigationProps = {}) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const isOnAdmin = location.pathname.startsWith("/admin");
@@ -50,6 +51,15 @@ export function AppNavigation({ onNavigate, adminTab, pendingUsersCount = 0 }: A
     navigate(`/missions/${previewMissionId}?preview=true`);
   };
 
+  const handleSave = () => {
+    const primarySaveButton = document.querySelector(
+      '[data-admin-primary-save="true"]'
+    ) as HTMLButtonElement | null;
+    if (primarySaveButton && !primarySaveButton.disabled) {
+      primarySaveButton.click();
+    }
+  };
+
   const handleNavigation = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
     if (onNavigate && isOnAdmin) {
       const shouldProceed = onNavigate(path);
@@ -83,6 +93,17 @@ export function AppNavigation({ onNavigate, adminTab, pendingUsersCount = 0 }: A
       >
         Admin
       </NavLink>
+
+      {isOnAdmin && (
+        <button
+          type="button"
+          className={`${styles.saveButton} ${hasUnsavedChanges ? styles.saveButtonDirty : ""}`}
+          onClick={handleSave}
+          title="Save changes (Ctrl+S / ⌘S)"
+        >
+          💾 Save
+        </button>
+      )}
 
       {isOnAdmin && (
         <div className={styles.adminTabLinks}>

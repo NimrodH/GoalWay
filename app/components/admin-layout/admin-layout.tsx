@@ -218,6 +218,7 @@ export function AdminLayout<TLoaderData extends AdminLayoutLoaderData>({
         onNavigate={handleMenuNavigation}
         adminTab={activeSection}
         pendingUsersCount={loaderData.users.filter((u) => !u.organization_id && u.role !== "admin").length}
+        hasUnsavedChanges={hasUnsavedChanges}
       />
 
       <header className={styles.header}>
