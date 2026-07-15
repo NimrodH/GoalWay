@@ -734,6 +734,46 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     }
   }
 
+  if (actionType === "discardTempInstruction") {
+    const accessToken = formData.get("accessToken") as string | null;
+    const instructionId = formData.get("instructionId") as string | null;
+
+    if (!accessToken) return { success: false, error: "Unauthorized: Authentication required" };
+    if (!instructionId) return { success: false, error: "Instruction ID is required" };
+
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+        global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      });
+
+      // Verify this is a temp instruction before deleting
+      const { data: row, error: fetchErr } = await supabase
+        .from("instructions")
+        .select("id, source_instruction_id, is_temp")
+        .eq("id", instructionId)
+        .eq("is_temp", true)
+        .single();
+
+      if (fetchErr || !row) {
+        return { success: false, error: fetchErr?.message || "Temp instruction not found or not a temp copy" };
+      }
+
+      const { error: deleteErr } = await supabase
+        .from("instructions")
+        .delete()
+        .eq("id", instructionId)
+        .eq("is_temp", true);
+
+      if (deleteErr) return { success: false, error: deleteErr.message };
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error in discardTempInstruction:", error);
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
   if (actionType === "publishTestMode") {
     const accessToken = formData.get("accessToken") as string | null;
     const tempMissionId = formData.get("tempMissionId") as string | null;

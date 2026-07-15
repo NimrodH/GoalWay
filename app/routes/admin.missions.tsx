@@ -163,6 +163,11 @@ function EditMissionForm({
     alreadyTempIds: string[];
     insertAfterId: string | null;
   } | null>(null);
+  const [pendingDiscardTempInstr, setPendingDiscardTempInstr] = useState<{
+    tempId: string;
+    sourceId: string;
+    suffix: string;
+  } | null>(null);
   const [pendingNavigateToInstructionId, setPendingNavigateToInstructionId] = useState<string | null>(null);
   const [pendingTempTitle, setPendingTempTitle] = useState<string>("");
   const [showJsonDialog, setShowJsonDialog] = useState(false);
@@ -173,6 +178,7 @@ function EditMissionForm({
   const duplicateMissionFetcher = useFetcher<typeof action>();
   const testModeFetcher = useFetcher<typeof action>();
   const addToTestFetcher = useFetcher<typeof action>();
+  const discardTempInstrFetcher = useFetcher<typeof action>();
   const drawioImportFetcher = useFetcher<typeof action>();
   const importBundleFetcher = useFetcher<typeof action>();
   const [codeEditorValue, setCodeEditorValue] = useState("");
@@ -776,6 +782,27 @@ function EditMissionForm({
       }
     }
   }, [addToTestFetcher.data, addToTestFetcher.state, pendingTestModeAdd]);
+
+  useEffect(() => {
+    if (discardTempInstrFetcher.data && discardTempInstrFetcher.state === "idle" && pendingDiscardTempInstr) {
+      const result = discardTempInstrFetcher.data;
+      if (result.success) {
+        const { tempId, sourceId, suffix } = pendingDiscardTempInstr;
+        const masterKey = sourceId + suffix;
+        // Replace the temp entry in-place with the master instruction key, preserving position and custom title
+        setSelectedInstructions(
+          selectedInstructions.map(([id, title]) =>
+            id === tempId
+              ? ([masterKey, title] as [string, string?])
+              : ([id, title] as [string, string?]),
+          ),
+        );
+      } else {
+        alert(`Failed to discard test instruction: ${result.error}`);
+      }
+      setPendingDiscardTempInstr(null);
+    }
+  }, [discardTempInstrFetcher.data, discardTempInstrFetcher.state, pendingDiscardTempInstr]);
 
   useEffect(() => {
     if (importBundleFetcher.data && importBundleFetcher.state === "idle") {
@@ -2000,6 +2027,32 @@ function EditMissionForm({
                           ),
                         );
                       } else {
+                        const baseId = selectedMissionInstruction.includes("#")
+                          ? selectedMissionInstruction.split("#")[0]
+                          : selectedMissionInstruction;
+                        const instrInDb = instructionsEn.find((i) => i.id === baseId);
+
+                        if (isCurrentMissionTemp && instrInDb?.isTemp && instrInDb.sourceInstructionId) {
+                          // In test mode: discard the temp shadow and revert this slot back to the master instruction.
+                          // The temp DB record is deleted server-side; the entry key becomes the master's ID.
+                          const keySuffix = selectedMissionInstruction.includes("#")
+                            ? "#" + selectedMissionInstruction.split("#")[1]
+                            : "";
+                          setPendingDiscardTempInstr({
+                            tempId: selectedMissionInstruction,
+                            sourceId: instrInDb.sourceInstructionId,
+                            suffix: keySuffix,
+                          });
+                          const discardForm = new FormData();
+                          discardForm.append("actionType", "discardTempInstruction");
+                          discardForm.append("instructionId", baseId);
+                          discardForm.append("accessToken", session?.access_token || "");
+                          discardTempInstrFetcher.submit(discardForm, { method: "post" });
+                          setSelectedMissionInstruction(null);
+                          return;
+                        }
+
+                        // Not a temp instruction — standard removal
                         const idx = selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction);
                         if (idx !== -1) {
                           setSelectedInstructions([
