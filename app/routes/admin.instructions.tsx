@@ -2010,6 +2010,25 @@ function EditInstructionForm({
 
   const selectedInstructionMissions = selectedInstructionId ? getMissionsForInstruction(selectedInstructionId) : [];
 
+  // ─── Test Mode derived state ─────────────────────────────────────────────
+  // The `instructions` array comes from getAllInstructions(includeTemp=true) so
+  // temp records carry isTemp=true and sourceInstructionId set.
+  const currentInstructionMeta = instructions.find((i) => i.id === selectedInstructionId);
+  const isCurrentInstructionTemp = currentInstructionMeta?.isTemp === true;
+  const currentInstrSourceId = currentInstructionMeta?.sourceInstructionId ?? null;
+
+  // Find which temp mission contains this temp instruction (to allow navigation back)
+  const tempMissionForInstruction = isCurrentInstructionTemp
+    ? missions.find(
+        (m) =>
+          m.isTemp &&
+          m.instructions?.some(([id]) => {
+            const baseId = id.includes("#") ? id.split("#")[0] : id;
+            return baseId === selectedInstructionId;
+          }),
+      )
+    : null;
+
   return (
     <div>
       {showReplaceDialog && (
@@ -2143,6 +2162,56 @@ function EditInstructionForm({
             </button>
           </div>
         </div>
+
+        {/* ─── Test Mode Banner ────────────────────────────────────────────── */}
+        {isCurrentInstructionTemp && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-3)",
+              background: "var(--amber-3)",
+              border: "1px solid var(--amber-7)",
+              borderRadius: "var(--radius-2)",
+              padding: "var(--space-2) var(--space-4)",
+              marginBottom: "var(--space-3)",
+              fontSize: "0.85rem",
+              color: "var(--amber-12)",
+              flexWrap: "wrap",
+            }}
+          >
+            <span style={{ fontSize: "1.1rem" }}>🧪</span>
+            <span>
+              <strong>TEST MODE</strong> — You are editing a temporary copy of instruction{" "}
+              <strong>{currentInstrSourceId}</strong>. Changes here do{" "}
+              <em>not</em> affect the original until you{" "}
+              <strong style={{ color: "red" }}>Publish</strong> from the Missions admin.
+            </span>
+            {tempMissionForInstruction && (
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = `/admin/missions?lang=${language}&missionId=${tempMissionForInstruction.id}`;
+                }}
+                style={{
+                  marginLeft: "auto",
+                  flexShrink: 0,
+                  padding: "2px 12px",
+                  border: "1px solid var(--amber-8)",
+                  borderRadius: "var(--radius-2)",
+                  background: "transparent",
+                  color: "var(--amber-12)",
+                  cursor: "pointer",
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                }}
+              >
+                ↩ Back to Mission {tempMissionForInstruction.id}
+              </button>
+            )}
+          </div>
+        )}
+
         <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
           <input
             type="text"
@@ -2177,7 +2246,15 @@ function EditInstructionForm({
                 .map((id) => {
                   const instruction = instructions.find((i) => i.id === id);
                   return (
-                    <label key={id} className={styles.checkboxLabel} style={{ cursor: "pointer" }}>
+                    <label
+                      key={id}
+                      className={styles.checkboxLabel}
+                      style={{
+                        cursor: "pointer",
+                        background: instruction?.isTemp ? "var(--amber-2)" : undefined,
+                        borderRadius: instruction?.isTemp ? "var(--radius-1)" : undefined,
+                      }}
+                    >
                       <input
                         type="radio"
                         name="instruction"
@@ -2186,6 +2263,11 @@ function EditInstructionForm({
                         onChange={() => handleSelectInstruction(id)}
                       />
                       <span>
+                        {instruction?.isTemp && (
+                          <span title="Temporary test-mode copy" style={{ marginRight: "4px" }}>
+                            🧪
+                          </span>
+                        )}
                         <span
                           style={{
                             color:
@@ -2200,6 +2282,19 @@ function EditInstructionForm({
                           {id}
                         </span>
                         {instruction ? ` - ${instruction.title}` : " (No data for this language)"}
+                        {instruction?.isTemp && (
+                          <span
+                            style={{
+                              marginLeft: "6px",
+                              fontSize: "0.7rem",
+                              color: "var(--amber-11)",
+                              fontWeight: 600,
+                              verticalAlign: "middle",
+                            }}
+                          >
+                            [TEST]
+                          </span>
+                        )}
                       </span>
                     </label>
                   );

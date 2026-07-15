@@ -46,7 +46,7 @@ export async function getAllInstructions(includeTemp = false): Promise<Instructi
   const supabase = getSupabase();
   let query = supabase
     .from("instructions")
-    .select("data_en")
+    .select("data_en, is_temp, source_instruction_id")
     .order("created_at", { ascending: true });
 
   if (!includeTemp) {
@@ -62,7 +62,11 @@ export async function getAllInstructions(includeTemp = false): Promise<Instructi
 
   return (data || [])
     .filter((row: any) => row.data_en !== null)
-    .map((row: any) => row.data_en as Instruction);
+    .map((row: any) => ({
+      ...(row.data_en as Instruction),
+      isTemp: row.is_temp ?? false,
+      sourceInstructionId: row.source_instruction_id ?? null,
+    }));
 }
 
 /**
@@ -73,7 +77,7 @@ export async function getAllInstructionsHe(includeTemp = false): Promise<Instruc
   const supabase = getSupabase();
   let query = supabase
     .from("instructions")
-    .select("data_he")
+    .select("data_he, is_temp, source_instruction_id")
     .order("created_at", { ascending: true });
 
   if (!includeTemp) {
@@ -89,7 +93,11 @@ export async function getAllInstructionsHe(includeTemp = false): Promise<Instruc
 
   return (data || [])
     .filter((row: any) => row.data_he !== null)
-    .map((row: any) => row.data_he as Instruction);
+    .map((row: any) => ({
+      ...(row.data_he as Instruction),
+      isTemp: row.is_temp ?? false,
+      sourceInstructionId: row.source_instruction_id ?? null,
+    }));
 }
 
 export async function getInstructionById(instructionId: string): Promise<Instruction | null> {
