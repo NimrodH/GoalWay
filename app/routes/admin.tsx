@@ -713,7 +713,14 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
         const tempId = String(nextId++);
         idMap[srcInstr.id] = tempId;
 
-        const newDataEn = srcInstr.data_en ? { ...srcInstr.data_en, id: tempId } : null;
+        // If the source has no data_en, fall back to data_he so the temp copy is always
+        // included by getAllInstructions (which filters on data_en !== null).
+        // This mirrors the same fallback used in startTestMode.
+        const newDataEn = srcInstr.data_en
+          ? { ...srcInstr.data_en, id: tempId }
+          : srcInstr.data_he
+            ? { ...(srcInstr.data_he as Record<string, unknown>), id: tempId }
+            : null;
         const newDataHe = srcInstr.data_he ? { ...srcInstr.data_he, id: tempId } : null;
 
         const { error: insertErr } = await supabase.from("instructions").insert({
