@@ -86,6 +86,11 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           }}
         >
           <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
+          <p className={styles.menuDescription}>
+            Clicking on a mission will open a sequence of instructions on what to do. Clicking on an instruction will
+            open an explanation with screenshots of how to perform it. A green row is a condition — click on it to get
+            instructions that should only be followed if the condition is true.
+          </p>
         </div>
 
         {/* Status banner for anonymous or pending users */}
