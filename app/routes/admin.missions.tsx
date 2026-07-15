@@ -1346,6 +1346,9 @@ function EditMissionForm({
   const existingTempForCurrent = missions.find(
     (m) => m.isTemp && m.sourceMissionId === selectedMissionId,
   );
+  // True when the selected mission is the original/master AND has an active test session.
+  // In this state, all editing of the master is locked to prevent divergence from the test copy.
+  const isMasterWithActiveTest = !isCurrentMissionTemp && !!existingTempForCurrent;
 
   const handleStartTestMode = () => {
     if (!selectedMissionId) {
@@ -1487,7 +1490,7 @@ function EditMissionForm({
               type="button"
               onClick={handleDeleteMission}
               className={styles.removeButton}
-              disabled={!selectedMissionId || deleteMissionFetcher.state !== "idle" || !session}
+              disabled={!selectedMissionId || deleteMissionFetcher.state !== "idle" || !session || isMasterWithActiveTest}
               data-explanation-id="admin-mission-delete"
             >
               {deleteMissionFetcher.state !== "idle" ? "Deleting..." : "Delete"}
@@ -1496,7 +1499,7 @@ function EditMissionForm({
               type="button"
               onClick={handleDuplicateMission}
               className={styles.addButton}
-              disabled={!selectedMissionId || duplicateMissionFetcher.state !== "idle" || !session}
+              disabled={!selectedMissionId || duplicateMissionFetcher.state !== "idle" || !session || isMasterWithActiveTest}
               title="Create a copy of the selected mission with a new ID"
               data-explanation-id="admin-mission-duplicate"
             >
@@ -1563,7 +1566,7 @@ function EditMissionForm({
               type="button"
               onClick={() => setShowDrawioDialog(true)}
               className={styles.addButton}
-              disabled={drawioImportFetcher.state !== "idle" || !session}
+              disabled={drawioImportFetcher.state !== "idle" || !session || isMasterWithActiveTest}
               title="Import a draw.io flowchart and create a new mission from it"
               style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
               data-explanation-id="admin-mission-drawio"
@@ -1585,7 +1588,7 @@ function EditMissionForm({
               type="button"
               onClick={handleImportMission}
               className={styles.addButton}
-              disabled={importBundleFetcher.state !== "idle" || !session}
+              disabled={importBundleFetcher.state !== "idle" || !session || isMasterWithActiveTest}
               title="Import a previously exported mission bundle JSON file — overwrites existing records by ID"
               style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
               data-explanation-id="admin-mission-import"
@@ -1654,6 +1657,50 @@ function EditMissionForm({
                 ✕ Discard
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ─── Locked Master Banner ─── */}
+        {isMasterWithActiveTest && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-3)",
+              background: "var(--red-3)",
+              border: "1px solid var(--red-7)",
+              borderRadius: "var(--radius-2)",
+              padding: "var(--space-2) var(--space-4)",
+              marginBottom: "var(--space-3)",
+              fontSize: "0.85rem",
+              color: "var(--red-12)",
+              flexWrap: "wrap",
+            }}
+          >
+            <span style={{ fontSize: "1.1rem" }}>🔒</span>
+            <span>
+              <strong>EDITING LOCKED</strong> — This mission has an active test session (temp ID:{" "}
+              <strong>{existingTempForCurrent!.id}</strong>). Edit the test copy instead, then{" "}
+              <strong>Publish</strong> to apply or <strong>Discard</strong> to revert.
+            </span>
+            <button
+              type="button"
+              onClick={() => handleSelectMission(existingTempForCurrent!.id)}
+              style={{
+                marginLeft: "auto",
+                flexShrink: 0,
+                padding: "2px 12px",
+                border: "2px solid var(--red-9)",
+                borderRadius: "var(--radius-2)",
+                background: "transparent",
+                color: "var(--red-11)",
+                fontWeight: 700,
+                cursor: "pointer",
+                fontSize: "0.82rem",
+              }}
+            >
+              Open Test Session →
+            </button>
           </div>
         )}
 
@@ -1913,7 +1960,7 @@ function EditMissionForm({
                       }
                     }}
                     className={styles.addButton}
-                    disabled={selectedAvailableInstructions.length !== 1 || createAndEditFetcher.state !== "idle"}
+                    disabled={selectedAvailableInstructions.length !== 1 || createAndEditFetcher.state !== "idle" || isMasterWithActiveTest}
                     style={{ minWidth: "60px" }}
                     title={
                       selectedAvailableInstructions.length === 0
@@ -2066,7 +2113,7 @@ function EditMissionForm({
                   }}
                   className={styles.addButton}
                   style={{ width: "80px" }}
-                  disabled={!selectedMissionInstruction}
+                  disabled={!selectedMissionInstruction || isMasterWithActiveTest}
                   data-explanation-id="admin-mission-remove"
                 >
                   ← Del
@@ -2140,7 +2187,7 @@ function EditMissionForm({
                   }}
                   className={styles.addButton}
                   style={{ width: "80px" }}
-                  disabled={selectedAvailableInstructions.length === 0 || addToTestFetcher.state !== "idle"}
+                  disabled={selectedAvailableInstructions.length === 0 || addToTestFetcher.state !== "idle" || isMasterWithActiveTest}
                   data-explanation-id="admin-mission-add"
                 >
                   {addToTestFetcher.state !== "idle" && isCurrentMissionTemp ? "🔒 Locking..." : "Add →"}
@@ -2180,7 +2227,8 @@ function EditMissionForm({
                   disabled={
                     !selectedMissionInstruction ||
                     !/^T\d+$/.test(selectedMissionInstruction || "") ||
-                    selectedAvailableInstructions.length !== 1
+                    selectedAvailableInstructions.length !== 1 ||
+                    isMasterWithActiveTest
                   }
                   style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
                   title="Replace the selected temporary entry's ID with the selected available instruction's ID (keeps local title)"
@@ -2192,7 +2240,7 @@ function EditMissionForm({
                   type="button"
                   onClick={handleAddIf}
                   className={styles.addButton}
-                  disabled={!selectedMissionId || !session}
+                  disabled={!selectedMissionId || !session || isMasterWithActiveTest}
                   title="Insert an IF conditional block after the selected instruction"
                   style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)", marginTop: "var(--space-2)" }}
                   data-explanation-id="admin-mission-add-if"
@@ -2203,7 +2251,7 @@ function EditMissionForm({
                   type="button"
                   onClick={handleAddElse}
                   className={styles.addButton}
-                  disabled={!selectedMissionId || !session}
+                  disabled={!selectedMissionId || !session || isMasterWithActiveTest}
                   title="Insert an ELSE branch into the selected IF…END-IF block (select the IF row, a row inside it, or the END-IF row)"
                   style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
                   data-explanation-id="admin-mission-add-else"
@@ -2214,7 +2262,7 @@ function EditMissionForm({
                   type="button"
                   onClick={() => setShowCommentDialog(true)}
                   className={styles.addButton}
-                  disabled={!selectedMissionId || !session}
+                  disabled={!selectedMissionId || !session || isMasterWithActiveTest}
                   style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
                   data-explanation-id="admin-mission-add-comment"
                 >
@@ -2224,7 +2272,7 @@ function EditMissionForm({
                   type="button"
                   onClick={() => setShowNewInstructionDialog(true)}
                   className={styles.addButton}
-                  disabled={!selectedMissionId || !session}
+                  disabled={!selectedMissionId || !session || isMasterWithActiveTest}
                   style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
                   data-explanation-id="admin-mission-add-new-instruction"
                 >
@@ -2249,7 +2297,8 @@ function EditMissionForm({
                     disabled={
                       !selectedMissionInstruction ||
                       selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) ===
-                        selectedInstructions.length - 1
+                        selectedInstructions.length - 1 ||
+                      isMasterWithActiveTest
                     }
                     title="Move selected instruction down"
                     style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
@@ -2263,7 +2312,8 @@ function EditMissionForm({
                     className={styles.addButton}
                     disabled={
                       !selectedMissionInstruction ||
-                      selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) === 0
+                      selectedInstructions.findIndex(([id]) => id === selectedMissionInstruction) === 0 ||
+                      isMasterWithActiveTest
                     }
                     title="Move selected instruction up"
                     style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
@@ -2282,7 +2332,8 @@ function EditMissionForm({
                       selectedMissionInstruction.startsWith("end-if-") ||
                       selectedMissionInstruction.startsWith("else-") ||
                       selectedMissionInstruction === "0" ||
-                      /^T\d+$/.test(selectedMissionInstruction || "")
+                      /^T\d+$/.test(selectedMissionInstruction || "") ||
+                      isMasterWithActiveTest
                     }
                     style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
                     title="View and edit the raw JSON for this instruction"
@@ -2311,7 +2362,8 @@ function EditMissionForm({
                           createAndEditFetcher.state !== "idle" ||
                           selectedMissionInstruction.startsWith("if-") ||
                           selectedMissionInstruction.startsWith("end-if-") ||
-                          selectedMissionInstruction.startsWith("else-")
+                          selectedMissionInstruction.startsWith("else-") ||
+                          isMasterWithActiveTest
                         }
                         style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
                         title={
@@ -2375,7 +2427,7 @@ function EditMissionForm({
                         }
                       }}
                       className={styles.addButton}
-                      disabled={!selectedMissionInstruction}
+                      disabled={!selectedMissionInstruction || isMasterWithActiveTest}
                       style={{ fontSize: "0.75rem", padding: "var(--space-1) var(--space-2)" }}
                       data-explanation-id="admin-mission-rename-local"
                     >
@@ -2831,6 +2883,7 @@ function EditMissionForm({
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="e.g., Security Fundamentals"
+                    disabled={isMasterWithActiveTest}
                   />
                 </div>
                 <div className={styles.div10}>
@@ -2855,6 +2908,7 @@ function EditMissionForm({
                         className={styles.input}
                         value={status}
                         onChange={(e) => setStatus(e.target.value as "Hide" | "For all" | "Only Adama" | "Only Bazn")}
+                        disabled={isMasterWithActiveTest}
                         data-explanation-id="admin-mission-status"
                       >
                         <option value="Hide">Hide</option>
@@ -2879,6 +2933,7 @@ function EditMissionForm({
                           checked={isExample}
                           onChange={(e) => setIsExample(e.target.checked)}
                           style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                          disabled={isMasterWithActiveTest}
                           data-explanation-id="admin-mission-is-example"
                         />
                         Example
@@ -2895,6 +2950,7 @@ function EditMissionForm({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Enter mission description..."
+                  disabled={isMasterWithActiveTest}
                 />
               </div>
 
@@ -3164,6 +3220,7 @@ function EditMissionForm({
                   type="button"
                   onClick={handleFixDuplicateIds}
                   className={styles.addButton}
+                  disabled={isMasterWithActiveTest}
                   style={{ fontSize: "0.8125rem", padding: "var(--space-1) var(--space-3)" }}
                   title="Scan the instructions array and assign #2, #3 … suffixes to any duplicate IDs. Does not save — click Apply JSON then Save to persist."
                   data-explanation-id="admin-mission-fix-duplicates"
@@ -3174,6 +3231,7 @@ function EditMissionForm({
                   type="button"
                   onClick={handleMigrateIfSuffixes}
                   className={styles.addButton}
+                  disabled={isMasterWithActiveTest}
                   style={{ fontSize: "0.8125rem", padding: "var(--space-1) var(--space-3)" }}
                   title="Scan IF/ELSE/END-IF blocks and assign consistent suffixes to any mismatched pairs (old-format missions). Does not save — click Save to Database to persist."
                   data-explanation-id="admin-mission-migrate-if-suffixes"
@@ -3184,6 +3242,7 @@ function EditMissionForm({
                   type="button"
                   onClick={handleApplyCodeEditor}
                   className={styles.submitButton}
+                  disabled={isMasterWithActiveTest}
                   style={{ fontSize: "0.8125rem", padding: "var(--space-1) var(--space-3)" }}
                   data-explanation-id="admin-mission-apply-json"
                 >
@@ -3223,7 +3282,7 @@ function EditMissionForm({
                 type="button"
                 onClick={handleTranslateAndSwitch}
                 className={styles.addButton}
-                disabled={isTranslating || !title || !description}
+                disabled={isTranslating || !title || !description || isMasterWithActiveTest}
                 style={{ flex: 1 }}
                 data-explanation-id="admin-mission-translate-switch"
               >
@@ -3236,7 +3295,7 @@ function EditMissionForm({
               id={id}
               isExample={isExample}
               data={generateCode()}
-              disabled={!id || (language === "en" && !title)}
+              disabled={!id || (language === "en" && !title) || isMasterWithActiveTest}
               language={language}
             />
 
