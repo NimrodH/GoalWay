@@ -2128,7 +2128,8 @@ function EditInstructionForm({
               type="button"
               onClick={handleDeleteInstruction}
               className={styles.removeButton}
-              disabled={!selectedInstructionId || deleteInstructionFetcher.state !== "idle" || !session}
+              disabled={!selectedInstructionId || deleteInstructionFetcher.state !== "idle" || !session || isCurrentInstructionTemp}
+              title={isCurrentInstructionTemp ? "Cannot delete a temp test-mode copy" : undefined}
               data-explanation-id="admin-delete-instruction"
             >
               {deleteInstructionFetcher.state !== "idle" ? "Deleting..." : "Delete"}
@@ -2137,7 +2138,8 @@ function EditInstructionForm({
               type="button"
               onClick={() => setShowReplaceDialog(true)}
               className={styles.addButton}
-              disabled={!selectedInstructionId || !session}
+              disabled={!selectedInstructionId || !session || isCurrentInstructionTemp}
+              title={isCurrentInstructionTemp ? "Cannot replace a temp test-mode copy" : undefined}
               data-explanation-id="admin-replace-instruction-in-missions"
             >
               Replace In all missions
