@@ -116,6 +116,8 @@ export type ActionResult = {
   tempMissionId?: string;
   /** Returned by publishTestMode / discardTestMode — the original mission's ID */
   sourceMissionId?: string;
+  /** Returned by createTempInstructionCopies — map of originalId → tempId */
+  idMap?: Record<string, string>;
 };
 
 export async function action({ request }: Route.ActionArgs): Promise<ActionResult> {
@@ -659,6 +661,75 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
       };
     } catch (error) {
       console.error("Error in startTestMode:", error);
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
+  if (actionType === "createTempInstructionCopies") {
+    const accessToken = formData.get("accessToken") as string | null;
+    const instructionIdsRaw = formData.get("instructionIds") as string | null;
+
+    if (!accessToken) return { success: false, error: "Unauthorized: Authentication required" };
+    if (!instructionIdsRaw) return { success: false, error: "No instruction IDs provided" };
+
+    const instructionIds = instructionIdsRaw
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!, {
+        global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      });
+
+      // Determine the next available numeric instruction ID
+      const { data: allInstrRows } = await supabase.from("instructions").select("id");
+      const instrNumericIds = (allInstrRows || [])
+        .map((r: any) => parseInt(r.id, 10))
+        .filter((n: number) => !isNaN(n));
+      let nextId = (instrNumericIds.length > 0 ? Math.max(...instrNumericIds) : 0) + 1;
+
+      // Fetch each source instruction (only real, non-temp ones)
+      const { data: srcInstrs, error: fetchErr } = await supabase
+        .from("instructions")
+        .select("id, data_en, data_he, admin_notes")
+        .in("id", instructionIds)
+        .eq("is_temp", false);
+
+      if (fetchErr) return { success: false, error: fetchErr.message };
+
+      const idMap: Record<string, string> = {};
+
+      for (const srcInstr of srcInstrs || []) {
+        const tempId = String(nextId++);
+        idMap[srcInstr.id] = tempId;
+
+        const newDataEn = srcInstr.data_en ? { ...srcInstr.data_en, id: tempId } : null;
+        const newDataHe = srcInstr.data_he ? { ...srcInstr.data_he, id: tempId } : null;
+
+        const { error: insertErr } = await supabase.from("instructions").insert({
+          id: tempId,
+          data_en: newDataEn,
+          data_he: newDataHe,
+          is_temp: true,
+          source_instruction_id: srcInstr.id,
+          admin_notes: srcInstr.admin_notes ?? null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+        if (insertErr) {
+          return {
+            success: false,
+            error: `Failed to create temp copy for instruction ${srcInstr.id}: ${insertErr.message}`,
+          };
+        }
+      }
+
+      return { success: true, idMap };
+    } catch (error) {
+      console.error("Error in createTempInstructionCopies:", error);
       return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
   }

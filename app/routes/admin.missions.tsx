@@ -158,6 +158,11 @@ function EditMissionForm({
   const createAndEditFetcher = useFetcher<typeof action>();
   const saveMissionAfterCreateFetcher = useFetcher<typeof action>();
   const [pendingTempEdit, setPendingTempEdit] = useState<{ tempId: string; title: string } | null>(null);
+  const [pendingTestModeAdd, setPendingTestModeAdd] = useState<{
+    realIds: string[];
+    alreadyTempIds: string[];
+    insertAfterId: string | null;
+  } | null>(null);
   const [pendingNavigateToInstructionId, setPendingNavigateToInstructionId] = useState<string | null>(null);
   const [pendingTempTitle, setPendingTempTitle] = useState<string>("");
   const [showJsonDialog, setShowJsonDialog] = useState(false);
@@ -167,6 +172,7 @@ function EditMissionForm({
   const jsonFetcher = useFetcher<typeof action>();
   const duplicateMissionFetcher = useFetcher<typeof action>();
   const testModeFetcher = useFetcher<typeof action>();
+  const addToTestFetcher = useFetcher<typeof action>();
   const drawioImportFetcher = useFetcher<typeof action>();
   const importBundleFetcher = useFetcher<typeof action>();
   const [codeEditorValue, setCodeEditorValue] = useState("");
@@ -719,6 +725,57 @@ function EditMissionForm({
       }
     }
   }, [testModeFetcher.data, testModeFetcher.state, language]);
+
+  useEffect(() => {
+    if (addToTestFetcher.data && addToTestFetcher.state === "idle" && pendingTestModeAdd) {
+      const result = addToTestFetcher.data;
+      if (result.success && result.idMap) {
+        const { realIds, alreadyTempIds, insertAfterId } = pendingTestModeAdd;
+
+        // Build new entries — real instructions are replaced by their temp IDs
+        const allocatedKeys = selectedInstructions.map(([k]) => k);
+        const newEntries: Array<[string, string?]> = [
+          ...realIds.map((origId) => {
+            const tempId = result.idMap![origId] ?? origId;
+            const alreadyPresent = allocatedKeys.some((k) => k === tempId || k.startsWith(`${tempId}#`));
+            let key: string;
+            if (!alreadyPresent) {
+              key = tempId;
+            } else {
+              let sfx = 2;
+              while (allocatedKeys.includes(`${tempId}#${sfx}`)) sfx++;
+              key = `${tempId}#${sfx}`;
+            }
+            allocatedKeys.push(key);
+            return [key] as [string];
+          }),
+          ...alreadyTempIds.map((id) => [id] as [string]),
+        ];
+
+        let newInstructions: Array<[string, string?]>;
+        if (insertAfterId) {
+          const insertIndex = selectedInstructions.findIndex(([id]) => id === insertAfterId);
+          newInstructions =
+            insertIndex !== -1
+              ? [
+                  ...selectedInstructions.slice(0, insertIndex + 1),
+                  ...newEntries,
+                  ...selectedInstructions.slice(insertIndex + 1),
+                ]
+              : [...selectedInstructions, ...newEntries];
+        } else {
+          newInstructions = [...selectedInstructions, ...newEntries];
+        }
+
+        setSelectedInstructions(newInstructions);
+        setSelectedAvailableInstructions([]);
+        setPendingTestModeAdd(null);
+      } else if (result.error) {
+        alert(`Failed to lock instruction for test mode: ${result.error}`);
+        setPendingTestModeAdd(null);
+      }
+    }
+  }, [addToTestFetcher.data, addToTestFetcher.state, pendingTestModeAdd]);
 
   useEffect(() => {
     if (importBundleFetcher.data && importBundleFetcher.state === "idle") {
@@ -1964,6 +2021,35 @@ function EditMissionForm({
                 <button
                   type="button"
                   onClick={() => {
+                    if (isCurrentMissionTemp) {
+                      // In test mode: real instructions must be cloned as temp shadows before adding.
+                      // Already-temp instructions (e.g. ones belonging to this session) can be added directly.
+                      const realIds = selectedAvailableInstructions.filter(
+                        (id) => !instructionsEn.find((i) => i.id === id)?.isTemp,
+                      );
+                      const alreadyTempIds = selectedAvailableInstructions.filter(
+                        (id) => instructionsEn.find((i) => i.id === id)?.isTemp,
+                      );
+
+                      if (realIds.length > 0) {
+                        // Kick off async temp-copy creation; the useEffect will update selectedInstructions on success.
+                        setPendingTestModeAdd({
+                          realIds,
+                          alreadyTempIds,
+                          insertAfterId: selectedMissionInstruction,
+                        });
+                        const formData = new FormData();
+                        formData.append("actionType", "createTempInstructionCopies");
+                        formData.append("instructionIds", realIds.join(","));
+                        formData.append("accessToken", session?.access_token || "");
+                        addToTestFetcher.submit(formData, { method: "post" });
+                        return;
+                      }
+
+                      // All selected are already-temp — fall through to standard add
+                    }
+
+                    // Standard add (non-test-mode, or all-already-temp edge case).
                     // Generate unique entry keys when the same base ID is added more than once.
                     // Duplicate entries get a "#N" suffix (e.g. "42#2", "42#3") so that each
                     // occurrence has an independent key while the renderer strips the suffix to
@@ -2001,10 +2087,10 @@ function EditMissionForm({
                   }}
                   className={styles.addButton}
                   style={{ width: "80px" }}
-                  disabled={selectedAvailableInstructions.length === 0}
+                  disabled={selectedAvailableInstructions.length === 0 || addToTestFetcher.state !== "idle"}
                   data-explanation-id="admin-mission-add"
                 >
-                  Add →
+                  {addToTestFetcher.state !== "idle" && isCurrentMissionTemp ? "🔒 Locking..." : "Add →"}
                 </button>
                 <button
                   type="button"
