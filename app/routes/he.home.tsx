@@ -1,13 +1,14 @@
-import { Form, Link, redirect } from "react-router";
+import { Form, Link, redirect, useNavigate } from "react-router";
 import Markdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/he.home";
-import { BookOpen, LogIn, LogOut, Star } from "lucide-react";
+import { BookOpen, HelpCircle, LogIn, LogOut, Star, LayoutGrid, List, PencilRuler } from "lucide-react";
 import styles from "./instructions.module.css";
 import homeStyles from "./home.module.css";
 import { getAllMissionsHe, getExampleMissionsHe, getMissionsForOrganizationHe } from "~/services/missions.server";
 import { getUserProfile, isAdmin } from "~/lib/auth.server";
 import { createServerSupabase } from "~/lib/supabase";
+import { useState } from "react";
 import LanguageSelect from "~/components/language-select/language-select";
 
 export function meta({}: Route.MetaArgs) {
@@ -63,11 +64,27 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function HeHome({ loaderData }: Route.ComponentProps) {
   const { missions, isAnonymous, isPending, isAdmin: adminView, profile } = loaderData;
+  const navigate = useNavigate();
+  const [missionFilter, setMissionFilter] = useState("");
+  const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
+
+  const filteredMissions = missions.filter((mission) => {
+    if (!missionFilter.trim()) return true;
+    const searchTerm = missionFilter.toLowerCase().trim();
+    const title = mission.title?.toLowerCase() || "";
+    const description = mission.description?.toLowerCase() || "";
+    return title.includes(searchTerm) || description.includes(searchTerm);
+  });
 
   return (
     <div className={styles.menuContainer} dir="rtl">
       <div className={styles.menuContent}>
-        <div style={{ marginBottom: "var(--space-4)" }}>
+        <div
+          style={{ marginBottom: "var(--space-1)" }}
+          onClick={(e) => {
+            if (e.shiftKey) navigate("/admin");
+          }}
+        >
           <h1 className={styles.menuTitle}>משימות והנחיות - כיצד לבצע משימה</h1>
           <p className={styles.menuDescription}>
             הקלדה על משימה תפתח רצף הנחיות מה לבצע. הקלקה על הנחייה תפתח הסבר עם צילומי מסך כיצד לבצע. שורה ירוקה היא
@@ -116,13 +133,119 @@ export default function HeHome({ loaderData }: Route.ComponentProps) {
         {/* Admin badge */}
         {adminView && <div className={homeStyles.adminBanner}>👑 תצוגת מנהל — מציג את כל המשימות</div>}
 
-        <div style={{ marginBottom: "var(--space-4)", display: "flex", justifyContent: "flex-end" }}>
+        <div style={{ marginBottom: "var(--space-4)", display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+          {adminView && (
+            <Link
+              to="/admin/missions"
+              style={{
+                padding: "var(--space-2) var(--space-3)",
+                border: "1px solid var(--color-neutral-6)",
+                borderRadius: "var(--radius-2)",
+                fontSize: "0.875rem",
+                backgroundColor: "var(--color-neutral-3)",
+                color: "var(--color-neutral-11)",
+                cursor: "pointer",
+                textDecoration: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "var(--space-1)",
+                transition: "background-color 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--color-neutral-4)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--color-neutral-3)";
+              }}
+            >
+              <PencilRuler size={16} />
+              עורך
+            </Link>
+          )}
+          <Link
+            to="/help"
+            style={{
+              padding: "var(--space-2) var(--space-3)",
+              border: "1px solid var(--color-accent-6)",
+              borderRadius: "var(--radius-2)",
+              fontSize: "0.875rem",
+              backgroundColor: "var(--color-accent-3)",
+              color: "var(--color-accent-11)",
+              cursor: "pointer",
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-1)",
+              transition: "background-color 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--color-accent-4)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--color-accent-3)";
+            }}
+          >
+            <HelpCircle size={16} />
+            עזרה
+          </Link>
           <LanguageSelect currentLang="he" />
+          <input
+            type="text"
+            value={missionFilter}
+            onChange={(e) => setMissionFilter(e.target.value)}
+            placeholder="סינון לפי כותרת או תיאור..."
+            style={{
+              flex: 1,
+              padding: "var(--space-2) var(--space-3)",
+              border: "1px solid var(--color-neutral-6)",
+              borderRadius: "var(--radius-2)",
+              fontSize: "0.875rem",
+              backgroundColor: "var(--color-neutral-2)",
+              color: "var(--color-neutral-12)",
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setMissionFilter("")}
+            disabled={!missionFilter.trim()}
+            style={{
+              padding: "var(--space-2) var(--space-3)",
+              border: "1px solid var(--color-neutral-6)",
+              borderRadius: "var(--radius-2)",
+              fontSize: "0.875rem",
+              backgroundColor: "var(--color-neutral-3)",
+              color: "var(--color-neutral-12)",
+              cursor: missionFilter.trim() ? "pointer" : "not-allowed",
+              opacity: missionFilter.trim() ? 1 : 0.5,
+            }}
+          >
+            נקה
+          </button>
+          <div className={homeStyles.viewToggle}>
+            <button
+              className={`${homeStyles.viewToggleButton} ${viewMode === "cards" ? homeStyles.viewToggleActive : ""}`}
+              onClick={() => setViewMode("cards")}
+              title="תצוגת כרטיסים"
+            >
+              <LayoutGrid size={18} />
+            </button>
+            <button
+              className={`${homeStyles.viewToggleButton} ${viewMode === "list" ? homeStyles.viewToggleActive : ""}`}
+              onClick={() => setViewMode("list")}
+              title="תצוגת רשימה"
+            >
+              <List size={18} />
+            </button>
+          </div>
         </div>
 
-        <div className={styles.missionsGrid}>
-          {missions.map((mission) => (
-            <Link key={mission.id} to={`/he/missions/${mission.id}`} className={styles.missionCard}>
+        <div className={viewMode === "list" ? homeStyles.missionsList : styles.missionsGrid}>
+          {filteredMissions.map((mission) => (
+            <Link
+              key={mission.id}
+              to={`/he/missions/${mission.id}`}
+              className={viewMode === "list" ? homeStyles.missionListItem : styles.missionCard}
+            >
               <div className={styles.missionHeader}>
                 <BookOpen className={styles.missionIcon} />
                 <div className={styles.missionTitle}>
@@ -137,11 +260,13 @@ export default function HeHome({ loaderData }: Route.ComponentProps) {
                   </Markdown>
                 </div>
               </div>
-              <div className={styles.missionDescription}>
-                <Markdown remarkPlugins={[remarkBreaks]} components={{ a: ({ children }) => <span>{children}</span> }}>
-                  {mission.description}
-                </Markdown>
-              </div>
+              {viewMode === "cards" && (
+                <div className={styles.missionDescription}>
+                  <Markdown remarkPlugins={[remarkBreaks]} components={{ a: ({ children }) => <span>{children}</span> }}>
+                    {mission.description}
+                  </Markdown>
+                </div>
+              )}
               <div className={styles.missionFooter}>
                 <span className={styles.instructionCount}>
                   {mission.instructions.length} {mission.instructions.length === 1 ? "הוראה" : "הוראות"}
