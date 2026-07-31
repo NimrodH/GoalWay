@@ -85,7 +85,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             if (e.shiftKey) navigate("/admin");
           }}
         >
-          <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
+          <h1 className={styles.menuTitle}>GoalWay - how to do a mission_</h1>
           <p className={styles.menuDescription}>
             Clicking on a mission will open a sequence of instructions on what to do. Clicking on an instruction will
             open an explanation with screenshots of how to perform it. A green row is a condition — click on it to get
@@ -250,14 +250,23 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <div className={styles.missionHeader}>
                 <BookOpen className={styles.missionIcon} />
                 <div className={styles.missionTitle}>
-                  <Markdown remarkPlugins={[remarkBreaks]} components={{ p: ({ children }) => <span>{children}</span>, a: ({ children }) => <span>{children}</span> }}>
+                  <Markdown
+                    remarkPlugins={[remarkBreaks]}
+                    components={{
+                      p: ({ children }) => <span>{children}</span>,
+                      a: ({ children }) => <span>{children}</span>,
+                    }}
+                  >
                     {mission.title}
                   </Markdown>
                 </div>
               </div>
               {viewMode === "cards" && (
                 <div className={styles.missionDescription}>
-                  <Markdown remarkPlugins={[remarkBreaks]} components={{ a: ({ children }) => <span>{children}</span> }}>
+                  <Markdown
+                    remarkPlugins={[remarkBreaks]}
+                    components={{ a: ({ children }) => <span>{children}</span> }}
+                  >
                     {mission.description}
                   </Markdown>
                 </div>
