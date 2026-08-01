@@ -10,6 +10,7 @@ import { getUserProfile, isAdmin } from "~/lib/auth.server";
 import { createServerSupabase } from "~/lib/supabase";
 import { useState } from "react";
 import LanguageSelect from "~/components/language-select/language-select";
+import { getMissionOrganizations, getOrganizations } from "~/services/organizations.server";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -34,7 +35,23 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (profile && isAdmin(profile)) {
     const allMissions = await getAllMissions();
     const filtered = allMissions.filter((m) => m.status !== "Hide");
-    return { missions: filtered, isAdmin: true, isAnonymous: false, isPending: false, profile };
+    const organizations = await getOrganizations();
+    const missionsWithAccess = await Promise.all(
+      filtered.map(async (mission) => ({
+        ...mission,
+        allowedOrgIds: mission.isTemp ? [] : await getMissionOrganizations(mission.id),
+      })),
+    );
+
+    return {
+      missions: filtered,
+      missionsWithAccess,
+      organizations,
+      isAdmin: true,
+      isAnonymous: false,
+      isPending: false,
+      profile,
+    };
   }
 
   // Always fetch example missions — visible to everyone
@@ -63,12 +80,19 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { missions, isAnonymous, isPending, isAdmin: adminView, profile } = loaderData;
+  const { missions, missionsWithAccess, organizations, isAnonymous, isPending, isAdmin: adminView, profile } =
+    loaderData;
   const navigate = useNavigate();
   const [missionFilter, setMissionFilter] = useState("");
+  const [organizationFilter, setOrganizationFilter] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
 
-  const filteredMissions = missions.filter((mission) => {
+  const missionList = adminView ? missionsWithAccess : missions;
+
+  const filteredMissions = missionList.filter((mission) => {
+    if (adminView && organizationFilter && !("allowedOrgIds" in mission && mission.allowedOrgIds.includes(organizationFilter))) {
+      return false;
+    }
     if (!missionFilter.trim()) return true;
     const searchTerm = missionFilter.toLowerCase().trim();
     const title = mission.title?.toLowerCase() || "";
@@ -190,6 +214,28 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             Help
           </Link>
           <LanguageSelect currentLang="en" />
+            {adminView && (
+              <select
+                value={organizationFilter}
+                onChange={(e) => setOrganizationFilter(e.target.value)}
+                style={{
+                  minWidth: "220px",
+                  padding: "var(--space-2) var(--space-3)",
+                  border: "1px solid var(--color-neutral-6)",
+                  borderRadius: "var(--radius-2)",
+                  fontSize: "0.875rem",
+                  backgroundColor: "var(--color-neutral-2)",
+                  color: "var(--color-neutral-12)",
+                }}
+              >
+                <option value="">All organizations</option>
+                {organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>
+                    {organization.name}
+                  </option>
+                ))}
+              </select>
+            )}
           <input
             type="text"
             value={missionFilter}
@@ -207,8 +253,11 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           />
           <button
             type="button"
-            onClick={() => setMissionFilter("")}
-            disabled={!missionFilter.trim()}
+            onClick={() => {
+              setMissionFilter("");
+              setOrganizationFilter("");
+            }}
+            disabled={!missionFilter.trim() && !organizationFilter}
             style={{
               padding: "var(--space-2) var(--space-3)",
               border: "1px solid var(--color-neutral-6)",
@@ -216,8 +265,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               fontSize: "0.875rem",
               backgroundColor: "var(--color-neutral-3)",
               color: "var(--color-neutral-12)",
-              cursor: missionFilter.trim() ? "pointer" : "not-allowed",
-              opacity: missionFilter.trim() ? 1 : 0.5,
+              cursor: missionFilter.trim() || organizationFilter ? "pointer" : "not-allowed",
+              opacity: missionFilter.trim() || organizationFilter ? 1 : 0.5,
             }}
           >
             Clear
