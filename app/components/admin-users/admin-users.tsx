@@ -15,9 +15,10 @@ interface AdminUsersProps {
   organizations: Organization[];
   missions: MissionWithAccess[];
   accessToken: string | null;
+  instructions?: Array<{ id: string; type?: string; missionId?: string }>;
 }
 
-export function AdminUsers({ users, organizations, missions, accessToken }: AdminUsersProps) {
+export function AdminUsers({ users, organizations, missions, accessToken, instructions }: AdminUsersProps) {
   const pendingUsers = users.filter((u) => !u.organization_id && u.role !== "admin");
 
   return (
@@ -38,6 +39,7 @@ export function AdminUsers({ users, organizations, missions, accessToken }: Admi
         missions={missions}
         organizations={organizations}
         accessToken={accessToken}
+        instructions={instructions}
       />
     </div>
   );
@@ -332,10 +334,12 @@ function MissionAccessMatrix({
   missions,
   organizations,
   accessToken,
+  instructions = [],
 }: {
   missions: MissionWithAccess[];
   organizations: Organization[];
   accessToken: string | null;
+  instructions?: Array<{ id: string; type?: string; missionId?: string }>;
 }) {
   const [changes, setChanges] = useState<
     Record<string, { isExample: boolean; orgIds: Set<string> }>
@@ -360,6 +364,30 @@ function MissionAccessMatrix({
   const [filterName, setFilterName] = useState("");
   const [filterDesc, setFilterDesc] = useState("");
   const [filterOrgId, setFilterOrgId] = useState("");
+
+  const linkInstructionMap = new Map<string, string>();
+  for (const instr of instructions) {
+    if (instr.type === "link" && instr.missionId) {
+      linkInstructionMap.set(instr.id, instr.missionId);
+    }
+  }
+
+  const linkedMissionIds = new Set<string>();
+  const reverseLinkedMap = new Map<string, string[]>();
+  for (const m of missions) {
+    if (Array.isArray(m.instructions)) {
+      for (const [instrId] of m.instructions) {
+        const baseId = instrId.includes("#") ? instrId.split("#")[0] : instrId;
+        const linkedMissionId = linkInstructionMap.get(baseId);
+        if (linkedMissionId && linkedMissionId !== m.id) {
+          linkedMissionIds.add(linkedMissionId);
+          const sources = reverseLinkedMap.get(linkedMissionId) ?? [];
+          if (!sources.includes(m.id)) sources.push(m.id);
+          reverseLinkedMap.set(linkedMissionId, sources);
+        }
+      }
+    }
+  }
 
   useEffect(() => {
     if (fetcher.state === "idle" && savingMissionId.current) {
@@ -423,7 +451,6 @@ function MissionAccessMatrix({
   const descLower = filterDesc.trim().toLowerCase();
 
   const visibleMissions = missions
-    .filter((m) => m.status !== "Hide")
     .filter((m) => !nameLower || m.title.toLowerCase().includes(nameLower))
     .filter((m) => !descLower || m.description.toLowerCase().includes(descLower))
     .filter((m) => !filterOrgId || (changes[m.id]?.orgIds ?? new Set()).has(filterOrgId));
@@ -545,6 +572,20 @@ function MissionAccessMatrix({
             visibleMissions.map((mission) => {
               const row = changes[mission.id] ?? { isExample: false, orgIds: new Set() };
               const isSelected = selectedMissionId === mission.id;
+              const isTemp = mission.isTemp === true;
+              const isHidden = mission.status === "Hide";
+              const isOrgAssigned = row.orgIds.size > 0 || mission.allowedOrgIds.length > 0;
+              const isLinked = linkedMissionIds.has(mission.id);
+
+              const indicators = [
+                isTemp ? "🧪 " : "",
+                isHidden ? "🔴 " : "",
+                isOrgAssigned ? "🟢 " : "",
+                isLinked ? "🟡 " : "",
+              ].filter(Boolean).join("");
+
+              const linkers = reverseLinkedMap.get(mission.id) ?? [];
+
               return (
                 <tr
                   key={mission.id}
@@ -552,10 +593,26 @@ function MissionAccessMatrix({
                   className={isSelected ? styles.selectedRow : undefined}
                 >
                   <td>
-                    <div style={{ fontWeight: 600 }}>{mission.title}</div>
+                    <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>{indicators}</span>
+                      <span>{mission.title}</span>
+                    </div>
                     <div style={{ fontSize: "0.75rem", color: "var(--color-neutral-10)" }}>
                       ID: {mission.id}
+                      {isTemp && mission.sourceMissionId && (
+                        <span style={{ marginLeft: "6px", color: "var(--color-neutral-9)" }}>
+                          (Test copy of {mission.sourceMissionId})
+                        </span>
+                      )}
                     </div>
+                    {linkers.length > 0 && (
+                      <div style={{ fontSize: "0.7rem", color: "var(--amber-11)", marginTop: "2px" }}>
+                        Linked from: {linkers.map((sourceId, idx) => {
+                          const srcMission = missions.find((m) => m.id === sourceId);
+                          return `[${idx + 1}] ${sourceId}${srcMission ? ` (${srcMission.title})` : ""}`;
+                        }).join(", ")}
+                      </div>
+                    )}
                   </td>
                   <td style={{ textAlign: "center" }}>
                     <input

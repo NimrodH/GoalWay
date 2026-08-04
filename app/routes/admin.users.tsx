@@ -17,6 +17,7 @@ export default function AdminUsersPage() {
           organizations={loaderData.organizations}
           missions={loaderData.missionsWithAccess}
           accessToken={sessionAccessToken}
+          instructions={loaderData.instructions}
         />
       )}
     </AdminLayout>
