@@ -300,7 +300,7 @@ export const BUTTON_EXPLANATIONS: Record<string, ButtonExplanation> = {
   "admin-mission-status": {
     title: "Mission Status / Visibility",
     description:
-      "Controls the visibility of this mission. 'Hide' effectively archives the mission, removing it from all user lists but preserving its data. 'For all' publishes it to all active organizations. Specific organization options allow for targeted deployment to subset of users.",
+      "Controls the visibility of this mission. 'Hide' effectively archives the mission, removing it from all user lists but preserving its data. 'Active' publishes it so it can be accessed by users — who exactly can see it is managed via the Admin › Users page org settings.",
   },
 
   "admin-mission-is-example": {

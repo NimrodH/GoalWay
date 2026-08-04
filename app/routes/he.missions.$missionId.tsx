@@ -196,7 +196,7 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
   const statusFetcher = useFetcher();
 
   // Optimistic status
-  const currentStatus = (statusFetcher.formData?.get("status") as MissionStatus | undefined) ?? mission.status ?? "For all";
+  const currentStatus = (statusFetcher.formData?.get("status") as MissionStatus | undefined) ?? mission.status ?? "Active";
 
   // Single shared fetcher for all instruction status updates
   const instrStatusFetcher = useFetcher<{ success: boolean; instructionId?: string; error?: string }>();

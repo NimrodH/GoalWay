@@ -409,7 +409,7 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
   // Optimistic: track which temp IDs have been converted (so the edit row can show "Creating...")
   const convertingTempId = pendingTempEdit?.tempId ?? null;
   // Optimistic status — show the pending value immediately while saving
-  const currentStatus = (statusFetcher.formData?.get("status") as MissionStatus | undefined) ?? mission.status ?? "For all";
+  const currentStatus = (statusFetcher.formData?.get("status") as MissionStatus | undefined) ?? mission.status ?? "Active";
 
   // Watch for createAndEditFetcher completion — replace temp ID in mission + save
   useEffect(() => {

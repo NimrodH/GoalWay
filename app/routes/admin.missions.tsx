@@ -536,7 +536,7 @@ function EditMissionForm({
       setId(parsed.id || "");
       setTitle(parsed.title || "");
       setDescription(parsed.description || "");
-      setStatus(parsed.status || "For all");
+      setStatus(parsed.status || "Active");
       setIsExample(parsed.isExample ?? false);
       setSelectedInstructions(parsed.instructions || []);
       setCodeEditorError(null);
