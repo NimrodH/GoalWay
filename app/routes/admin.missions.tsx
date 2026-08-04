@@ -1759,7 +1759,6 @@ function EditMissionForm({
                   alignItems: "center",
                   overflowX: "auto",
                 }}
-                className={styles0.div2}
               >
                 <span
                   style={{ fontSize: "0.8rem", color: "var(--color-neutral-10)", flexShrink: 0, whiteSpace: "nowrap" }}

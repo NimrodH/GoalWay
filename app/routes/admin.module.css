@@ -74,7 +74,7 @@
   background: var(--color-neutral-1);
   color: var(--color-neutral-12);
   transition: border-color 0.2s;
-  width: auto;
+  width: stretch;
 }
 
 .input:focus,
