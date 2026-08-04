@@ -7,6 +7,7 @@ import styles from "./admin.module.css";
 import { loader as adminLoader, action as adminAction } from "~/routes/admin";
 import type { Instruction } from "~/services/instructions.server";
 import type { Mission } from "~/services/missions.server";
+import { MISSION_STATUSES, type MissionStatus, DEFAULT_MISSION_STATUS } from "~/data/mission-constants";
 import styles0 from "./admin.missions.module.css";
 import { DrawioUploadDialog } from "~/components/drawio-upload-dialog/drawio-upload-dialog";
 
@@ -129,7 +130,7 @@ function EditMissionForm({
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<"Hide" | "For all" | "Only Adama" | "Only Bazn">("For all");
+  const [status, setStatus] = useState<MissionStatus>(DEFAULT_MISSION_STATUS);
   const [isExample, setIsExample] = useState(false);
   const [selectedInstructions, setSelectedInstructions] = useState<Array<[string, string?]>>([]);
   const [selectedAvailableInstructions, setSelectedAvailableInstructions] = useState<string[]>([]);
@@ -444,7 +445,7 @@ function EditMissionForm({
       setId(mission.id);
       setTitle(mission.title);
       setDescription(mission.description);
-      setStatus(mission.status || "For all");
+      setStatus(mission.status || DEFAULT_MISSION_STATUS);
       setIsExample(mission.isExample ?? false);
       setSelectedInstructions(mission.instructions || []);
     } else {
@@ -455,7 +456,7 @@ function EditMissionForm({
       setId(missionId);
       setTitle((enFallback as Mission | undefined)?.title ?? "");
       setDescription((enFallback as Mission | undefined)?.description ?? "");
-      setStatus((enFallback as Mission | undefined)?.status || "For all");
+      setStatus((enFallback as Mission | undefined)?.status || DEFAULT_MISSION_STATUS);
       setIsExample((enFallback as Mission | undefined)?.isExample ?? false);
       setSelectedInstructions((enFallback as Mission | undefined)?.instructions || []);
     }
@@ -2945,14 +2946,13 @@ function EditMissionForm({
                       <select
                         className={styles.input}
                         value={status}
-                        onChange={(e) => setStatus(e.target.value as "Hide" | "For all" | "Only Adama" | "Only Bazn")}
+                        onChange={(e) => setStatus(e.target.value as MissionStatus)}
                         disabled={isMasterWithActiveTest}
                         data-explanation-id="admin-mission-status"
                       >
-                        <option value="Hide">Hide</option>
-                        <option value="For all">For all</option>
-                        <option value="Only Adama">Only Adama</option>
-                        <option value="Only Bazn">Only Bazn</option>
+                        {MISSION_STATUSES.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
                       </select>
                       <label
                         style={{

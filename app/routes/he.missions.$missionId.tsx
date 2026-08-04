@@ -15,6 +15,7 @@ import { getInstructionsByIdsHe } from "~/services/instructions.server";
 import { getUserProfile, isAdmin } from "~/lib/auth.server";
 import { useAuth } from "~/hooks/use-auth";
 import type { Instruction } from "~/data/instructions-he";
+import { MISSION_STATUSES, type MissionStatus, VALID_MISSION_STATUSES } from "~/data/mission-constants";
 
 export function meta({ data }: Route.MetaArgs) {
   const mission = data?.mission;
@@ -74,7 +75,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return { mission, instructions, allMissions, isPreview, adminNotes, allInstructionIds, allInstructionsList };
 }
 
-type MissionStatus = "Hide" | "For all" | "Only Adama" | "Only Bazn";
 type InstructionStatus = "only title" | "partial explanation" | "full explanation";
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -121,7 +121,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   if (actionType === "updateStatus") {
     const newStatus = formData.get("status") as MissionStatus;
-    const validStatuses: MissionStatus[] = ["Hide", "For all", "Only Adama", "Only Bazn"];
+    const validStatuses: readonly MissionStatus[] = VALID_MISSION_STATUSES;
     if (!validStatuses.includes(newStatus)) {
       return { success: false, error: "Invalid status value" };
     }
@@ -651,10 +651,9 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
                   statusFetcher.submit(fd, { method: "post" });
                 }}
               >
-                <option value="Hide">Hide</option>
-                <option value="For all">For all</option>
-                <option value="Only Adama">Only Adama</option>
-                <option value="Only Bazn">Only Bazn</option>
+                {MISSION_STATUSES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
               </select>
               {statusFetcher.state !== "idle" && (
                 <span className={styles.statusSaving}>שומר…</span>

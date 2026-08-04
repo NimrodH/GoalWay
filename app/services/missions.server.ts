@@ -1,11 +1,12 @@
 import { getSupabase } from "~/lib/supabase";
+import type { MissionStatus } from "~/data/mission-constants";
 
 export interface Mission {
   id: string;
   title: string;
   description: string;
   instructions: Array<[string, string?]>; // [instructionId, customTitle?]
-  status?: "Hide" | "For all" | "Only Adama" | "Only Bazn";
+  status?: MissionStatus;
   isExample?: boolean;
   /** Set to true for temporary test-mode copies — admin only, never shown to users */
   isTemp?: boolean;
