@@ -1762,9 +1762,26 @@ function EditMissionForm({
                 }}
               >
                 <span
-                  style={{ fontSize: "0.8rem", color: "var(--color-neutral-10)", flexShrink: 0, whiteSpace: "nowrap" }}
+                  style={{ fontSize: "0.8rem", color: "var(--color-neutral-10)", flexShrink: 0, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "var(--space-2)" }}
                 >
-                  {filteredMissionIds.length} / {allMissionIds.length}
+                  <span>{filteredMissionIds.length} / {allMissionIds.length}</span>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "3px",
+                      fontSize: "0.7rem",
+                      padding: "1px 5px",
+                      background: "var(--color-neutral-2)",
+                      borderRadius: "var(--radius-1)",
+                      border: "1px solid var(--color-neutral-6)",
+                    }}
+                    title="Legend: 🔴 Hidden | 🟡 Sub mission (Linked) | 🟢 Org-assigned / Active"
+                  >
+                    <span title="Hidden (Red)">🔴</span>
+                    <span title="Sub mission / Linked (Yellow)">🟡</span>
+                    <span title="Org-assigned / Active (Green)">🟢</span>
+                  </span>
                 </span>
                 <input
                   type="text"
