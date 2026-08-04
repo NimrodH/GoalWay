@@ -364,9 +364,9 @@ function MissionAccessMatrix({
   const [filterName, setFilterName] = useState("");
   const [filterDesc, setFilterDesc] = useState("");
   const [filterOrgId, setFilterOrgId] = useState("");
-  const [filterAssigned, setFilterAssigned] = useState(false);
-  const [filterSub, setFilterSub] = useState(false);
-  const [filterHidden, setFilterHidden] = useState(false);
+  const [filterAssigned, setFilterAssigned] = useState(true);
+  const [filterSub, setFilterSub] = useState(true);
+  const [filterHidden, setFilterHidden] = useState(true);
 
   const linkInstructionMap = new Map<string, string>();
   for (const instr of instructions) {
@@ -453,23 +453,30 @@ function MissionAccessMatrix({
   const nameLower = filterName.trim().toLowerCase();
   const descLower = filterDesc.trim().toLowerCase();
 
+  const allIndicatorsChecked = filterAssigned && filterSub && filterHidden;
+  const noIndicatorsChecked = !filterAssigned && !filterSub && !filterHidden;
+
   const visibleMissions = missions
     .filter((m) => !nameLower || m.title.toLowerCase().includes(nameLower))
     .filter((m) => !descLower || m.description.toLowerCase().includes(descLower))
     .filter((m) => !filterOrgId || (changes[m.id]?.orgIds ?? new Set()).has(filterOrgId))
-    .filter((m) => !filterAssigned || (changes[m.id]?.orgIds ?? new Set()).size > 0 || m.allowedOrgIds.length > 0)
-    .filter((m) => !filterSub || linkedMissionIds.has(m.id))
-    .filter((m) => !filterHidden || m.status === "Hide");
+    .filter((m) => {
+      if (allIndicatorsChecked || noIndicatorsChecked) return true;
+      const isAssigned = (changes[m.id]?.orgIds ?? new Set()).size > 0 || m.allowedOrgIds.length > 0;
+      const isSub = linkedMissionIds.has(m.id);
+      const isHidden = m.status === "Hide";
+      return (filterAssigned && isAssigned) || (filterSub && isSub) || (filterHidden && isHidden);
+    });
 
-  const hasAnyFilter = filterName !== "" || filterDesc !== "" || filterOrgId !== "" || filterAssigned || filterSub || filterHidden;
+  const hasAnyFilter = filterName !== "" || filterDesc !== "" || filterOrgId !== "" || !allIndicatorsChecked;
 
   const clearFilters = () => {
     setFilterName("");
     setFilterDesc("");
     setFilterOrgId("");
-    setFilterAssigned(false);
-    setFilterSub(false);
-    setFilterHidden(false);
+    setFilterAssigned(true);
+    setFilterSub(true);
+    setFilterHidden(true);
   };
 
   return (
