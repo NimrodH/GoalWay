@@ -367,6 +367,7 @@ function MissionAccessMatrix({
   const [filterAssigned, setFilterAssigned] = useState(true);
   const [filterSub, setFilterSub] = useState(true);
   const [filterHidden, setFilterHidden] = useState(true);
+  const [filterRegular, setFilterRegular] = useState(true);
 
   const linkInstructionMap = new Map<string, string>();
   for (const instr of instructions) {
@@ -453,8 +454,8 @@ function MissionAccessMatrix({
   const nameLower = filterName.trim().toLowerCase();
   const descLower = filterDesc.trim().toLowerCase();
 
-  const allIndicatorsChecked = filterAssigned && filterSub && filterHidden;
-  const noIndicatorsChecked = !filterAssigned && !filterSub && !filterHidden;
+  const allIndicatorsChecked = filterAssigned && filterSub && filterHidden && filterRegular;
+  const noIndicatorsChecked = !filterAssigned && !filterSub && !filterHidden && !filterRegular;
 
   const visibleMissions = missions
     .filter((m) => !nameLower || m.title.toLowerCase().includes(nameLower))
@@ -465,7 +466,13 @@ function MissionAccessMatrix({
       const isAssigned = (changes[m.id]?.orgIds ?? new Set()).size > 0 || m.allowedOrgIds.length > 0;
       const isSub = linkedMissionIds.has(m.id);
       const isHidden = m.status === "Hide";
-      return (filterAssigned && isAssigned) || (filterSub && isSub) || (filterHidden && isHidden);
+      const isRegular = !isAssigned && !isSub && !isHidden;
+      return (
+        (filterAssigned && isAssigned) ||
+        (filterSub && isSub) ||
+        (filterHidden && isHidden) ||
+        (filterRegular && isRegular)
+      );
     });
 
   const hasAnyFilter = filterName !== "" || filterDesc !== "" || filterOrgId !== "" || !allIndicatorsChecked;
@@ -477,6 +484,7 @@ function MissionAccessMatrix({
     setFilterAssigned(true);
     setFilterSub(true);
     setFilterHidden(true);
+    setFilterRegular(true);
   };
 
   return (
@@ -548,6 +556,13 @@ function MissionAccessMatrix({
             title="Show only hidden missions"
           >
             🔴 Hidden
+          </button>
+          <button
+            className={`${styles.filterToggleBtn} ${filterRegular ? styles.filterToggleBtnActive : ""}`}
+            onClick={() => setFilterRegular((v) => !v)}
+            title="Show only regular missions (no special indicator)"
+          >
+            ⚪ Regular
           </button>
         </div>
 
