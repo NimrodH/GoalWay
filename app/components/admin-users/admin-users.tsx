@@ -364,6 +364,9 @@ function MissionAccessMatrix({
   const [filterName, setFilterName] = useState("");
   const [filterDesc, setFilterDesc] = useState("");
   const [filterOrgId, setFilterOrgId] = useState("");
+  const [filterAssigned, setFilterAssigned] = useState(false);
+  const [filterSub, setFilterSub] = useState(false);
+  const [filterHidden, setFilterHidden] = useState(false);
 
   const linkInstructionMap = new Map<string, string>();
   for (const instr of instructions) {
@@ -453,14 +456,20 @@ function MissionAccessMatrix({
   const visibleMissions = missions
     .filter((m) => !nameLower || m.title.toLowerCase().includes(nameLower))
     .filter((m) => !descLower || m.description.toLowerCase().includes(descLower))
-    .filter((m) => !filterOrgId || (changes[m.id]?.orgIds ?? new Set()).has(filterOrgId));
+    .filter((m) => !filterOrgId || (changes[m.id]?.orgIds ?? new Set()).has(filterOrgId))
+    .filter((m) => !filterAssigned || (changes[m.id]?.orgIds ?? new Set()).size > 0 || m.allowedOrgIds.length > 0)
+    .filter((m) => !filterSub || linkedMissionIds.has(m.id))
+    .filter((m) => !filterHidden || m.status === "Hide");
 
-  const hasAnyFilter = filterName !== "" || filterDesc !== "" || filterOrgId !== "";
+  const hasAnyFilter = filterName !== "" || filterDesc !== "" || filterOrgId !== "" || filterAssigned || filterSub || filterHidden;
 
   const clearFilters = () => {
     setFilterName("");
     setFilterDesc("");
     setFilterOrgId("");
+    setFilterAssigned(false);
+    setFilterSub(false);
+    setFilterHidden(false);
   };
 
   return (
@@ -511,6 +520,30 @@ function MissionAccessMatrix({
           </select>
         </div>
 
+        <div className={styles.filterToggleGroup}>
+          <button
+            className={`${styles.filterToggleBtn} ${filterAssigned ? styles.filterToggleBtnActive : ""}`}
+            onClick={() => setFilterAssigned((v) => !v)}
+            title="Show only org-assigned missions"
+          >
+            🟢 Assigned
+          </button>
+          <button
+            className={`${styles.filterToggleBtn} ${filterSub ? styles.filterToggleBtnActive : ""}`}
+            onClick={() => setFilterSub((v) => !v)}
+            title="Show only sub/linked missions"
+          >
+            🟡 Sub
+          </button>
+          <button
+            className={`${styles.filterToggleBtn} ${filterHidden ? styles.filterToggleBtnActive : ""}`}
+            onClick={() => setFilterHidden((v) => !v)}
+            title="Show only hidden missions"
+          >
+            🔴 Hidden
+          </button>
+        </div>
+
         {hasAnyFilter && (
           <button
             className={styles.clearFiltersButton}
@@ -524,7 +557,7 @@ function MissionAccessMatrix({
         )}
 
         <span className={styles.filterCount}>
-          {visibleMissions.length} of {missions.filter((m) => m.status !== "Hide").length} missions
+          {visibleMissions.length} of {missions.length} missions
         </span>
 
         <button
