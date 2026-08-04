@@ -345,6 +345,29 @@
   margin-left: auto;
 }
 
+.saveSelectedButton {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-success-9);
+  color: var(--color-success-contrast);
+  border: none;
+  border-radius: var(--radius-2);
+  font: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.saveSelectedButton:hover:not(:disabled) {
+  background: var(--color-success-10);
+}
+
+.saveSelectedButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .matrixEmpty {
   text-align: center;
   padding: var(--space-6) !important;
@@ -381,30 +404,20 @@
   border-bottom: none;
 }
 
+.matrixTable tbody tr {
+  cursor: pointer;
+}
+
 .matrixTable tr:hover td {
   background: var(--color-neutral-2);
 }
 
-.saveRowButton {
-  padding: var(--space-1) var(--space-3);
-  background: var(--color-success-9);
-  color: var(--color-success-contrast);
-  border: none;
-  border-radius: var(--radius-2);
-  font: var(--font-body);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s ease;
+.selectedRow td {
+  background: var(--color-accent-3);
 }
 
-.saveRowButton:hover:not(:disabled) {
-  background: var(--color-success-10);
-}
-
-.saveRowButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.selectedRow:hover td {
+  background: var(--color-accent-3);
 }
 
 /* ── Org Multi-Select ────────────────────────────────────── */
