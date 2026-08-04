@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useFetcher } from "react-router";
-import { Trash2, Plus, Building2, ChevronDown, Check, Search, X } from "lucide-react";
+import { Trash2, Plus, Building2, ChevronDown, Check, Search, X, Square, CheckSquare } from "lucide-react";
 import type { Organization, PendingUser } from "~/services/organizations.server";
 import type { Mission } from "~/services/missions.server";
 import styles from "./admin-users.module.css";
@@ -539,30 +539,38 @@ function MissionAccessMatrix({
           <button
             className={`${styles.filterToggleBtn} ${filterAssigned ? styles.filterToggleBtnActive : ""}`}
             onClick={() => setFilterAssigned((v) => !v)}
-            title="Show only org-assigned missions"
+            title="Show org-assigned missions"
           >
-            🟢 Assigned
+            {filterAssigned ? <CheckSquare size={14} /> : <Square size={14} />}
+            <span className={`${styles.filterDot} ${styles.filterDotGreen}`} />
+            Assigned
           </button>
           <button
             className={`${styles.filterToggleBtn} ${filterSub ? styles.filterToggleBtnActive : ""}`}
             onClick={() => setFilterSub((v) => !v)}
-            title="Show only sub/linked missions"
+            title="Show sub/linked missions"
           >
-            🟡 Sub
+            {filterSub ? <CheckSquare size={14} /> : <Square size={14} />}
+            <span className={`${styles.filterDot} ${styles.filterDotYellow}`} />
+            Sub
           </button>
           <button
             className={`${styles.filterToggleBtn} ${filterHidden ? styles.filterToggleBtnActive : ""}`}
             onClick={() => setFilterHidden((v) => !v)}
-            title="Show only hidden missions"
+            title="Show hidden missions"
           >
-            🔴 Hidden
+            {filterHidden ? <CheckSquare size={14} /> : <Square size={14} />}
+            <span className={`${styles.filterDot} ${styles.filterDotRed}`} />
+            Hidden
           </button>
           <button
             className={`${styles.filterToggleBtn} ${filterRegular ? styles.filterToggleBtnActive : ""}`}
             onClick={() => setFilterRegular((v) => !v)}
-            title="Show only regular missions (no special indicator)"
+            title="Show regular missions (no special indicator)"
           >
-            ⚪ Regular
+            {filterRegular ? <CheckSquare size={14} /> : <Square size={14} />}
+            <span className={`${styles.filterDot} ${styles.filterDotGray}`} />
+            Regular
           </button>
         </div>
 
