@@ -42,3 +42,6 @@
   background: var(--color-neutral-3);
   color: var(--color-neutral-12);
 }
+.div2 {
+  display: flex;
+}
