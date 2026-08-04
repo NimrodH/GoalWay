@@ -1746,8 +1746,7 @@ function EditMissionForm({
           // Linker missions for the currently selected mission (shown in the info banner)
           const selectedLinkers = selectedMissionId ? (reverseLinkedMap.get(selectedMissionId) ?? []) : [];
           const selectedMission = missions.find((m) => m.id === selectedMissionId);
-          const isSelectedLinked =
-            selectedLinkers.length > 0 && selectedMission?.status !== "Hide";
+          const isSelectedLinked = selectedLinkers.length > 0;
 
           return (
             <>
@@ -1846,9 +1845,9 @@ function EditMissionForm({
                 {filteredMissionIds.map((missionId) => {
                   const mission = missions.find((m) => m.id === missionId);
                   const isTemp = mission?.isTemp === true;
-                  const isHidden = !isTemp && mission?.status === "Hide";
-                  const isOrgAssigned = !isTemp && !isHidden && orgAssignedIds.has(missionId);
-                  const isLinked = !isTemp && !isHidden && linkedMissionIds.has(missionId);
+                  const isHidden = mission?.status === "Hide";
+                  const isOrgAssigned = orgAssignedIds.has(missionId);
+                  const isLinked = linkedMissionIds.has(missionId);
                   const indicators = [
                     isTemp ? "🧪 " : "",
                     isHidden ? "🔴 " : "",
@@ -1856,16 +1855,27 @@ function EditMissionForm({
                     isLinked ? "🟡 " : "",
                   ].filter(Boolean).join("");
                   const linkers = reverseLinkedMap.get(missionId) ?? [];
-                  const optionTitle = isTemp
-                    ? `TEST COPY of mission ${mission?.sourceMissionId} — not visible to users`
-                    : linkers.length > 0
-                      ? `Linked from: ${linkers
-                          .map((id) => {
-                            const m = missions.find((m) => m.id === id);
-                            return m ? `${id} - ${m.title}` : id;
-                          })
-                          .join(" | ")}`
-                      : undefined;
+                  const optionTitleParts: string[] = [];
+                  if (isTemp) {
+                    optionTitleParts.push(`TEST COPY of mission ${mission?.sourceMissionId} — not visible to users`);
+                  }
+                  if (linkers.length > 0) {
+                    optionTitleParts.push(
+                      `Linked from: ${linkers
+                        .map((id) => {
+                          const m = missions.find((m) => m.id === id);
+                          return m ? `${id} - ${m.title}` : id;
+                        })
+                        .join(" | ")}`
+                    );
+                  }
+                  if (isHidden) {
+                    optionTitleParts.push("Status: Hidden");
+                  }
+                  if (isOrgAssigned) {
+                    optionTitleParts.push("Org-assigned");
+                  }
+                  const optionTitle = optionTitleParts.length > 0 ? optionTitleParts.join(" | ") : undefined;
                   return (
                     <option key={missionId} value={missionId} title={optionTitle}>
                       {indicators}
