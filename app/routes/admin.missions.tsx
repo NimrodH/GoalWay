@@ -1747,7 +1747,7 @@ function EditMissionForm({
           const selectedLinkers = selectedMissionId ? (reverseLinkedMap.get(selectedMissionId) ?? []) : [];
           const selectedMission = missions.find((m) => m.id === selectedMissionId);
           const isSelectedLinked =
-            selectedLinkers.length > 0 && selectedMission?.status !== "Hide" && !orgAssignedIds.has(selectedMissionId);
+            selectedLinkers.length > 0 && selectedMission?.status !== "Hide";
 
           return (
             <>
@@ -1848,12 +1848,17 @@ function EditMissionForm({
                   const isTemp = mission?.isTemp === true;
                   const isHidden = !isTemp && mission?.status === "Hide";
                   const isOrgAssigned = !isTemp && !isHidden && orgAssignedIds.has(missionId);
-                  const isLinked = !isTemp && !isHidden && !isOrgAssigned && linkedMissionIds.has(missionId);
-                  const prefix = isTemp ? "🧪 " : isHidden ? "🔴 " : isOrgAssigned ? "🟢 " : isLinked ? "🟡 " : "";
+                  const isLinked = !isTemp && !isHidden && linkedMissionIds.has(missionId);
+                  const indicators = [
+                    isTemp ? "🧪 " : "",
+                    isHidden ? "🔴 " : "",
+                    isOrgAssigned ? "🟢 " : "",
+                    isLinked ? "🟡 " : "",
+                  ].filter(Boolean).join("");
                   const linkers = reverseLinkedMap.get(missionId) ?? [];
                   const optionTitle = isTemp
                     ? `TEST COPY of mission ${mission?.sourceMissionId} — not visible to users`
-                    : isLinked && linkers.length > 0
+                    : linkers.length > 0
                       ? `Linked from: ${linkers
                           .map((id) => {
                             const m = missions.find((m) => m.id === id);
@@ -1863,7 +1868,7 @@ function EditMissionForm({
                       : undefined;
                   return (
                     <option key={missionId} value={missionId} title={optionTitle}>
-                      {prefix}
+                      {indicators}
                       {missionId}
                       {mission
                         ? isTemp
