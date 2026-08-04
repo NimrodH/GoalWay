@@ -87,10 +87,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const [organizationFilter, setOrganizationFilter] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
 
-  const missionList = adminView ? missionsWithAccess : missions;
+  const missionList = adminView ? (missionsWithAccess ?? []) : (missions ?? []);
 
   const filteredMissions = missionList.filter((mission) => {
-    if (adminView && organizationFilter && !("allowedOrgIds" in mission && mission.allowedOrgIds.includes(organizationFilter))) {
+    if (adminView && organizationFilter && !((mission as any).allowedOrgIds && (mission as any).allowedOrgIds.includes(organizationFilter))) {
       return false;
     }
     if (!missionFilter.trim()) return true;
@@ -229,7 +229,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 }}
               >
                 <option value="">All organizations</option>
-                {organizations.map((organization) => (
+                {(organizations ?? []).map((organization) => (
                   <option key={organization.id} value={organization.id}>
                     {organization.name}
                   </option>

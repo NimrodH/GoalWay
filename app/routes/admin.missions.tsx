@@ -375,7 +375,9 @@ function EditMissionForm({
     }
 
     if (targetIfIndex === -1 || targetEndIfIndex === -1) {
-      alert("Could not find a matching IF…END-IF pair. Select the IF row, a row inside the IF block, or the END-IF row.");
+      alert(
+        "Could not find a matching IF…END-IF pair. Select the IF row, a row inside the IF block, or the END-IF row.",
+      );
       return;
     }
 
@@ -652,8 +654,7 @@ function EditMissionForm({
       const elseId = pair.elseIndex !== null ? result[pair.elseIndex][0] : null;
       const elseSuffix = elseId ? elseId.slice("else-".length) : null;
 
-      const isConsistent =
-        ifSuffix === endIfSuffix && (elseSuffix === null || elseSuffix === ifSuffix);
+      const isConsistent = ifSuffix === endIfSuffix && (elseSuffix === null || elseSuffix === ifSuffix);
 
       if (!isConsistent) {
         changed++;
@@ -666,8 +667,7 @@ function EditMissionForm({
           endIfTitle !== undefined ? [`end-if-${newSuffix}`, endIfTitle] : [`end-if-${newSuffix}`];
         if (pair.elseIndex !== null) {
           const [, elseTitle] = result[pair.elseIndex];
-          result[pair.elseIndex] =
-            elseTitle !== undefined ? [`else-${newSuffix}`, elseTitle] : [`else-${newSuffix}`];
+          result[pair.elseIndex] = elseTitle !== undefined ? [`else-${newSuffix}`, elseTitle] : [`else-${newSuffix}`];
         }
       }
     }
@@ -792,9 +792,7 @@ function EditMissionForm({
         // Replace the temp entry in-place with the master instruction key, preserving position and custom title
         setSelectedInstructions(
           selectedInstructions.map(([id, title]) =>
-            id === tempId
-              ? ([masterKey, title] as [string, string?])
-              : ([id, title] as [string, string?]),
+            id === tempId ? ([masterKey, title] as [string, string?]) : ([id, title] as [string, string?]),
           ),
         );
       } else {
@@ -978,9 +976,7 @@ function EditMissionForm({
   // Set of source instruction IDs that currently have an active temp shadow (owned by a test session).
   // Built from instructionsEn which includes temp copies (is_temp=true) with sourceInstructionId set.
   const instructionsWithTempShadow = new Set<string>(
-    instructionsEn
-      .filter((i) => i.isTemp && i.sourceInstructionId)
-      .map((i) => i.sourceInstructionId!),
+    instructionsEn.filter((i) => i.isTemp && i.sourceInstructionId).map((i) => i.sourceInstructionId!),
   );
 
   const handleEditInstruction = (instructionId: string) => {
@@ -1343,9 +1339,7 @@ function EditMissionForm({
   const tempSourceMissionId = currentMissionMeta?.sourceMissionId ?? null;
 
   // Is there already a temp version for the currently selected (non-temp) mission?
-  const existingTempForCurrent = missions.find(
-    (m) => m.isTemp && m.sourceMissionId === selectedMissionId,
-  );
+  const existingTempForCurrent = missions.find((m) => m.isTemp && m.sourceMissionId === selectedMissionId);
   // True when the selected mission is the original/master AND has an active test session.
   // In this state, all editing of the master is locked to prevent divergence from the test copy.
   const isMasterWithActiveTest = !isCurrentMissionTemp && !!existingTempForCurrent;
@@ -1360,7 +1354,7 @@ function EditMissionForm({
       return;
     }
     if (isCurrentMissionTemp) {
-      alert("You are already editing a test copy. Click \"Publish\" to apply or \"Discard\" to cancel.");
+      alert('You are already editing a test copy. Click "Publish" to apply or "Discard" to cancel.');
       return;
     }
     if (existingTempForCurrent) {
@@ -1490,7 +1484,9 @@ function EditMissionForm({
               type="button"
               onClick={handleDeleteMission}
               className={styles.removeButton}
-              disabled={!selectedMissionId || deleteMissionFetcher.state !== "idle" || !session || isMasterWithActiveTest}
+              disabled={
+                !selectedMissionId || deleteMissionFetcher.state !== "idle" || !session || isMasterWithActiveTest
+              }
               data-explanation-id="admin-mission-delete"
             >
               {deleteMissionFetcher.state !== "idle" ? "Deleting..." : "Delete"}
@@ -1499,7 +1495,9 @@ function EditMissionForm({
               type="button"
               onClick={handleDuplicateMission}
               className={styles.addButton}
-              disabled={!selectedMissionId || duplicateMissionFetcher.state !== "idle" || !session || isMasterWithActiveTest}
+              disabled={
+                !selectedMissionId || duplicateMissionFetcher.state !== "idle" || !session || isMasterWithActiveTest
+              }
               title="Create a copy of the selected mission with a new ID"
               data-explanation-id="admin-mission-duplicate"
             >
@@ -1542,7 +1540,9 @@ function EditMissionForm({
                 type="button"
                 onClick={handleStartTestMode}
                 className={styles.addButton}
-                disabled={!selectedMissionId || testModeFetcher.state !== "idle" || !session || !!existingTempForCurrent}
+                disabled={
+                  !selectedMissionId || testModeFetcher.state !== "idle" || !session || !!existingTempForCurrent
+                }
                 title={
                   existingTempForCurrent
                     ? `A test session already exists (ID: ${existingTempForCurrent.id}) — click the button with the session loaded`
@@ -1550,7 +1550,11 @@ function EditMissionForm({
                 }
                 data-explanation-id="admin-mission-test-mode"
               >
-                {testModeFetcher.state !== "idle" ? "Starting..." : existingTempForCurrent ? "🧪 Test Active" : "🧪 Test Mode"}
+                {testModeFetcher.state !== "idle"
+                  ? "Starting..."
+                  : existingTempForCurrent
+                    ? "🧪 Test Active"
+                    : "🧪 Test Mode"}
               </button>
             )}
             <button
@@ -1618,8 +1622,7 @@ function EditMissionForm({
             <span style={{ fontSize: "1.1rem" }}>🧪</span>
             <span>
               <strong>TEST MODE</strong> — You are editing a temporary copy of mission{" "}
-              <strong>{tempSourceMissionId}</strong>. Changes here do{" "}
-              <em>not</em> affect the original until you click{" "}
+              <strong>{tempSourceMissionId}</strong>. Changes here do <em>not</em> affect the original until you click{" "}
               <strong style={{ color: "red" }}>Publish</strong>.
             </span>
             <div style={{ display: "flex", gap: "var(--space-2)", marginLeft: "auto", flexShrink: 0 }}>
@@ -1680,8 +1683,8 @@ function EditMissionForm({
             <span style={{ fontSize: "1.1rem" }}>🔒</span>
             <span>
               <strong>EDITING LOCKED</strong> — This mission has an active test session (temp ID:{" "}
-              <strong>{existingTempForCurrent!.id}</strong>). Edit the test copy instead, then{" "}
-              <strong>Publish</strong> to apply or <strong>Discard</strong> to revert.
+              <strong>{existingTempForCurrent!.id}</strong>). Edit the test copy instead, then <strong>Publish</strong>{" "}
+              to apply or <strong>Discard</strong> to revert.
             </span>
             <button
               type="button"
@@ -1752,17 +1755,23 @@ function EditMissionForm({
                   display: "flex",
                   gap: "var(--space-2)",
                   marginBottom: "var(--space-2)",
-                  flexWrap: "wrap",
+                  flexWrap: "nowrap",
                   alignItems: "center",
+                  overflowX: "auto",
                 }}
               >
+                <span
+                  style={{ fontSize: "0.8rem", color: "var(--color-neutral-10)", flexShrink: 0, whiteSpace: "nowrap" }}
+                >
+                  {filteredMissionIds.length} / {allMissionIds.length}
+                </span>
                 <input
                   type="text"
                   className={styles.input}
                   value={filterMissionName}
                   onChange={(e) => setFilterMissionName(e.target.value)}
                   placeholder="Filter by name..."
-                  style={{ flex: 1, minWidth: "140px" }}
+                  style={{ flex: "1 1 120px", minWidth: "100px" }}
                 />
                 <input
                   type="text"
@@ -1770,13 +1779,13 @@ function EditMissionForm({
                   value={filterMissionDesc}
                   onChange={(e) => setFilterMissionDesc(e.target.value)}
                   placeholder="Filter by description..."
-                  style={{ flex: 1, minWidth: "140px" }}
+                  style={{ flex: "1 1 120px", minWidth: "100px" }}
                 />
                 <select
                   className={styles.input}
                   value={filterMissionOrg}
                   onChange={(e) => setFilterMissionOrg(e.target.value)}
-                  style={{ flex: "0 1 auto", minWidth: "170px" }}
+                  style={{ flex: "0 1 auto", minWidth: "130px" }}
                 >
                   <option value="">All organizations</option>
                   {allOrgIds.map((orgId) => (
@@ -1800,11 +1809,6 @@ function EditMissionForm({
                     ✕ Clear
                   </button>
                 )}
-                <span
-                  style={{ fontSize: "0.8rem", color: "var(--color-neutral-10)", flexShrink: 0, whiteSpace: "nowrap" }}
-                >
-                  {filteredMissionIds.length} / {allMissionIds.length}
-                </span>
                 <button
                   type="button"
                   onClick={handleSelectLastMission}
@@ -1960,7 +1964,11 @@ function EditMissionForm({
                       }
                     }}
                     className={styles.addButton}
-                    disabled={selectedAvailableInstructions.length !== 1 || createAndEditFetcher.state !== "idle" || isMasterWithActiveTest}
+                    disabled={
+                      selectedAvailableInstructions.length !== 1 ||
+                      createAndEditFetcher.state !== "idle" ||
+                      isMasterWithActiveTest
+                    }
                     style={{ minWidth: "60px" }}
                     title={
                       selectedAvailableInstructions.length === 0
@@ -2187,7 +2195,11 @@ function EditMissionForm({
                   }}
                   className={styles.addButton}
                   style={{ width: "80px" }}
-                  disabled={selectedAvailableInstructions.length === 0 || addToTestFetcher.state !== "idle" || isMasterWithActiveTest}
+                  disabled={
+                    selectedAvailableInstructions.length === 0 ||
+                    addToTestFetcher.state !== "idle" ||
+                    isMasterWithActiveTest
+                  }
                   data-explanation-id="admin-mission-add"
                 >
                   {addToTestFetcher.state !== "idle" && isCurrentMissionTemp ? "🔒 Locking..." : "Add →"}
@@ -2370,16 +2382,16 @@ function EditMissionForm({
                           isSelectedLinkType
                             ? "This is a link instruction — click to choose an action"
                             : selectedMissionInstruction && /^T\d+$/.test(selectedMissionInstruction)
-                            ? "Create a real instruction from this temporary entry and open it for editing"
-                            : "Edit this instruction"
+                              ? "Create a real instruction from this temporary entry and open it for editing"
+                              : "Edit this instruction"
                         }
                         data-explanation-id="admin-mission-edit-instruction"
                       >
                         {createAndEditFetcher.state !== "idle" && pendingTempEdit?.tempId === selectedMissionInstruction
                           ? "Creating..."
                           : isSelectedLinkType
-                          ? "Edit ▾"
-                          : "Edit"}
+                            ? "Edit ▾"
+                            : "Edit"}
                       </button>
                       {showLinkEditMenu && isSelectedLinkType && (
                         <div className={styles0.linkEditDropdown}>
@@ -2521,8 +2533,14 @@ function EditMissionForm({
                       const stopId = hasElse ? elseId : endIfId;
                       let inside = false;
                       for (const [id] of selectedInstructions) {
-                        if (id === ifId) { inside = true; continue; }
-                        if (id === stopId) { inside = false; break; }
+                        if (id === ifId) {
+                          inside = true;
+                          continue;
+                        }
+                        if (id === stopId) {
+                          inside = false;
+                          break;
+                        }
                         if (inside) hiddenDueToIfCollapse.add(id);
                       }
                     }
@@ -2535,8 +2553,14 @@ function EditMissionForm({
                       const endIfId = `end-if-${suffix}`;
                       let inside = false;
                       for (const [id] of selectedInstructions) {
-                        if (id === elseId) { inside = true; continue; }
-                        if (id === endIfId) { inside = false; break; }
+                        if (id === elseId) {
+                          inside = true;
+                          continue;
+                        }
+                        if (id === endIfId) {
+                          inside = false;
+                          break;
+                        }
                         if (inside) hiddenDueToElseCollapse.add(id);
                       }
                     }
@@ -2603,8 +2627,7 @@ function EditMissionForm({
                       const isCollapsed = isIf && collapsedIfIds.has(instructionId);
                       const isElseCollapsed = isElse && collapsedElseIds.has(instructionId);
                       const pairIdx = isIf || isEndIf ? ifPairMap.get(instructionId) : undefined;
-                      const pairColor =
-                        pairIdx !== undefined ? PAIR_COLORS[(pairIdx - 1) % PAIR_COLORS.length] : null;
+                      const pairColor = pairIdx !== undefined ? PAIR_COLORS[(pairIdx - 1) % PAIR_COLORS.length] : null;
                       // Count hidden IF-branch children (up to ELSE if present, else up to END-IF).
                       // Suffix is always consistent in the new structure.
                       let hiddenCount = 0;
@@ -2616,7 +2639,10 @@ function EditMissionForm({
                         const cwStopId = cwHasElse ? cwElseId : cwEndIfId;
                         let counting = false;
                         for (const [id] of selectedInstructions) {
-                          if (id === instructionId) { counting = true; continue; }
+                          if (id === instructionId) {
+                            counting = true;
+                            continue;
+                          }
                           if (id === cwStopId) break;
                           if (counting) hiddenCount++;
                         }
@@ -2629,7 +2655,10 @@ function EditMissionForm({
                         const ewEndIfId = `end-if-${ewSuffix}`;
                         let counting = false;
                         for (const [id] of selectedInstructions) {
-                          if (id === instructionId) { counting = true; continue; }
+                          if (id === instructionId) {
+                            counting = true;
+                            continue;
+                          }
                           if (id === ewEndIfId) break;
                           if (counting) elseHiddenCount++;
                         }
@@ -2713,7 +2742,16 @@ function EditMissionForm({
                                 )}
                               </>
                             ) : isEndIf ? (
-                              <span style={{ display: "flex", alignItems: "center", gap: "4px", color: "var(--color-neutral-10)", fontWeight: 600, opacity: 0.7 }}>
+                              <span
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  color: "var(--color-neutral-10)",
+                                  fontWeight: 600,
+                                  opacity: 0.7,
+                                }}
+                              >
                                 {pairColor && (
                                   <span
                                     style={{
