@@ -354,6 +354,7 @@ function MissionAccessMatrix({
   const savingMissionId = useRef<string | null>(null);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [filterName, setFilterName] = useState("");
@@ -498,6 +499,21 @@ function MissionAccessMatrix({
         <span className={styles.filterCount}>
           {visibleMissions.length} of {missions.filter((m) => m.status !== "Hide").length} missions
         </span>
+
+        <button
+          className={styles.saveSelectedButton}
+          onClick={() => selectedMissionId && saveRow(selectedMissionId)}
+          disabled={
+            !selectedMissionId || !accessToken || (selectedMissionId ? savingIds.has(selectedMissionId) : false)
+          }
+          data-explanation-id="user-mgmt-save-access"
+        >
+          {selectedMissionId && savingIds.has(selectedMissionId)
+            ? "Saving…"
+            : selectedMissionId && savedIds.has(selectedMissionId)
+              ? "✓ Saved"
+              : "Save"}
+        </button>
       </div>
 
       <table className={styles.matrixTable}>
@@ -506,23 +522,25 @@ function MissionAccessMatrix({
             <th>Mission</th>
             <th>Example (Public)</th>
             <th>Organizations</th>
-            <th>Save</th>
           </tr>
         </thead>
         <tbody>
           {visibleMissions.length === 0 ? (
             <tr>
-              <td colSpan={4} className={styles.matrixEmpty}>
+              <td colSpan={3} className={styles.matrixEmpty}>
                 No missions match the current filters.
               </td>
             </tr>
           ) : (
             visibleMissions.map((mission) => {
               const row = changes[mission.id] ?? { isExample: false, orgIds: new Set() };
-              const isSaving = savingIds.has(mission.id);
-              const isSaved = savedIds.has(mission.id);
+              const isSelected = selectedMissionId === mission.id;
               return (
-                <tr key={mission.id}>
+                <tr
+                  key={mission.id}
+                  onClick={() => setSelectedMissionId(mission.id)}
+                  className={isSelected ? styles.selectedRow : undefined}
+                >
                   <td>
                     <div style={{ fontWeight: 600 }}>{mission.title}</div>
                     <div style={{ fontSize: "0.75rem", color: "var(--color-neutral-10)" }}>
@@ -543,16 +561,6 @@ function MissionAccessMatrix({
                       selectedIds={row.orgIds}
                       onChange={(orgId) => toggleOrg(mission.id, orgId)}
                     />
-                  </td>
-                  <td>
-                    <button
-                      className={styles.saveRowButton}
-                      onClick={() => saveRow(mission.id)}
-                      disabled={isSaving || !accessToken}
-                      data-explanation-id="user-mgmt-save-access"
-                    >
-                      {isSaving ? "…" : isSaved ? "✓ Saved" : "Save"}
-                    </button>
                   </td>
                 </tr>
               );
