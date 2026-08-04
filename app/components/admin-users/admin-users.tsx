@@ -514,6 +514,16 @@ function MissionAccessMatrix({
               ? "✓ Saved"
               : "Save"}
         </button>
+
+        <button
+          className={styles.previewSelectedButton}
+          onClick={() => selectedMissionId && window.open(`/missions/${selectedMissionId}?preview=true`, "_blank")}
+          disabled={!selectedMissionId}
+          title={selectedMissionId ? `Preview mission ${selectedMissionId} in a new tab` : "Select a mission to preview"}
+          data-explanation-id="user-mgmt-preview-mission"
+        >
+          👁 Preview
+        </button>
       </div>
 
       <table className={styles.matrixTable}>
