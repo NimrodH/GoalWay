@@ -1746,8 +1746,7 @@ function EditMissionForm({
           // Linker missions for the currently selected mission (shown in the info banner)
           const selectedLinkers = selectedMissionId ? (reverseLinkedMap.get(selectedMissionId) ?? []) : [];
           const selectedMission = missions.find((m) => m.id === selectedMissionId);
-          const isSelectedLinked =
-            selectedLinkers.length > 0 && selectedMission?.status !== "Hide" && !orgAssignedIds.has(selectedMissionId);
+          const isSelectedLinked = selectedLinkers.length > 0;
 
           return (
             <>
@@ -1762,9 +1761,26 @@ function EditMissionForm({
                 }}
               >
                 <span
-                  style={{ fontSize: "0.8rem", color: "var(--color-neutral-10)", flexShrink: 0, whiteSpace: "nowrap" }}
+                  style={{ fontSize: "0.8rem", color: "var(--color-neutral-10)", flexShrink: 0, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "var(--space-2)" }}
                 >
-                  {filteredMissionIds.length} / {allMissionIds.length}
+                  <span>{filteredMissionIds.length} / {allMissionIds.length}</span>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "3px",
+                      fontSize: "0.7rem",
+                      padding: "1px 5px",
+                      background: "var(--color-neutral-2)",
+                      borderRadius: "var(--radius-1)",
+                      border: "1px solid var(--color-neutral-6)",
+                    }}
+                    title="Legend: 🔴 Hidden | 🟡 Sub mission (Linked) | 🟢 Org-assigned / Active"
+                  >
+                    <span title="Hidden (Red)">🔴</span>
+                    <span title="Sub mission / Linked (Yellow)">🟡</span>
+                    <span title="Org-assigned / Active (Green)">🟢</span>
+                  </span>
                 </span>
                 <input
                   type="text"
@@ -1829,24 +1845,40 @@ function EditMissionForm({
                 {filteredMissionIds.map((missionId) => {
                   const mission = missions.find((m) => m.id === missionId);
                   const isTemp = mission?.isTemp === true;
-                  const isHidden = !isTemp && mission?.status === "Hide";
-                  const isOrgAssigned = !isTemp && !isHidden && orgAssignedIds.has(missionId);
-                  const isLinked = !isTemp && !isHidden && !isOrgAssigned && linkedMissionIds.has(missionId);
-                  const prefix = isTemp ? "🧪 " : isHidden ? "🔴 " : isOrgAssigned ? "🟢 " : isLinked ? "🟡 " : "";
+                  const isHidden = mission?.status === "Hide";
+                  const isOrgAssigned = orgAssignedIds.has(missionId);
+                  const isLinked = linkedMissionIds.has(missionId);
+                  const indicators = [
+                    isTemp ? "🧪 " : "",
+                    isHidden ? "🔴 " : "",
+                    isOrgAssigned ? "🟢 " : "",
+                    isLinked ? "🟡 " : "",
+                  ].filter(Boolean).join("");
                   const linkers = reverseLinkedMap.get(missionId) ?? [];
-                  const optionTitle = isTemp
-                    ? `TEST COPY of mission ${mission?.sourceMissionId} — not visible to users`
-                    : isLinked && linkers.length > 0
-                      ? `Linked from: ${linkers
-                          .map((id) => {
-                            const m = missions.find((m) => m.id === id);
-                            return m ? `${id} - ${m.title}` : id;
-                          })
-                          .join(" | ")}`
-                      : undefined;
+                  const optionTitleParts: string[] = [];
+                  if (isTemp) {
+                    optionTitleParts.push(`TEST COPY of mission ${mission?.sourceMissionId} — not visible to users`);
+                  }
+                  if (linkers.length > 0) {
+                    optionTitleParts.push(
+                      `Linked from: ${linkers
+                        .map((id) => {
+                          const m = missions.find((m) => m.id === id);
+                          return m ? `${id} - ${m.title}` : id;
+                        })
+                        .join(" | ")}`
+                    );
+                  }
+                  if (isHidden) {
+                    optionTitleParts.push("Status: Hidden");
+                  }
+                  if (isOrgAssigned) {
+                    optionTitleParts.push("Org-assigned");
+                  }
+                  const optionTitle = optionTitleParts.length > 0 ? optionTitleParts.join(" | ") : undefined;
                   return (
                     <option key={missionId} value={missionId} title={optionTitle}>
-                      {prefix}
+                      {indicators}
                       {missionId}
                       {mission
                         ? isTemp

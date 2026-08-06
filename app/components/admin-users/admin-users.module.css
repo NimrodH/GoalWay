@@ -315,6 +315,58 @@
   border-color: var(--color-accent-8);
 }
 
+.filterToggleGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.filterToggleBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-neutral-2);
+  color: var(--color-neutral-10);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  font: var(--font-body);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.filterToggleBtn:hover {
+  background: var(--color-neutral-3);
+  color: var(--color-neutral-12);
+}
+
+.filterToggleBtnActive {
+  background: var(--color-accent-3);
+  color: var(--color-accent-11);
+  border-color: var(--color-accent-7);
+  font-weight: 600;
+}
+
+.filterToggleBtnActive:hover {
+  background: var(--color-accent-4);
+}
+
+.filterDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.filterDotGreen  { background: var(--green-9); }
+.filterDotYellow { background: var(--amber-9); }
+.filterDotRed    { background: var(--red-9); }
+.filterDotGray   { background: var(--color-neutral-8); }
+
 .clearFiltersButton {
   display: flex;
   align-items: center;

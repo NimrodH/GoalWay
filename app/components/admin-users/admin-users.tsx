@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useFetcher } from "react-router";
-import { Trash2, Plus, Building2, ChevronDown, Check, Search, X } from "lucide-react";
+import { Trash2, Plus, Building2, ChevronDown, Check, Search, X, Square, CheckSquare } from "lucide-react";
 import type { Organization, PendingUser } from "~/services/organizations.server";
 import type { Mission } from "~/services/missions.server";
 import styles from "./admin-users.module.css";
@@ -15,9 +15,10 @@ interface AdminUsersProps {
   organizations: Organization[];
   missions: MissionWithAccess[];
   accessToken: string | null;
+  instructions?: Array<{ id: string; type?: string; missionId?: string }>;
 }
 
-export function AdminUsers({ users, organizations, missions, accessToken }: AdminUsersProps) {
+export function AdminUsers({ users, organizations, missions, accessToken, instructions }: AdminUsersProps) {
   const pendingUsers = users.filter((u) => !u.organization_id && u.role !== "admin");
 
   return (
@@ -38,6 +39,7 @@ export function AdminUsers({ users, organizations, missions, accessToken }: Admi
         missions={missions}
         organizations={organizations}
         accessToken={accessToken}
+        instructions={instructions}
       />
     </div>
   );
@@ -332,10 +334,12 @@ function MissionAccessMatrix({
   missions,
   organizations,
   accessToken,
+  instructions = [],
 }: {
   missions: MissionWithAccess[];
   organizations: Organization[];
   accessToken: string | null;
+  instructions?: Array<{ id: string; type?: string; missionId?: string }>;
 }) {
   const [changes, setChanges] = useState<
     Record<string, { isExample: boolean; orgIds: Set<string> }>
@@ -360,6 +364,34 @@ function MissionAccessMatrix({
   const [filterName, setFilterName] = useState("");
   const [filterDesc, setFilterDesc] = useState("");
   const [filterOrgId, setFilterOrgId] = useState("");
+  const [filterAssigned, setFilterAssigned] = useState(true);
+  const [filterSub, setFilterSub] = useState(true);
+  const [filterHidden, setFilterHidden] = useState(true);
+  const [filterRegular, setFilterRegular] = useState(true);
+
+  const linkInstructionMap = new Map<string, string>();
+  for (const instr of instructions) {
+    if (instr.type === "link" && instr.missionId) {
+      linkInstructionMap.set(instr.id, instr.missionId);
+    }
+  }
+
+  const linkedMissionIds = new Set<string>();
+  const reverseLinkedMap = new Map<string, string[]>();
+  for (const m of missions) {
+    if (Array.isArray(m.instructions)) {
+      for (const [instrId] of m.instructions) {
+        const baseId = instrId.includes("#") ? instrId.split("#")[0] : instrId;
+        const linkedMissionId = linkInstructionMap.get(baseId);
+        if (linkedMissionId && linkedMissionId !== m.id) {
+          linkedMissionIds.add(linkedMissionId);
+          const sources = reverseLinkedMap.get(linkedMissionId) ?? [];
+          if (!sources.includes(m.id)) sources.push(m.id);
+          reverseLinkedMap.set(linkedMissionId, sources);
+        }
+      }
+    }
+  }
 
   useEffect(() => {
     if (fetcher.state === "idle" && savingMissionId.current) {
@@ -422,18 +454,37 @@ function MissionAccessMatrix({
   const nameLower = filterName.trim().toLowerCase();
   const descLower = filterDesc.trim().toLowerCase();
 
+  const allIndicatorsChecked = filterAssigned && filterSub && filterHidden && filterRegular;
+  const noIndicatorsChecked = !filterAssigned && !filterSub && !filterHidden && !filterRegular;
+
   const visibleMissions = missions
-    .filter((m) => m.status !== "Hide")
     .filter((m) => !nameLower || m.title.toLowerCase().includes(nameLower))
     .filter((m) => !descLower || m.description.toLowerCase().includes(descLower))
-    .filter((m) => !filterOrgId || (changes[m.id]?.orgIds ?? new Set()).has(filterOrgId));
+    .filter((m) => !filterOrgId || (changes[m.id]?.orgIds ?? new Set()).has(filterOrgId))
+    .filter((m) => {
+      if (allIndicatorsChecked || noIndicatorsChecked) return true;
+      const isAssigned = (changes[m.id]?.orgIds ?? new Set()).size > 0 || m.allowedOrgIds.length > 0;
+      const isSub = linkedMissionIds.has(m.id);
+      const isHidden = m.status === "Hide";
+      const isRegular = !isAssigned && !isSub && !isHidden;
+      return (
+        (filterAssigned && isAssigned) ||
+        (filterSub && isSub) ||
+        (filterHidden && isHidden) ||
+        (filterRegular && isRegular)
+      );
+    });
 
-  const hasAnyFilter = filterName !== "" || filterDesc !== "" || filterOrgId !== "";
+  const hasAnyFilter = filterName !== "" || filterDesc !== "" || filterOrgId !== "" || !allIndicatorsChecked;
 
   const clearFilters = () => {
     setFilterName("");
     setFilterDesc("");
     setFilterOrgId("");
+    setFilterAssigned(true);
+    setFilterSub(true);
+    setFilterHidden(true);
+    setFilterRegular(true);
   };
 
   return (
@@ -484,6 +535,45 @@ function MissionAccessMatrix({
           </select>
         </div>
 
+        <div className={styles.filterToggleGroup}>
+          <button
+            className={`${styles.filterToggleBtn} ${filterAssigned ? styles.filterToggleBtnActive : ""}`}
+            onClick={() => setFilterAssigned((v) => !v)}
+            title="Show org-assigned missions"
+          >
+            {filterAssigned ? <CheckSquare size={14} /> : <Square size={14} />}
+            <span className={`${styles.filterDot} ${styles.filterDotGreen}`} />
+            Assigned
+          </button>
+          <button
+            className={`${styles.filterToggleBtn} ${filterSub ? styles.filterToggleBtnActive : ""}`}
+            onClick={() => setFilterSub((v) => !v)}
+            title="Show sub/linked missions"
+          >
+            {filterSub ? <CheckSquare size={14} /> : <Square size={14} />}
+            <span className={`${styles.filterDot} ${styles.filterDotYellow}`} />
+            Sub
+          </button>
+          <button
+            className={`${styles.filterToggleBtn} ${filterHidden ? styles.filterToggleBtnActive : ""}`}
+            onClick={() => setFilterHidden((v) => !v)}
+            title="Show hidden missions"
+          >
+            {filterHidden ? <CheckSquare size={14} /> : <Square size={14} />}
+            <span className={`${styles.filterDot} ${styles.filterDotRed}`} />
+            Hidden
+          </button>
+          <button
+            className={`${styles.filterToggleBtn} ${filterRegular ? styles.filterToggleBtnActive : ""}`}
+            onClick={() => setFilterRegular((v) => !v)}
+            title="Show regular missions (no special indicator)"
+          >
+            {filterRegular ? <CheckSquare size={14} /> : <Square size={14} />}
+            <span className={`${styles.filterDot} ${styles.filterDotGray}`} />
+            Regular
+          </button>
+        </div>
+
         {hasAnyFilter && (
           <button
             className={styles.clearFiltersButton}
@@ -497,7 +587,7 @@ function MissionAccessMatrix({
         )}
 
         <span className={styles.filterCount}>
-          {visibleMissions.length} of {missions.filter((m) => m.status !== "Hide").length} missions
+          {visibleMissions.length} of {missions.length} missions
         </span>
 
         <button
@@ -545,6 +635,20 @@ function MissionAccessMatrix({
             visibleMissions.map((mission) => {
               const row = changes[mission.id] ?? { isExample: false, orgIds: new Set() };
               const isSelected = selectedMissionId === mission.id;
+              const isTemp = mission.isTemp === true;
+              const isHidden = mission.status === "Hide";
+              const isOrgAssigned = row.orgIds.size > 0 || mission.allowedOrgIds.length > 0;
+              const isLinked = linkedMissionIds.has(mission.id);
+
+              const indicators = [
+                isTemp ? "🧪 " : "",
+                isHidden ? "🔴 " : "",
+                isOrgAssigned ? "🟢 " : "",
+                isLinked ? "🟡 " : "",
+              ].filter(Boolean).join("");
+
+              const linkers = reverseLinkedMap.get(mission.id) ?? [];
+
               return (
                 <tr
                   key={mission.id}
@@ -552,10 +656,26 @@ function MissionAccessMatrix({
                   className={isSelected ? styles.selectedRow : undefined}
                 >
                   <td>
-                    <div style={{ fontWeight: 600 }}>{mission.title}</div>
+                    <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>{indicators}</span>
+                      <span>{mission.title}</span>
+                    </div>
                     <div style={{ fontSize: "0.75rem", color: "var(--color-neutral-10)" }}>
                       ID: {mission.id}
+                      {isTemp && mission.sourceMissionId && (
+                        <span style={{ marginLeft: "6px", color: "var(--color-neutral-9)" }}>
+                          (Test copy of {mission.sourceMissionId})
+                        </span>
+                      )}
                     </div>
+                    {linkers.length > 0 && (
+                      <div style={{ fontSize: "0.7rem", color: "var(--amber-11)", marginTop: "2px" }}>
+                        Linked from: {linkers.map((sourceId, idx) => {
+                          const srcMission = missions.find((m) => m.id === sourceId);
+                          return `[${idx + 1}] ${sourceId}${srcMission ? ` (${srcMission.title})` : ""}`;
+                        }).join(", ")}
+                      </div>
+                    )}
                   </td>
                   <td style={{ textAlign: "center" }}>
                     <input
