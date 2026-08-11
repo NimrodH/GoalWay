@@ -356,6 +356,8 @@ function MissionAccessMatrix({
 
   const fetcher = useFetcher<{ success: boolean; error?: string }>();
   const savingMissionId = useRef<string | null>(null);
+  // Ids still waiting to be sent after the one currently in-flight completes.
+  const pendingQueueRef = useRef<string[]>([]);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
@@ -393,6 +395,23 @@ function MissionAccessMatrix({
     }
   }
 
+  const submitMission = (missionId: string) => {
+    if (!accessToken) return;
+    const row = changes[missionId];
+    if (!row) return;
+
+    savingMissionId.current = missionId;
+
+    const formData = new FormData();
+    formData.append("actionType", "setMissionAccess");
+    formData.append("missionId", missionId);
+    formData.append("isExample", String(row.isExample));
+    formData.append("organizationIds", JSON.stringify([...row.orgIds]));
+    formData.append("accessToken", accessToken);
+
+    fetcher.submit(formData, { method: "POST", action: "/admin" });
+  };
+
   useEffect(() => {
     if (fetcher.state === "idle" && savingMissionId.current) {
       const missionId = savingMissionId.current;
@@ -411,10 +430,17 @@ function MissionAccessMatrix({
           });
         }, 2000);
       } else if (fetcher.data && !fetcher.data.success) {
-        alert(`Failed to save: ${fetcher.data.error}`);
+        alert(`Failed to save mission ${missionId}: ${fetcher.data.error}`);
       }
       savingMissionId.current = null;
+
+      // Process the next queued row, if the user changed more than one mission before saving.
+      const nextId = pendingQueueRef.current.shift();
+      if (nextId) {
+        submitMission(nextId);
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetcher.state, fetcher.data]);
 
   const toggleOrg = (missionId: string, orgId: string) => {
@@ -434,21 +460,26 @@ function MissionAccessMatrix({
     });
   };
 
-  const saveRow = (missionId: string) => {
-    if (!accessToken || savingIds.has(missionId)) return;
+  const isRowDirty = (missionId: string) => {
     const row = changes[missionId];
+    const mission = missions.find((m) => m.id === missionId);
+    if (!row || !mission) return false;
+    if (row.isExample !== mission.isExample) return true;
+    const original = mission.allowedOrgIds;
+    if (original.length !== row.orgIds.size) return true;
+    return original.some((orgId) => !row.orgIds.has(orgId));
+  };
 
-    savingMissionId.current = missionId;
-    setSavingIds((prev) => new Set([...prev, missionId]));
+  // Saves every mission row with unsaved changes, not just the currently selected one —
+  // otherwise edits made to rows other than the last-clicked one were silently discarded.
+  const saveAllChanges = () => {
+    if (!accessToken) return;
+    const dirtyIds = missions.map((m) => m.id).filter((id) => isRowDirty(id) && !savingIds.has(id));
+    if (dirtyIds.length === 0) return;
 
-    const formData = new FormData();
-    formData.append("actionType", "setMissionAccess");
-    formData.append("missionId", missionId);
-    formData.append("isExample", String(row.isExample));
-    formData.append("organizationIds", JSON.stringify([...row.orgIds]));
-    formData.append("accessToken", accessToken);
-
-    fetcher.submit(formData, { method: "POST", action: "/admin" });
+    setSavingIds((prev) => new Set([...prev, ...dirtyIds]));
+    pendingQueueRef.current = dirtyIds.slice(1);
+    submitMission(dirtyIds[0]);
   };
 
   const nameLower = filterName.trim().toLowerCase();
@@ -476,6 +507,8 @@ function MissionAccessMatrix({
     });
 
   const hasAnyFilter = filterName !== "" || filterDesc !== "" || filterOrgId !== "" || !allIndicatorsChecked;
+
+  const dirtyMissionCount = missions.filter((m) => isRowDirty(m.id)).length;
 
   const clearFilters = () => {
     setFilterName("");
@@ -592,17 +625,18 @@ function MissionAccessMatrix({
 
         <button
           className={styles.saveSelectedButton}
-          onClick={() => selectedMissionId && saveRow(selectedMissionId)}
-          disabled={
-            !selectedMissionId || !accessToken || (selectedMissionId ? savingIds.has(selectedMissionId) : false)
-          }
+          onClick={saveAllChanges}
+          disabled={!accessToken || savingIds.size > 0 || dirtyMissionCount === 0}
           data-explanation-id="user-mgmt-save-access"
+          data-admin-primary-save="true"
         >
-          {selectedMissionId && savingIds.has(selectedMissionId)
+          {savingIds.size > 0
             ? "Saving…"
-            : selectedMissionId && savedIds.has(selectedMissionId)
+            : dirtyMissionCount === 0 && selectedMissionId && savedIds.has(selectedMissionId)
               ? "✓ Saved"
-              : "Save"}
+              : dirtyMissionCount > 0
+                ? `Save (${dirtyMissionCount})`
+                : "Save"}
         </button>
 
         <button
