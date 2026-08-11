@@ -1,4 +1,4 @@
-import { Form, Link, redirect, useNavigate } from "react-router";
+import { Form, Link, data, redirect, useNavigate } from "react-router";
 import Markdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/he.home";
@@ -10,6 +10,8 @@ import { getUserProfile, isAdmin } from "~/lib/auth.server";
 import { createServerSupabase } from "~/lib/supabase";
 import { useState } from "react";
 import LanguageSelect from "~/components/language-select/language-select";
+import { getOrganizationByNameOrSlug, getOrganizationMissionIds, type Organization } from "~/services/organizations.server";
+import { buildOrgFilterCookie, getOrgFilterFromCookie } from "~/lib/org-filter.server";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -30,11 +32,22 @@ export async function action({ request }: Route.ActionArgs) {
 export async function loader({ request }: Route.LoaderArgs) {
   const profile = await getUserProfile(request);
 
-  // Admin sees ALL Hebrew missions
+  const url = new URL(request.url);
+  const orgParam = url.searchParams.get("org");
+  const effectiveOrgParam = orgParam ?? getOrgFilterFromCookie(request);
+  const headers = new Headers();
+  if (orgParam !== null) {
+    headers.append("Set-Cookie", buildOrgFilterCookie(orgParam));
+  }
+
+  // Admin sees ALL Hebrew missions — the org filter only applies to anonymous visitors
   if (profile && isAdmin(profile)) {
     const allMissions = await getAllMissionsHe();
     const filtered = allMissions.filter((m) => m.status !== "Hide");
-    return { missions: filtered, isAdmin: true, isAnonymous: false, isPending: false, profile };
+    return data(
+      { missions: filtered, isAdmin: true, isAnonymous: false, isPending: false, profile, filterOrganization: null as Organization | null },
+      { headers },
+    );
   }
 
   // Always fetch Hebrew example missions — visible to everyone
@@ -42,13 +55,26 @@ export async function loader({ request }: Route.LoaderArgs) {
   const visibleExamples = exampleMissions.filter((m) => m.status !== "Hide");
 
   if (!profile) {
-    // Not logged in — only examples
-    return { missions: visibleExamples, isAnonymous: true, isPending: false, isAdmin: false, profile: null };
+    // Not logged in — only examples, scoped to the requested/remembered organization (if any)
+    let anonymousExamples = visibleExamples;
+    let filterOrganization: Organization | null = null;
+    if (effectiveOrgParam) {
+      filterOrganization = await getOrganizationByNameOrSlug(effectiveOrgParam);
+      const orgMissionIds = new Set(filterOrganization ? await getOrganizationMissionIds(filterOrganization.id) : []);
+      anonymousExamples = visibleExamples.filter((m) => orgMissionIds.has(m.id));
+    }
+    return data(
+      { missions: anonymousExamples, isAnonymous: true, isPending: false, isAdmin: false, profile: null, filterOrganization },
+      { headers },
+    );
   }
 
   if (!profile.organization_id) {
     // Logged in but not assigned to an org yet (pending approval)
-    return { missions: visibleExamples, isAnonymous: false, isPending: true, isAdmin: false, profile };
+    return data(
+      { missions: visibleExamples, isAnonymous: false, isPending: true, isAdmin: false, profile, filterOrganization: null },
+      { headers },
+    );
   }
 
   // Authenticated + assigned → org missions merged with examples
@@ -59,11 +85,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   const missionIds = new Set(visibleOrgMissions.map((m) => m.id));
   const merged = [...visibleOrgMissions, ...visibleExamples.filter((m) => !missionIds.has(m.id))];
 
-  return { missions: merged, isAnonymous: false, isPending: false, isAdmin: false, profile };
+  return data(
+    { missions: merged, isAnonymous: false, isPending: false, isAdmin: false, profile, filterOrganization: null },
+    { headers },
+  );
 }
 
 export default function HeHome({ loaderData }: Route.ComponentProps) {
-  const { missions, isAnonymous, isPending, isAdmin: adminView, profile } = loaderData;
+  const { missions, isAnonymous, isPending, isAdmin: adminView, profile, filterOrganization } = loaderData;
   const navigate = useNavigate();
   const [missionFilter, setMissionFilter] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
@@ -97,7 +126,15 @@ export default function HeHome({ loaderData }: Route.ComponentProps) {
           <div className={homeStyles.banner}>
             {isAnonymous ? (
               <>
-                <span>אתם צופים בחלק מהמשימות.</span>
+                <span>
+                  אתם צופים בחלק מהמשימות
+                  {filterOrganization ? (
+                    <>
+                      {" "}של <strong>{filterOrganization.name}</strong>
+                    </>
+                  ) : null}
+                  .
+                </span>
                 <Link to="/login" className={homeStyles.bannerLink}>
                   <LogIn size={14} />
                   התחברות
