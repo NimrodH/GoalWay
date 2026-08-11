@@ -133,6 +133,40 @@ export async function assignUserOrganization(
   return { success: true };
 }
 
+/**
+ * Look up an organization by its slug (exact match) or name (case-insensitive).
+ * Used to resolve the `?org=` query param, which may contain either.
+ */
+export async function getOrganizationByNameOrSlug(value: string): Promise<Organization | null> {
+  const supabase = getSupabase();
+
+  const bySlug = await supabase.from("organizations").select("*").eq("slug", value).maybeSingle();
+  if (bySlug.data) return bySlug.data as Organization;
+
+  const byName = await supabase.from("organizations").select("*").ilike("name", value).maybeSingle();
+  if (byName.data) return byName.data as Organization;
+
+  return null;
+}
+
+/**
+ * Fetch the IDs of missions accessible to a given organization.
+ */
+export async function getOrganizationMissionIds(organizationId: string): Promise<string[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("mission_organizations")
+    .select("mission_id")
+    .eq("organization_id", organizationId);
+
+  if (error) {
+    console.error("Error fetching organization mission ids:", error);
+    return [];
+  }
+
+  return (data || []).map((r: any) => r.mission_id);
+}
+
 export async function getMissionOrganizations(missionId: string): Promise<string[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
