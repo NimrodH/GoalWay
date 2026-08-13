@@ -5,7 +5,7 @@ import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
-import { BookOpen, ArrowLeft, ChevronUp, ChevronDown, List, ListX, GitBranch, StickyNote, Plus, Pencil, Trash2, Check, X, BookMarked } from "lucide-react";
+import { BookOpen, ArrowLeft, ChevronUp, ChevronDown, GitBranch, StickyNote, Plus, Pencil, Trash2, Check, X, BookMarked } from "lucide-react";
 import styles from "./missions.$missionId.module.css";
 import { getMissionById, getAllMissions, checkMissionAccess } from "~/services/missions.server";
 import { getInstructionsByIds } from "~/services/instructions.server";
@@ -742,7 +742,6 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
     setEditingNoteText("");
   };
 
-  const [captionVisible, setCaptionVisible] = useState(true);
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
   // Tracks selected instruction inside each expanded sub-mission, keyed by the parent link instruction id
   const [selectedLinkedInstructionId, setSelectedLinkedInstructionId] = useState<Map<string, string | null>>(new Map());
@@ -1340,24 +1339,6 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
               </button>
             )}
             <h1 className={styles.sectionHeader}>{mission.title}</h1>
-            <div className={styles.captionToggleGroup}>
-              <button
-                className={`${styles.captionToggleButton} ${captionVisible ? styles.captionToggleActive : ""}`}
-                onClick={() => setCaptionVisible(true)}
-                title="Show captions"
-                aria-pressed={captionVisible}
-              >
-                <List size={16} />
-              </button>
-              <button
-                className={`${styles.captionToggleButton} ${!captionVisible ? styles.captionToggleActive : ""}`}
-                onClick={() => setCaptionVisible(false)}
-                title="Hide captions"
-                aria-pressed={!captionVisible}
-              >
-                <ListX size={16} />
-              </button>
-            </div>
           </div>
           <div className={styles.missionDescription}>
             <Markdown remarkPlugins={[remarkBreaks]}>{mission.description}</Markdown>
@@ -1574,7 +1555,7 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                       Array.isArray(instruction.explanation) &&
                       instruction.explanation.length > 0 && (
                         <div className={styles.mobileExplanation}>
-                          <ExplanationDisplay instruction={instruction as Instruction} captionVisible={captionVisible} />
+                          <ExplanationDisplay instruction={instruction as Instruction} captionVisible={true} />
                         </div>
                       )}
                   </div>
@@ -1726,7 +1707,7 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                                   Array.isArray(linkedInstruction.explanation) &&
                                   (linkedInstruction.explanation as unknown[]).length > 0 && (
                                   <div className={styles.mobileExplanation}>
-                                    <ExplanationDisplay instruction={linkedInstruction as Instruction} captionVisible={captionVisible} />
+                                    <ExplanationDisplay instruction={linkedInstruction as Instruction} captionVisible={true} />
                                   </div>
                                 )}
                               </div>
@@ -1743,7 +1724,7 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
         </section>
 
         <section className={styles.explanationSection}>
-          <ExplanationDisplay instruction={instructionToDisplay as Instruction | null} className={styles.explanationContainer} captionVisible={captionVisible} />
+          <ExplanationDisplay instruction={instructionToDisplay as Instruction | null} className={styles.explanationContainer} captionVisible={true} />
         </section>
       </div>
     </>

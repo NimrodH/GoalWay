@@ -6,7 +6,7 @@ import type { Route } from "./+types/he.missions.$missionId";
 import { InstructionListItem } from "~/components/instruction-list-item/instruction-list-item";
 import { ExplanationDisplay } from "~/components/explanation-display/explanation-display";
 import {
-  BookOpen, ArrowLeft, ChevronUp, ChevronDown, List, ListX, GitBranch,
+  BookOpen, ArrowLeft, ChevronUp, ChevronDown, GitBranch,
   StickyNote, Plus, Pencil, Trash2, Check, X, BookMarked,
 } from "lucide-react";
 import styles from "./he.missions.$missionId.module.css";
@@ -390,7 +390,6 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
     setEditingNoteText("");
   };
 
-  const [captionVisible, setCaptionVisible] = useState(true);
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
   const [selectedLinkedInstructionId, setSelectedLinkedInstructionId] = useState<Map<string, string | null>>(new Map());
   const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
@@ -818,24 +817,6 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
               </button>
             )}
             <h1 className={styles.sectionHeader}>{mission.title}</h1>
-            <div className={styles.captionToggleGroup}>
-              <button
-                className={`${styles.captionToggleButton} ${captionVisible ? styles.captionToggleActive : ""}`}
-                onClick={() => setCaptionVisible(true)}
-                title="הצג כיתובים"
-                aria-pressed={captionVisible}
-              >
-                <List size={16} />
-              </button>
-              <button
-                className={`${styles.captionToggleButton} ${!captionVisible ? styles.captionToggleActive : ""}`}
-                onClick={() => setCaptionVisible(false)}
-                title="הסתר כיתובים"
-                aria-pressed={!captionVisible}
-              >
-                <ListX size={16} />
-              </button>
-            </div>
           </div>
 
           <div className={styles.missionDescription}>
@@ -1033,7 +1014,7 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
                       Array.isArray(instruction.explanation) &&
                       instruction.explanation.length > 0 && (
                         <div className={styles.mobileExplanation}>
-                          <ExplanationDisplay instruction={instruction as Instruction} captionVisible={captionVisible} />
+                          <ExplanationDisplay instruction={instruction as Instruction} captionVisible={true} />
                         </div>
                       )}
                   </div>
@@ -1061,7 +1042,7 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
                             />
                             {linkedSelected && linkedInstruction.type !== "link" && (
                               <div className={styles.mobileExplanation}>
-                                <ExplanationDisplay instruction={linkedInstruction} captionVisible={captionVisible} />
+                                <ExplanationDisplay instruction={linkedInstruction} captionVisible={true} />
                               </div>
                             )}
                           </div>
@@ -1079,7 +1060,7 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
           <ExplanationDisplay
             instruction={instructionToDisplay as Instruction | null}
             className={styles.explanationContainer}
-            captionVisible={captionVisible}
+            captionVisible={true}
           />
         </section>
       </div>
