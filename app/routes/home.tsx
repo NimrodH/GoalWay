@@ -51,7 +51,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   // Admin sees ALL missions — the org filter only applies to anonymous visitors
   if (profile && isAdmin(profile)) {
     const allMissions = await getAllMissions();
-    const filtered = allMissions.filter((m) => m.status !== "Hide");
+    const filtered = allMissions;
     const organizations = await getOrganizations();
     const missionsWithAccess = await Promise.all(
       filtered.map(async (mission) => ({
@@ -77,7 +77,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // Always fetch example missions — visible to everyone
   const exampleMissions = await getExampleMissions();
-  const visibleExamples = exampleMissions.filter((m) => m.status !== "Hide");
+  const visibleExamples = exampleMissions;
 
   if (!profile) {
     // Not logged in — only examples, scoped to the requested/remembered organization (if any)
@@ -105,7 +105,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // Authenticated + assigned → org missions merged with examples
   const orgMissions = await getMissionsForOrganization(profile.organization_id);
-  const visibleOrgMissions = orgMissions.filter((m) => m.status !== "Hide");
+  const visibleOrgMissions = orgMissions;
 
   // Deduplicate: org missions + example missions (examples may already appear in org list)
   const missionIds = new Set(visibleOrgMissions.map((m) => m.id));
@@ -147,7 +147,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             if (e.shiftKey) navigate("/admin");
           }}
         >
-          <h1 className={styles.menuTitle}>GoalWay - how to do a mission_</h1>
+          <h1 className={styles.menuTitle}>GoalWay - how to do a mission</h1>
           <p className={styles.menuDescription}>
             Clicking on a mission will open a sequence of instructions on what to do. Clicking on an instruction will
             open an explanation with screenshots of how to perform it. A green row is a condition — click on it to get
