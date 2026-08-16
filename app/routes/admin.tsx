@@ -2,6 +2,7 @@ import { redirect } from "react-router";
 import type { Route } from "./+types/admin";
 import { getAllInstructions, getAllInstructionsHe, getAllInstructionIds } from "~/services/instructions.server";
 import { getAllMissions, getAllMissionsHe, getAllMissionIds } from "~/services/missions.server";
+import { normalizeMissionStatus, VALID_MISSION_STATUSES } from "~/data/mission-constants";
 import {
   getOrganizations,
   getAllUsers,
@@ -1062,6 +1063,12 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     if (!bundle.mission?.id) {
       return { success: false, error: "Bundle is missing mission data" };
     }
+    if (bundle.mission.status && !VALID_MISSION_STATUSES.includes(bundle.mission.status as any)) {
+      return { success: false, error: "Bundle contains an invalid mission status" };
+    }
+    if (bundle.missionHe?.status && !VALID_MISSION_STATUSES.includes(bundle.missionHe.status as any)) {
+      return { success: false, error: "Bundle contains an invalid Hebrew mission status" };
+    }
 
     try {
       const { createClient } = await import("@supabase/supabase-js");
@@ -1104,7 +1111,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
         title: bundle.mission.title,
         description: bundle.mission.description,
         instructions: bundle.mission.instructions,
-        status: bundle.mission.status,
+        status: normalizeMissionStatus(bundle.mission.status),
       };
 
       const missionHePayload = bundle.missionHe
@@ -1113,7 +1120,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
             title: bundle.missionHe.title,
             description: bundle.missionHe.description,
             instructions: bundle.missionHe.instructions,
-            status: bundle.missionHe.status,
+            status: normalizeMissionStatus(bundle.missionHe.status),
           }
         : undefined;
 
@@ -1473,6 +1480,10 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     };
   } else if (actionType === "saveMission") {
     const missionData = JSON.parse(dataEn);
+    if (missionData.status && !VALID_MISSION_STATUSES.includes(missionData.status as any)) {
+      return { success: false, error: "Invalid mission status" };
+    }
+    missionData.status = normalizeMissionStatus(missionData.status);
     const isExampleRaw = formData.get("isExample");
     const isExample = isExampleRaw !== null ? isExampleRaw === "true" : undefined;
 

@@ -7,7 +7,7 @@ import styles from "./admin.module.css";
 import { loader as adminLoader, action as adminAction } from "~/routes/admin";
 import type { Instruction } from "~/services/instructions.server";
 import type { Mission } from "~/services/missions.server";
-import { MISSION_STATUSES, type MissionStatus, DEFAULT_MISSION_STATUS } from "~/data/mission-constants";
+import { MISSION_STATUSES, normalizeMissionStatus, type MissionStatus, DEFAULT_MISSION_STATUS } from "~/data/mission-constants";
 import styles0 from "./admin.missions.module.css";
 import { DrawioUploadDialog } from "~/components/drawio-upload-dialog/drawio-upload-dialog";
 
@@ -190,6 +190,7 @@ function EditMissionForm({
   const [filterMissionName, setFilterMissionName] = useState("");
   const [filterMissionDesc, setFilterMissionDesc] = useState("");
   const [filterMissionOrg, setFilterMissionOrg] = useState("");
+  const [filterMissionStatus, setFilterMissionStatus] = useState<MissionStatus | "">("");
   const [showLinkEditMenu, setShowLinkEditMenu] = useState(false);
   const linkEditMenuRef = useRef<HTMLDivElement>(null);
 
@@ -445,7 +446,7 @@ function EditMissionForm({
       setId(mission.id);
       setTitle(mission.title);
       setDescription(mission.description);
-      setStatus(mission.status || DEFAULT_MISSION_STATUS);
+      setStatus(normalizeMissionStatus(mission.status));
       setIsExample(mission.isExample ?? false);
       setSelectedInstructions(mission.instructions || []);
     } else {
@@ -456,7 +457,7 @@ function EditMissionForm({
       setId(missionId);
       setTitle((enFallback as Mission | undefined)?.title ?? "");
       setDescription((enFallback as Mission | undefined)?.description ?? "");
-      setStatus((enFallback as Mission | undefined)?.status || DEFAULT_MISSION_STATUS);
+      setStatus(normalizeMissionStatus((enFallback as Mission | undefined)?.status));
       setIsExample((enFallback as Mission | undefined)?.isExample ?? false);
       setSelectedInstructions((enFallback as Mission | undefined)?.instructions || []);
     }
@@ -536,7 +537,7 @@ function EditMissionForm({
       setId(parsed.id || "");
       setTitle(parsed.title || "");
       setDescription(parsed.description || "");
-      setStatus(parsed.status || "Active");
+      setStatus(normalizeMissionStatus(parsed.status));
       setIsExample(parsed.isExample ?? false);
       setSelectedInstructions(parsed.instructions || []);
       setCodeEditorError(null);
@@ -1460,6 +1461,10 @@ function EditMissionForm({
       const accessInfo = missionsWithAccess.find((m) => m.id === missionId);
       if (!accessInfo?.allowedOrgIds.includes(filterMissionOrg)) return false;
     }
+    if (filterMissionStatus) {
+      const mission = missions.find((m) => m.id === missionId);
+      if (mission?.status !== filterMissionStatus) return false;
+    }
     return true;
   });
 
@@ -1775,11 +1780,10 @@ function EditMissionForm({
                       borderRadius: "var(--radius-1)",
                       border: "1px solid var(--color-neutral-6)",
                     }}
-                    title="Legend: 🔴 Hidden | 🟡 Sub mission (Linked) | 🟢 Org-assigned / Active"
+                    title="Legend: 🟡 Sub mission (Linked) | 🟢 Org-assigned"
                   >
-                    <span title="Hidden (Red)">🔴</span>
                     <span title="Sub mission / Linked (Yellow)">🟡</span>
-                    <span title="Org-assigned / Active (Green)">🟢</span>
+                    <span title="Org-assigned (Green)">🟢</span>
                   </span>
                 </span>
                 <input
@@ -1811,13 +1815,27 @@ function EditMissionForm({
                     </option>
                   ))}
                 </select>
-                {(filterMissionName || filterMissionDesc || filterMissionOrg) && (
+                <select
+                  className={styles.input}
+                  value={filterMissionStatus}
+                  onChange={(e) => setFilterMissionStatus(e.target.value as MissionStatus | "")}
+                  style={{ flex: "0 1 auto", minWidth: "180px" }}
+                >
+                  <option value="">All statuses</option>
+                  {MISSION_STATUSES.map((missionStatus) => (
+                    <option key={missionStatus} value={missionStatus}>
+                      {missionStatus}
+                    </option>
+                  ))}
+                </select>
+                {(filterMissionName || filterMissionDesc || filterMissionOrg || filterMissionStatus) && (
                   <button
                     type="button"
                     onClick={() => {
                       setFilterMissionName("");
                       setFilterMissionDesc("");
                       setFilterMissionOrg("");
+                      setFilterMissionStatus("");
                     }}
                     className={styles.addButton}
                     style={{ flexShrink: 0, marginRight: 0 }}
@@ -1845,12 +1863,10 @@ function EditMissionForm({
                 {filteredMissionIds.map((missionId) => {
                   const mission = missions.find((m) => m.id === missionId);
                   const isTemp = mission?.isTemp === true;
-                  const isHidden = mission?.status === "Hide";
                   const isOrgAssigned = orgAssignedIds.has(missionId);
                   const isLinked = linkedMissionIds.has(missionId);
                   const indicators = [
                     isTemp ? "🧪 " : "",
-                    isHidden ? "🔴 " : "",
                     isOrgAssigned ? "🟢 " : "",
                     isLinked ? "🟡 " : "",
                   ].filter(Boolean).join("");
@@ -1868,9 +1884,6 @@ function EditMissionForm({
                         })
                         .join(" | ")}`
                     );
-                  }
-                  if (isHidden) {
-                    optionTitleParts.push("Status: Hidden");
                   }
                   if (isOrgAssigned) {
                     optionTitleParts.push("Org-assigned");

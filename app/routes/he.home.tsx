@@ -43,7 +43,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   // Admin sees ALL Hebrew missions — the org filter only applies to anonymous visitors
   if (profile && isAdmin(profile)) {
     const allMissions = await getAllMissionsHe();
-    const filtered = allMissions.filter((m) => m.status !== "Hide");
+    const filtered = allMissions;
     return data(
       { missions: filtered, isAdmin: true, isAnonymous: false, isPending: false, profile, filterOrganization: null as Organization | null },
       { headers },
@@ -52,7 +52,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // Always fetch Hebrew example missions — visible to everyone
   const exampleMissions = await getExampleMissionsHe();
-  const visibleExamples = exampleMissions.filter((m) => m.status !== "Hide");
+  const visibleExamples = exampleMissions;
 
   if (!profile) {
     // Not logged in — only examples, scoped to the requested/remembered organization (if any)
@@ -79,7 +79,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // Authenticated + assigned → org missions merged with examples
   const orgMissions = await getMissionsForOrganizationHe(profile.organization_id);
-  const visibleOrgMissions = orgMissions.filter((m) => m.status !== "Hide");
+  const visibleOrgMissions = orgMissions;
 
   // Deduplicate: org missions + example missions
   const missionIds = new Set(visibleOrgMissions.map((m) => m.id));

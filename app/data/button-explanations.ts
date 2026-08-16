@@ -298,9 +298,8 @@ export const BUTTON_EXPLANATIONS: Record<string, ButtonExplanation> = {
   },
 
   "admin-mission-status": {
-    title: "Mission Status / Visibility",
-    description:
-      "Controls the visibility of this mission. 'Hide' effectively archives the mission, removing it from all user lists but preserving its data. 'Active' publishes it so it can be accessed by users — who exactly can see it is managed via the Admin › Users page org settings.",
+    title: "Mission Status",
+    description: "Records the current content status of this mission. It does not currently change mission visibility or access.",
   },
 
   "admin-mission-is-example": {
@@ -350,7 +349,7 @@ export const BUTTON_EXPLANATIONS: Record<string, ButtonExplanation> = {
   "user-mgmt-clear-filters": {
     title: "Clear Matrix Filters",
     description:
-      "Resets all search criteria (Name, Description, Organization) in the Mission Access Matrix to show the full list of active missions.",
+      "Resets all search criteria (Name, Description, Organization) in the Mission Access Matrix to show the full mission list.",
   },
 
   "user-mgmt-save-access": {

@@ -1,5 +1,5 @@
 import { getSupabase } from "~/lib/supabase";
-import type { MissionStatus } from "~/data/mission-constants";
+import { normalizeMissionStatus, type MissionStatus } from "~/data/mission-constants";
 
 export interface Mission {
   id: string;
@@ -21,13 +21,14 @@ interface LegacyMission {
   description: string;
   instructionIds?: string[];
   instructionTitles?: Record<string, string>;
+  status?: string;
 }
 
 // Migrate legacy mission format to new format
 function migrateLegacyMission(legacy: LegacyMission | Mission): Mission {
   // Check if already in new format
   if ('instructions' in legacy) {
-    return legacy as Mission;
+    return { ...(legacy as Mission), status: normalizeMissionStatus(legacy.status) };
   }
   
   // Convert old format to new format
@@ -41,6 +42,7 @@ function migrateLegacyMission(legacy: LegacyMission | Mission): Mission {
     title: legacy.title,
     description: legacy.description,
     instructions,
+    status: normalizeMissionStatus(legacy.status),
   };
 }
 
@@ -232,7 +234,7 @@ export async function getExampleMissions(): Promise<Mission[]> {
 }
 
 /**
- * Fetch missions visible to a specific organization (excludes hidden missions).
+ * Fetch missions assigned to a specific organization.
  */
 export async function getMissionsForOrganization(organizationId: string): Promise<Mission[]> {
   const supabase = getSupabase();

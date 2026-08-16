@@ -15,7 +15,7 @@ import { getInstructionsByIdsHe } from "~/services/instructions.server";
 import { getUserProfile, isAdmin } from "~/lib/auth.server";
 import { useAuth } from "~/hooks/use-auth";
 import type { Instruction } from "~/data/instructions-he";
-import { MISSION_STATUSES, type MissionStatus, VALID_MISSION_STATUSES } from "~/data/mission-constants";
+import { MISSION_STATUSES, normalizeMissionStatus, type MissionStatus, VALID_MISSION_STATUSES } from "~/data/mission-constants";
 
 export function meta({ data }: Route.MetaArgs) {
   const mission = data?.mission;
@@ -196,7 +196,9 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
   const statusFetcher = useFetcher();
 
   // Optimistic status
-  const currentStatus = (statusFetcher.formData?.get("status") as MissionStatus | undefined) ?? mission.status ?? "Active";
+  const currentStatus = normalizeMissionStatus(
+    (statusFetcher.formData?.get("status") as MissionStatus | undefined) ?? mission.status,
+  );
 
   // Single shared fetcher for all instruction status updates
   const instrStatusFetcher = useFetcher<{ success: boolean; instructionId?: string; error?: string }>();

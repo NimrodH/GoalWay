@@ -12,7 +12,7 @@ import { getInstructionsByIds } from "~/services/instructions.server";
 import { getUserProfile, isAdmin } from "~/lib/auth.server";
 import { useAuth } from "~/hooks/use-auth";
 import type { Instruction } from "~/data/instructions";
-import { MISSION_STATUSES, type MissionStatus, VALID_MISSION_STATUSES } from "~/data/mission-constants";
+import { MISSION_STATUSES, normalizeMissionStatus, type MissionStatus, VALID_MISSION_STATUSES } from "~/data/mission-constants";
 
 export function meta({ data }: Route.MetaArgs) {
   const mission = data?.mission;
@@ -409,7 +409,9 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
   // Optimistic: track which temp IDs have been converted (so the edit row can show "Creating...")
   const convertingTempId = pendingTempEdit?.tempId ?? null;
   // Optimistic status — show the pending value immediately while saving
-  const currentStatus = (statusFetcher.formData?.get("status") as MissionStatus | undefined) ?? mission.status ?? "Active";
+  const currentStatus = normalizeMissionStatus(
+    (statusFetcher.formData?.get("status") as MissionStatus | undefined) ?? mission.status,
+  );
 
   // Watch for createAndEditFetcher completion — replace temp ID in mission + save
   useEffect(() => {
