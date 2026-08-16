@@ -151,13 +151,23 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (actionType === "updateInstructionStatus") {
     const instructionId = formData.get("instructionId") as string;
     const newStatus = formData.get("status") as InstructionStatus;
+    const accessToken = formData.get("accessToken") as string | null;
     const validStatuses: InstructionStatus[] = ["only title", "partial explanation", "full explanation"];
     if (!instructionId || !validStatuses.includes(newStatus)) {
       return { success: false, error: "Invalid instructionId or status value" };
     }
+    if (!accessToken) {
+      return { success: false, instructionId, error: "Unauthorized: Authentication required" };
+    }
     try {
       const { createClient } = await import("@supabase/supabase-js");
-      const supabase = createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
+      // Use an authenticated client so RLS UPDATE policies allow the write.
+      // The anon client is silently blocked by RLS on the `instructions` table.
+      const supabase = createClient(
+        process.env.SUPABASE_PROJECT_URL!,
+        process.env.SUPABASE_API_KEY!,
+        { global: { headers: { Authorization: `Bearer ${accessToken}` } } },
+      );
       const { data: row, error: fetchError } = await supabase
         .from("instructions")
         .select("data_en")
@@ -167,11 +177,15 @@ export async function action({ request, params }: Route.ActionArgs) {
         return { success: false, instructionId, error: fetchError?.message || "Instruction not found" };
       }
       const updatedDataEn = { ...row.data_en, status: newStatus };
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("instructions")
         .update({ data_en: updatedDataEn, updated_at: new Date().toISOString() })
-        .eq("id", instructionId);
+        .eq("id", instructionId)
+        .select("id");
       if (error) return { success: false, instructionId, error: error.message };
+      if (!updated || updated.length === 0) {
+        return { success: false, instructionId, error: `No instruction row matched id=${instructionId}` };
+      }
       return { success: true, instructionId };
     } catch (err) {
       return { success: false, instructionId: instructionId as string, error: err instanceof Error ? err.message : "Unknown error" };
@@ -209,16 +223,24 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
     if (id && st) optimisticInstrStatus[id] = st;
   }
 
-  const getInstrStatus = (instruction: { id: string; status?: string }): InstructionStatus =>
-    optimisticInstrStatus[instruction.id] ??
-    (instruction.status as InstructionStatus | undefined) ??
-    "only title";
+  const getInstrStatus = (instruction: { id: string; status?: string }): InstructionStatus => {
+    // Status is stored on the base instruction — strip the duplicate-occurrence suffix (#2, #3, …)
+    const baseId = instruction.id.includes("#") ? instruction.id.split("#")[0] : instruction.id;
+    return (
+      optimisticInstrStatus[baseId] ??
+      (instruction.status as InstructionStatus | undefined) ??
+      "only title"
+    );
+  };
 
   const submitInstrStatus = (instructionId: string, newStatus: InstructionStatus) => {
+    const baseId = instructionId.includes("#") ? instructionId.split("#")[0] : instructionId;
     const fd = new FormData();
     fd.set("actionType", "updateInstructionStatus");
-    fd.set("instructionId", instructionId);
+    fd.set("instructionId", baseId);
     fd.set("status", newStatus);
+    // RLS UPDATE policies block the anon client silently — pass the admin's token.
+    fd.set("accessToken", session?.access_token || "");
     instrStatusFetcher.submit(fd, { method: "post" });
   };
 
@@ -992,12 +1014,14 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
                               <option value="full explanation">full explanation</option>
                             </select>
                             {instrStatusFetcher.state !== "idle" &&
-                              instrStatusFetcher.formData?.get("instructionId") === instruction.id && (
+                              instrStatusFetcher.formData?.get("instructionId") ===
+                                (instruction.id.includes("#") ? instruction.id.split("#")[0] : instruction.id) && (
                                 <span className={styles.statusSaving}>שומר…</span>
                               )}
                             {instrStatusFetcher.state === "idle" &&
                               instrStatusFetcher.data?.success === true &&
-                              instrStatusFetcher.data.instructionId === instruction.id && (
+                              instrStatusFetcher.data.instructionId ===
+                                (instruction.id.includes("#") ? instruction.id.split("#")[0] : instruction.id) && (
                                 <span className={styles.statusSaved}>✓</span>
                               )}
                           </instrStatusFetcher.Form>

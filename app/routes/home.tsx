@@ -367,15 +367,18 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 </div>
               )}
               <div className={styles.missionFooter}>
-                <span className={styles.instructionCount}>
-                  {mission.instructions.length} {mission.instructions.length === 1 ? "instruction" : "instructions"}
-                </span>
-                {mission.isExample && (
-                  <span className={homeStyles.exampleBadge}>
-                    <Star size={10} />
-                    Example
+                <span className={styles.instructionCount}>Mission ID: {mission.id}</span>
+                <div className={styles.missionFooterStats}>
+                  <span className={styles.instructionCount}>
+                    {mission.instructions.length} {mission.instructions.length === 1 ? "instruction" : "instructions"}
                   </span>
-                )}
+                  {mission.isExample && (
+                    <span className={homeStyles.exampleBadge}>
+                      <Star size={10} />
+                      Example
+                    </span>
+                  )}
+                </div>
               </div>
             </Link>
           ))}
