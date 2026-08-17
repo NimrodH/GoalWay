@@ -390,6 +390,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
   if (actionType === "createMissionWithInstructions") {
     const accessToken = formData.get("accessToken") as string | null;
     const instructionsJson = formData.get("instructions") as string | null;
+    const title = formData.get("title") as string | null;
 
     if (!accessToken) {
       return { success: false, error: "Unauthorized: Authentication required" };
@@ -425,7 +426,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
 
       const newMission = {
         id: newId,
-        title: "",
+        title: title || "",
         description: "",
         instructions,
       };

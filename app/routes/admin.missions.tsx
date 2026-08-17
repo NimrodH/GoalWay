@@ -1185,11 +1185,12 @@ function EditMissionForm({
 
   const isJsonSaving = jsonFetcher.state !== "idle";
 
-  const handleDrawioImport = (importedInstructions: Array<[string, string?]>) => {
+  const handleDrawioImport = (importedInstructions: Array<[string, string?]>, fileName: string) => {
     const doCreate = () => {
       const formData = new FormData();
       formData.append("actionType", "createMissionWithInstructions");
       formData.append("instructions", JSON.stringify(importedInstructions));
+      formData.append("title", fileName);
       formData.append("accessToken", session?.access_token || "");
       drawioImportFetcher.submit(formData, { method: "post" });
     };
