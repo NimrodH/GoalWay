@@ -1722,6 +1722,64 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                                   isInsideIfBlock={expandedInstructions.insideIfBlock.has(lid)}
                                   onClick={(event) => handleLinkedInstructionClick(instruction.id, linkedInstruction, event)}
                                 />
+                                {isPreview && (
+                                  <div className={styles.editInstructionRow}>
+                                    <span className={styles.instructionIdBadge} title="Instruction ID" style={{ marginRight: "auto" }}>
+                                      ID: {lid}
+                                    </span>
+                                    <button
+                                      className={styles.editInstructionButton}
+                                      disabled={isLinkedTemp && convertingTempId === lid}
+                                      onClick={() => {
+                                        if (isLinkedTemp) {
+                                          handleEditTempInstruction(
+                                            lid,
+                                            ("title" in linkedInstruction ? linkedInstruction.title : "") || "",
+                                          );
+                                        } else {
+                                          // Strip the duplicate-occurrence suffix before navigating to admin
+                                          const editId = lid.includes("#") ? lid.split("#")[0] : lid;
+                                          navigate(`/admin/instructions?instructionId=${editId}`);
+                                        }
+                                      }}
+                                      title={isLinkedTemp ? `Create real instruction from ${lid} and edit it` : `Edit instruction ${lid}`}
+                                    >
+                                      {isLinkedTemp && convertingTempId === lid ? "Creating…" : "✏️ Edit ^"}
+                                    </button>
+                                    {!isLinkedTemp && (
+                                      <instrStatusFetcher.Form method="post" className={styles.instrStatusForm}>
+                                        <input type="hidden" name="actionType" value="updateInstructionStatus" />
+                                        {/* Strip the suffix — status is stored on the base instruction in the DB */}
+                                        <input type="hidden" name="instructionId" value={lid.includes("#") ? lid.split("#")[0] : lid} />
+                                        <label className={styles.instrStatusLabel} htmlFor={`instr-status-${instruction.id}-${lid}`}>
+                                          Status:
+                                        </label>
+                                        <select
+                                          id={`instr-status-${instruction.id}-${lid}`}
+                                          name="status"
+                                          className={styles.instrStatusSelect}
+                                          value={getInstrStatus(linkedInstruction as { id: string; status?: string })}
+                                          onChange={(e) => submitInstrStatus(lid, e.target.value as InstructionStatus)}
+                                        >
+                                          <option value="only title">only title</option>
+                                          <option value="partial explanation">partial explanation</option>
+                                          <option value="full explanation">full explanation</option>
+                                        </select>
+                                        {instrStatusFetcher.state !== "idle" &&
+                                          instrStatusFetcher.formData?.get("instructionId") ===
+                                            (lid.includes("#") ? lid.split("#")[0] : lid) && (
+                                            <span className={styles.statusSaving}>Saving…</span>
+                                          )}
+                                        {instrStatusFetcher.state === "idle" &&
+                                          instrStatusFetcher.data?.success === true &&
+                                          instrStatusFetcher.data.instructionId ===
+                                            (lid.includes("#") ? lid.split("#")[0] : lid) && (
+                                            <span className={styles.statusSaved}>✓</span>
+                                          )}
+                                      </instrStatusFetcher.Form>
+                                    )}
+                                  </div>
+                                )}
                                 {linkedSelected && !isLinkedTemp &&
                                   ("type" in linkedInstruction ? linkedInstruction.type !== "link" : true) &&
                                   Array.isArray(linkedInstruction.explanation) &&

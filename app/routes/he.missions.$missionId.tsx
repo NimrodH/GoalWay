@@ -1066,6 +1066,52 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
                               isCompleted={completedInstructions.has(`${instruction.id}-${linkedInstruction.id}`)}
                               onClick={(event) => handleLinkedInstructionClick(instruction.id, linkedInstruction, event)}
                             />
+                            {isPreview && (
+                              <div className={styles.editInstructionRow}>
+                                <span className={styles.instructionIdBadge} title="Instruction ID" style={{ marginRight: "auto" }}>
+                                  ID: {linkedInstruction.id}
+                                </span>
+                                <button
+                                  className={styles.editInstructionButton}
+                                  onClick={() => {
+                                    const editId = linkedInstruction.id.includes("#") ? linkedInstruction.id.split("#")[0] : linkedInstruction.id;
+                                    navigate(`/admin/instructions?instructionId=${editId}`);
+                                  }}
+                                  title={`ערוך הוראה ${linkedInstruction.id}`}
+                                >
+                                  ✏️ ערוך ^
+                                </button>
+                                <instrStatusFetcher.Form method="post" className={styles.instrStatusForm}>
+                                  <input type="hidden" name="actionType" value="updateInstructionStatus" />
+                                  <input type="hidden" name="instructionId" value={linkedInstruction.id.includes("#") ? linkedInstruction.id.split("#")[0] : linkedInstruction.id} />
+                                  <label className={styles.instrStatusLabel} htmlFor={`he-instr-status-${instruction.id}-${linkedInstruction.id}`}>
+                                    סטטוס:
+                                  </label>
+                                  <select
+                                    id={`he-instr-status-${instruction.id}-${linkedInstruction.id}`}
+                                    name="status"
+                                    className={styles.instrStatusSelect}
+                                    value={getInstrStatus(linkedInstruction as { id: string; status?: string })}
+                                    onChange={(e) => submitInstrStatus(linkedInstruction.id, e.target.value as InstructionStatus)}
+                                  >
+                                    <option value="only title">only title</option>
+                                    <option value="partial explanation">partial explanation</option>
+                                    <option value="full explanation">full explanation</option>
+                                  </select>
+                                  {instrStatusFetcher.state !== "idle" &&
+                                    instrStatusFetcher.formData?.get("instructionId") ===
+                                      (linkedInstruction.id.includes("#") ? linkedInstruction.id.split("#")[0] : linkedInstruction.id) && (
+                                      <span className={styles.statusSaving}>שומר…</span>
+                                    )}
+                                  {instrStatusFetcher.state === "idle" &&
+                                    instrStatusFetcher.data?.success === true &&
+                                    instrStatusFetcher.data.instructionId ===
+                                      (linkedInstruction.id.includes("#") ? linkedInstruction.id.split("#")[0] : linkedInstruction.id) && (
+                                      <span className={styles.statusSaved}>✓</span>
+                                    )}
+                                </instrStatusFetcher.Form>
+                              </div>
+                            )}
                             {linkedSelected && linkedInstruction.type !== "link" && (
                               <div className={styles.mobileExplanation}>
                                 <ExplanationDisplay instruction={linkedInstruction} captionVisible={true} />
