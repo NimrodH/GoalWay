@@ -556,6 +556,25 @@
   border-color: var(--color-neutral-8);
 }
 
+.commentInstructionButton {
+  padding: var(--space-1) var(--space-3);
+  background: var(--color-neutral-3);
+  color: var(--color-neutral-11);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+  white-space: nowrap;
+}
+
+.commentInstructionButton:hover {
+  background: var(--color-neutral-4);
+  border-color: var(--color-neutral-8);
+}
+
 .dialogOverlay {
   position: fixed;
   inset: 0;
@@ -627,6 +646,17 @@
   font-size: 0.9375rem;
   background: var(--color-neutral-2);
   color: var(--color-neutral-12);
+}
+
+.textarea {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  background: var(--color-neutral-2);
+  color: var(--color-neutral-12);
+  resize: vertical;
 }
 
 .dialogActions {

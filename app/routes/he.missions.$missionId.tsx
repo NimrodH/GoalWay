@@ -657,6 +657,89 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
     setPendingRenameContext(null);
   }, [renameMissionFetcher.state, renameMissionFetcher.data, pendingRenameContext]);
 
+  // --- Add a comment above a given instruction (mission-local, persisted like rename) ---
+  const [commentTarget, setCommentTarget] = useState<
+    | { scope: "main"; instructionId: string }
+    | { scope: "linked"; instructionId: string; parentLinkId: string }
+    | null
+  >(null);
+  const [commentTextInput, setCommentTextInput] = useState("");
+
+  const openCommentDialog = (scope: "main" | "linked", instructionId: string, parentLinkId?: string) => {
+    setCommentTextInput("");
+    setCommentTarget(
+      scope === "main"
+        ? { scope: "main", instructionId }
+        : { scope: "linked", instructionId, parentLinkId: parentLinkId! },
+    );
+  };
+
+  const persistInsertComment = (
+    missionMeta: { id: string; title: string; description: string; status: MissionStatus },
+    rawInstructions: [string, string?][],
+    beforeInstructionId: string,
+    commentText: string,
+  ) => {
+    const commentId = `comment-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const insertIndex = rawInstructions.findIndex(([id]) => id === beforeInstructionId);
+    const updatedInstructions =
+      insertIndex !== -1
+        ? [
+            ...rawInstructions.slice(0, insertIndex),
+            [commentId, commentText] as [string, string?],
+            ...rawInstructions.slice(insertIndex),
+          ]
+        : [...rawInstructions, [commentId, commentText] as [string, string?]];
+    const updatedMission = {
+      id: missionMeta.id,
+      title: missionMeta.title,
+      description: missionMeta.description,
+      instructions: updatedInstructions,
+      status: missionMeta.status,
+    };
+    const fd = new FormData();
+    fd.append("actionType", "saveMission");
+    fd.append("id", missionMeta.id);
+    fd.append("dataEn", JSON.stringify(updatedMission));
+    fd.append("language", "he");
+    fd.append("accessToken", session?.access_token || "");
+    renameMissionFetcher.submit(fd, { method: "post", action: "/admin" });
+  };
+
+  const handleCommentSave = () => {
+    if (!commentTarget) return;
+    const text = commentTextInput.trim();
+    if (!text) {
+      alert("אנא הזן תגובה");
+      return;
+    }
+
+    if (commentTarget.scope === "main") {
+      persistInsertComment(
+        { id: mission.id, title: mission.title, description: mission.description, status: normalizeMissionStatus(mission.status) },
+        mission.instructions,
+        commentTarget.instructionId,
+        text,
+      );
+    } else {
+      const meta = linkedMissionMeta.get(commentTarget.parentLinkId);
+      if (!meta) {
+        setCommentTarget(null);
+        return;
+      }
+      persistInsertComment(
+        { id: meta.missionId, title: meta.missionTitle, description: meta.missionDescription, status: meta.missionStatus },
+        meta.rawInstructions,
+        commentTarget.instructionId,
+        text,
+      );
+    }
+
+    // Reuse the rename-refresh effect — it only cares about scope/parentLinkId
+    setPendingRenameContext(commentTarget);
+    setCommentTarget(null);
+  };
+
   const handleLinkedInstructionClick = (parentLinkId: string, linkedInstruction: Instruction, event?: React.MouseEvent) => {
     if (event?.shiftKey) {
       navigate(`/admin/instructions?instructionId=${linkedInstruction.id}`);
@@ -1158,6 +1241,13 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
                         >
                           🏷️ שנה שם
                         </button>
+                        <button
+                          className={styles.commentInstructionButton}
+                          onClick={() => openCommentDialog("main", instruction.id)}
+                          title={`הוסף תגובה מעל הוראה ${instruction.id}`}
+                        >
+                          💬 תגובה
+                        </button>
                         {!isTemp && (
                           <instrStatusFetcher.Form method="post" className={styles.instrStatusForm}>
                             <input type="hidden" name="actionType" value="updateInstructionStatus" />
@@ -1258,6 +1348,13 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
                                 >
                                   🏷️ שנה שם
                                 </button>
+                                <button
+                                  className={styles.commentInstructionButton}
+                                  onClick={() => openCommentDialog("linked", linkedInstruction.id, instruction.id)}
+                                  title={`הוסף תגובה מעל הוראה ${linkedInstruction.id}`}
+                                >
+                                  💬 תגובה
+                                </button>
                                 <instrStatusFetcher.Form method="post" className={styles.instrStatusForm}>
                                   <input type="hidden" name="actionType" value="updateInstructionStatus" />
                                   <input type="hidden" name="instructionId" value={linkedInstruction.id.includes("#") ? linkedInstruction.id.split("#")[0] : linkedInstruction.id} />
@@ -1339,6 +1436,38 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
                 ביטול
               </button>
               <button type="button" onClick={handleRenameSave} className={styles.submitButton}>
+                שמור
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {commentTarget && (
+        <div className={styles.dialogOverlay} onClick={() => setCommentTarget(null)}>
+          <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.dialogHeader}>
+              <h2 className={styles.dialogTitle}>הוסף תגובה מעל ההוראה</h2>
+              <button className={styles.dialogClose} onClick={() => setCommentTarget(null)}>
+                ✕
+              </button>
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>טקסט התגובה</label>
+              <textarea
+                className={styles.textarea}
+                value={commentTextInput}
+                onChange={(e) => setCommentTextInput(e.target.value)}
+                placeholder="הזן תגובה…"
+                rows={4}
+                autoFocus
+              />
+            </div>
+            <div className={styles.dialogActions}>
+              <button type="button" onClick={() => setCommentTarget(null)} className={styles.removeButton}>
+                ביטול
+              </button>
+              <button type="button" onClick={handleCommentSave} className={styles.submitButton}>
                 שמור
               </button>
             </div>
