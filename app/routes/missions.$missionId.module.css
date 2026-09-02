@@ -537,6 +537,135 @@
   border-color: var(--color-accent-8);
 }
 
+.renameInstructionButton {
+  padding: var(--space-1) var(--space-3);
+  background: var(--color-neutral-3);
+  color: var(--color-neutral-11);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+  white-space: nowrap;
+}
+
+.renameInstructionButton:hover {
+  background: var(--color-neutral-4);
+  border-color: var(--color-neutral-8);
+}
+
+.dialogOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+}
+
+.dialogContent {
+  background: var(--color-neutral-1);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-3);
+  max-width: 480px;
+  width: 100%;
+  padding: var(--space-5);
+}
+
+.dialogHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-neutral-6);
+  margin-bottom: var(--space-4);
+}
+
+.dialogTitle {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-neutral-12);
+  margin: 0;
+}
+
+.dialogClose {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: var(--color-neutral-11);
+  cursor: pointer;
+  padding: var(--space-1);
+}
+
+.dialogClose:hover {
+  color: var(--color-neutral-12);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-neutral-11);
+}
+
+.input {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-neutral-6);
+  border-radius: var(--radius-2);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  background: var(--color-neutral-2);
+  color: var(--color-neutral-12);
+}
+
+.dialogActions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.dialogActions .removeButton,
+.dialogActions .submitButton {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-2);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.removeButton {
+  background: var(--color-neutral-3);
+  color: var(--color-neutral-11);
+  border: 1px solid var(--color-neutral-6);
+}
+
+.removeButton:hover {
+  background: var(--color-neutral-4);
+}
+
+.submitButton {
+  background: var(--color-accent-9);
+  color: var(--color-accent-contrast, white);
+  border: 1px solid var(--color-accent-9);
+}
+
+.submitButton:hover {
+  background: var(--color-accent-10);
+}
+
 .instrStatusForm {
   display: flex;
   align-items: center;

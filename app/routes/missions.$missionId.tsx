@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { data, redirect, Link, useNavigate, useLocation, useSearchParams, useFetcher } from "react-router";
+import { data, redirect, Link, useNavigate, useLocation, useSearchParams, useFetcher, useRevalidator } from "react-router";
 import Markdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/missions.$missionId";
@@ -292,11 +292,17 @@ type LinkedMissionExpansion = {
   elseIdOf: Map<string, string>;
   depthOf: Map<string, number>;
   insideIfBlock: Set<string>;
+  // Metadata of the linked mission itself — needed to persist instruction-title renames
+  missionId: string;
+  missionTitle: string;
+  missionDescription: string;
+  missionStatus: MissionStatus;
 };
 
 function buildLinkedMissionData(
   rawInstructions: [string, string?][],
-  dbInstructions: Instruction[]
+  dbInstructions: Instruction[],
+  missionMeta: { id: string; title: string; description: string; status: MissionStatus }
 ): LinkedMissionExpansion {
   const instructions = rawInstructions
     .map(([id, customTitle]) => {
@@ -405,6 +411,10 @@ function buildLinkedMissionData(
     elseIdOf,
     depthOf,
     insideIfBlock: new Set<string>(parentOf.keys()),
+    missionId: missionMeta.id,
+    missionTitle: missionMeta.title,
+    missionDescription: missionMeta.description,
+    missionStatus: missionMeta.status,
   };
 }
 
@@ -879,7 +889,12 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
         const linkedMission = linkedMissionData.mission;
         const linkedInstructions = linkedMissionData.instructions;
 
-        const expansion = buildLinkedMissionData(linkedMission.instructions, linkedInstructions);
+        const expansion = buildLinkedMissionData(linkedMission.instructions, linkedInstructions, {
+          id: linkedMission.id,
+          title: linkedMission.title,
+          description: linkedMission.description,
+          status: normalizeMissionStatus(linkedMission.status),
+        });
 
         const newMap = new Map(expandedLinkInstructions);
         newMap.set(instructionId, expansion);
@@ -927,6 +942,126 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
       return next;
     });
   };
+
+  // --- Rename instruction title within a mission (mission-local title override) ---
+  const revalidator = useRevalidator();
+  const renameMissionFetcher = useFetcher<{ success: boolean; error?: string }>();
+  const [renameTarget, setRenameTarget] = useState<
+    | { scope: "main"; instructionId: string }
+    | { scope: "linked"; instructionId: string; parentLinkId: string }
+    | null
+  >(null);
+  const [renameTitleInput, setRenameTitleInput] = useState("");
+  const [pendingRenameContext, setPendingRenameContext] = useState<typeof renameTarget>(null);
+
+  const openRenameDialog = (scope: "main" | "linked", instructionId: string, currentTitle: string, parentLinkId?: string) => {
+    setRenameTitleInput(currentTitle);
+    setRenameTarget(
+      scope === "main"
+        ? { scope: "main", instructionId }
+        : { scope: "linked", instructionId, parentLinkId: parentLinkId! },
+    );
+  };
+
+  const persistInstructionRename = (
+    missionMeta: { id: string; title: string; description: string; status: MissionStatus },
+    rawInstructions: [string, string?][],
+    instructionId: string,
+    newTitle: string,
+  ) => {
+    const updatedInstructions = rawInstructions.map(([id, title]) =>
+      id === instructionId
+        ? (newTitle ? ([id, newTitle] as [string, string?]) : ([id] as [string, string?]))
+        : ([id, title] as [string, string?])
+    );
+    const updatedMission = {
+      id: missionMeta.id,
+      title: missionMeta.title,
+      description: missionMeta.description,
+      instructions: updatedInstructions,
+      status: missionMeta.status,
+    };
+    const fd = new FormData();
+    fd.append("actionType", "saveMission");
+    fd.append("id", missionMeta.id);
+    fd.append("dataEn", JSON.stringify(updatedMission));
+    fd.append("language", "en");
+    fd.append("accessToken", session?.access_token || "");
+    renameMissionFetcher.submit(fd, { method: "post", action: "/admin" });
+  };
+
+  const handleRenameSave = () => {
+    if (!renameTarget) return;
+    const newTitle = renameTitleInput.trim();
+
+    if (renameTarget.scope === "main") {
+      persistInstructionRename(
+        { id: mission.id, title: mission.title, description: mission.description, status: normalizeMissionStatus(mission.status) },
+        mission.instructions,
+        renameTarget.instructionId,
+        newTitle,
+      );
+    } else {
+      const expansion = expandedLinkInstructions.get(renameTarget.parentLinkId);
+      if (!expansion) {
+        setRenameTarget(null);
+        return;
+      }
+      persistInstructionRename(
+        { id: expansion.missionId, title: expansion.missionTitle, description: expansion.missionDescription, status: expansion.missionStatus },
+        expansion.rawInstructions,
+        renameTarget.instructionId,
+        newTitle,
+      );
+    }
+
+    setPendingRenameContext(renameTarget);
+    setRenameTarget(null);
+  };
+
+  // After a rename save completes, refresh the affected mission's data
+  useEffect(() => {
+    if (!pendingRenameContext) return;
+    if (renameMissionFetcher.state !== "idle" || !renameMissionFetcher.data) return;
+
+    if (!renameMissionFetcher.data.success) {
+      alert(`Failed to rename instruction: ${renameMissionFetcher.data.error || "Unknown error"}`);
+      setPendingRenameContext(null);
+      return;
+    }
+
+    if (pendingRenameContext.scope === "main") {
+      revalidator.revalidate();
+    } else {
+      const { parentLinkId } = pendingRenameContext;
+      const expansion = expandedLinkInstructions.get(parentLinkId);
+      if (expansion) {
+        (async () => {
+          try {
+            const response = await fetch(`/api/missions/${expansion.missionId}`);
+            if (!response.ok) return;
+            const linkedMissionData = await response.json();
+            const linkedMission = linkedMissionData.mission;
+            const linkedInstructions = linkedMissionData.instructions;
+            const newExpansion = buildLinkedMissionData(linkedMission.instructions, linkedInstructions, {
+              id: linkedMission.id,
+              title: linkedMission.title,
+              description: linkedMission.description,
+              status: normalizeMissionStatus(linkedMission.status),
+            });
+            setExpandedLinkInstructions((prev) => {
+              const next = new Map(prev);
+              next.set(parentLinkId, newExpansion);
+              return next;
+            });
+          } catch (err) {
+            console.error("Error refreshing linked mission after rename:", err);
+          }
+        })();
+      }
+    }
+    setPendingRenameContext(null);
+  }, [renameMissionFetcher.state, renameMissionFetcher.data, pendingRenameContext]);
 
   const handleLinkedInstructionClick = (parentLinkId: string, linkedInstruction: MissionInstruction, event?: React.MouseEvent) => {
     // Non-interactive entry types — delegate IF toggle, skip others
@@ -1505,7 +1640,7 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                       isCompleted={completedInstructions.has(instruction.id)}
                       isInsideIfBlock={insideIfBlock.has(instruction.id)}
                     />
-                    {isPreview && (
+                    {isPreview && selectedInstructionId === instruction.id && (
                       <div className={styles.editInstructionRow}>
                         <span className={styles.instructionIdBadge} title="Instruction ID" style={{ marginRight: "auto" }}>
                           ID: {instruction.id}
@@ -1528,6 +1663,19 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                           title={isTemp ? `Create real instruction from ${instruction.id} and edit it` : `Edit instruction ${instruction.id}`}
                         >
                           {isTemp && convertingTempId === instruction.id ? "Creating…" : "✏️ Edit ^"}
+                        </button>
+                        <button
+                          className={styles.renameInstructionButton}
+                          onClick={() =>
+                            openRenameDialog(
+                              "main",
+                              instruction.id,
+                              mission.instructions.find(([id]) => id === instruction.id)?.[1] || "",
+                            )
+                          }
+                          title={`Rename instruction ${instruction.id} for this mission`}
+                        >
+                          🏷️ Rename
                         </button>
                         {!isTemp && (
                           <instrStatusFetcher.Form method="post" className={styles.instrStatusForm}>
@@ -1722,7 +1870,7 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                                   isInsideIfBlock={expandedInstructions.insideIfBlock.has(lid)}
                                   onClick={(event) => handleLinkedInstructionClick(instruction.id, linkedInstruction, event)}
                                 />
-                                {isPreview && (
+                                {isPreview && linkedSelected && (
                                   <div className={styles.editInstructionRow}>
                                     <span className={styles.instructionIdBadge} title="Instruction ID" style={{ marginRight: "auto" }}>
                                       ID: {lid}
@@ -1745,6 +1893,20 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
                                       title={isLinkedTemp ? `Create real instruction from ${lid} and edit it` : `Edit instruction ${lid}`}
                                     >
                                       {isLinkedTemp && convertingTempId === lid ? "Creating…" : "✏️ Edit ^"}
+                                    </button>
+                                    <button
+                                      className={styles.renameInstructionButton}
+                                      onClick={() =>
+                                        openRenameDialog(
+                                          "linked",
+                                          lid,
+                                          expandedInstructions.rawInstructions.find(([id]) => id === lid)?.[1] || "",
+                                          instruction.id,
+                                        )
+                                      }
+                                      title={`Rename instruction ${lid} for this mission`}
+                                    >
+                                      🏷️ Rename
                                     </button>
                                     {!isLinkedTemp && (
                                       <instrStatusFetcher.Form method="post" className={styles.instrStatusForm}>
@@ -1805,6 +1967,38 @@ export default function MissionPage({ loaderData, params }: Route.ComponentProps
           <ExplanationDisplay instruction={instructionToDisplay as Instruction | null} className={styles.explanationContainer} captionVisible={true} />
         </section>
       </div>
+
+      {renameTarget && (
+        <div className={styles.dialogOverlay} onClick={() => setRenameTarget(null)}>
+          <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.dialogHeader}>
+              <h2 className={styles.dialogTitle}>Rename Instruction for This Mission</h2>
+              <button className={styles.dialogClose} onClick={() => setRenameTarget(null)}>
+                ✕
+              </button>
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Alternative Title (leave empty to use original title)</label>
+              <input
+                type="text"
+                className={styles.input}
+                value={renameTitleInput}
+                onChange={(e) => setRenameTitleInput(e.target.value)}
+                placeholder="Enter alternative title…"
+                autoFocus
+              />
+            </div>
+            <div className={styles.dialogActions}>
+              <button type="button" onClick={() => setRenameTarget(null)} className={styles.removeButton}>
+                Cancel
+              </button>
+              <button type="button" onClick={handleRenameSave} className={styles.submitButton}>
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
