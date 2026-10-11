@@ -62,7 +62,7 @@ interface DrawioUploadDialogProps {
    * Receives the parsed instruction list ready to be spread into
    * `selectedInstructions`.
    */
-  onImport: (instructions: Array<[string, string?]>) => void;
+  onImport: (instructions: Array<[string, string?]>, fileName: string) => void;
 }
 
 /** Dialog that lets the admin upload a draw.io XML file and converts it into mission instructions. */
@@ -121,7 +121,7 @@ export function DrawioUploadDialog({ onClose, onImport }: DrawioUploadDialogProp
 
   const handleImport = () => {
     if (!parsed) return;
-    onImport(parsed);
+    onImport(parsed, fileName ?? "");
     onClose();
   };
 

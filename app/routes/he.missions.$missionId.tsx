@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { data, redirect, Link, useNavigate, useLocation, useSearchParams, useFetcher } from "react-router";
+import { data, redirect, Link, useNavigate, useLocation, useSearchParams, useFetcher, useRevalidator } from "react-router";
 import Markdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import type { Route } from "./+types/he.missions.$missionId";
@@ -417,6 +417,8 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
   const [selectedInstructionId, setSelectedInstructionId] = useState<string | null>(null);
   const [selectedLinkedInstructionId, setSelectedLinkedInstructionId] = useState<Map<string, string | null>>(new Map());
   const [expandedLinkInstructions, setExpandedLinkInstructions] = useState<Map<string, Instruction[]>>(new Map());
+  // Metadata (raw ids + mission info) for expanded linked missions — needed to persist instruction-title renames
+  const [linkedMissionMeta, setLinkedMissionMeta] = useState<Map<string, { missionId: string; missionTitle: string; missionDescription: string; missionStatus: MissionStatus; rawInstructions: [string, string?][] }>>(new Map());
   const [loadingLinkInstructions, setLoadingLinkInstructions] = useState<Set<string>>(new Set());
   const [completedInstructions, setCompletedInstructions] = useState<Set<string>>(new Set());
   const [expandedIfBlocks, setExpandedIfBlocks] = useState<Map<string, "if" | "else">>(new Map());
@@ -479,6 +481,11 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
       const newMap = new Map(expandedLinkInstructions);
       newMap.delete(instructionId);
       setExpandedLinkInstructions(newMap);
+      setLinkedMissionMeta((prev) => {
+        const next = new Map(prev);
+        next.delete(instructionId);
+        return next;
+      });
     } else {
       setLoadingLinkInstructions(new Set([...loadingLinkInstructions, instructionId]));
       try {
@@ -497,6 +504,17 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
         const newMap = new Map(expandedLinkInstructions);
         newMap.set(instructionId, linkedMissionInstructions);
         setExpandedLinkInstructions(newMap);
+        setLinkedMissionMeta((prev) => {
+          const next = new Map(prev);
+          next.set(instructionId, {
+            missionId: linkedMission.id,
+            missionTitle: linkedMission.title,
+            missionDescription: linkedMission.description,
+            missionStatus: normalizeMissionStatus(linkedMission.status),
+            rawInstructions: linkedMission.instructions,
+          });
+          return next;
+        });
       } catch (error) {
         console.error("Error fetching linked mission:", error);
       } finally {
@@ -505,6 +523,221 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
         setLoadingLinkInstructions(newLoading);
       }
     }
+  };
+
+  // --- Rename instruction title within a mission (mission-local title override) ---
+  const revalidator = useRevalidator();
+  const renameMissionFetcher = useFetcher<{ success: boolean; error?: string }>();
+  const [renameTarget, setRenameTarget] = useState<
+    | { scope: "main"; instructionId: string }
+    | { scope: "linked"; instructionId: string; parentLinkId: string }
+    | null
+  >(null);
+  const [renameTitleInput, setRenameTitleInput] = useState("");
+  const [pendingRenameContext, setPendingRenameContext] = useState<typeof renameTarget>(null);
+
+  const openRenameDialog = (scope: "main" | "linked", instructionId: string, currentTitle: string, parentLinkId?: string) => {
+    setRenameTitleInput(currentTitle);
+    setRenameTarget(
+      scope === "main"
+        ? { scope: "main", instructionId }
+        : { scope: "linked", instructionId, parentLinkId: parentLinkId! },
+    );
+  };
+
+  const persistInstructionRename = (
+    missionMeta: { id: string; title: string; description: string; status: MissionStatus },
+    rawInstructions: [string, string?][],
+    instructionId: string,
+    newTitle: string,
+  ) => {
+    const updatedInstructions = rawInstructions.map(([id, title]) =>
+      id === instructionId
+        ? (newTitle ? ([id, newTitle] as [string, string?]) : ([id] as [string, string?]))
+        : ([id, title] as [string, string?])
+    );
+    const updatedMission = {
+      id: missionMeta.id,
+      title: missionMeta.title,
+      description: missionMeta.description,
+      instructions: updatedInstructions,
+      status: missionMeta.status,
+    };
+    const fd = new FormData();
+    fd.append("actionType", "saveMission");
+    fd.append("id", missionMeta.id);
+    fd.append("dataEn", JSON.stringify(updatedMission));
+    fd.append("language", "he");
+    fd.append("accessToken", session?.access_token || "");
+    renameMissionFetcher.submit(fd, { method: "post", action: "/admin" });
+  };
+
+  const handleRenameSave = () => {
+    if (!renameTarget) return;
+    const newTitle = renameTitleInput.trim();
+
+    if (renameTarget.scope === "main") {
+      persistInstructionRename(
+        { id: mission.id, title: mission.title, description: mission.description, status: normalizeMissionStatus(mission.status) },
+        mission.instructions,
+        renameTarget.instructionId,
+        newTitle,
+      );
+    } else {
+      const meta = linkedMissionMeta.get(renameTarget.parentLinkId);
+      if (!meta) {
+        setRenameTarget(null);
+        return;
+      }
+      persistInstructionRename(
+        { id: meta.missionId, title: meta.missionTitle, description: meta.missionDescription, status: meta.missionStatus },
+        meta.rawInstructions,
+        renameTarget.instructionId,
+        newTitle,
+      );
+    }
+
+    setPendingRenameContext(renameTarget);
+    setRenameTarget(null);
+  };
+
+  // After a rename save completes, refresh the affected mission's data
+  useEffect(() => {
+    if (!pendingRenameContext) return;
+    if (renameMissionFetcher.state !== "idle" || !renameMissionFetcher.data) return;
+
+    if (!renameMissionFetcher.data.success) {
+      alert(`Failed to rename instruction: ${renameMissionFetcher.data.error || "Unknown error"}`);
+      setPendingRenameContext(null);
+      return;
+    }
+
+    if (pendingRenameContext.scope === "main") {
+      revalidator.revalidate();
+    } else {
+      const { parentLinkId } = pendingRenameContext;
+      const meta = linkedMissionMeta.get(parentLinkId);
+      if (meta) {
+        (async () => {
+          try {
+            const response = await fetch(`/api/he/missions/${meta.missionId}`);
+            if (!response.ok) return;
+            const linkedMissionData = await response.json();
+            const linkedMission = linkedMissionData.mission;
+            const linkedInstructions = linkedMissionData.instructions;
+            const linkedMissionInstructions = linkedMission.instructions
+              .map(([id, customTitle]: [string, string?]) => {
+                const instruction = linkedInstructions.find((inst: Instruction) => inst.id === id);
+                if (!instruction) return null;
+                return customTitle ? { ...instruction, title: customTitle } : instruction;
+              })
+              .filter(Boolean) as Instruction[];
+            setExpandedLinkInstructions((prev) => {
+              const next = new Map(prev);
+              next.set(parentLinkId, linkedMissionInstructions);
+              return next;
+            });
+            setLinkedMissionMeta((prev) => {
+              const next = new Map(prev);
+              next.set(parentLinkId, {
+                missionId: linkedMission.id,
+                missionTitle: linkedMission.title,
+                missionDescription: linkedMission.description,
+                missionStatus: normalizeMissionStatus(linkedMission.status),
+                rawInstructions: linkedMission.instructions,
+              });
+              return next;
+            });
+          } catch (err) {
+            console.error("Error refreshing linked mission after rename:", err);
+          }
+        })();
+      }
+    }
+    setPendingRenameContext(null);
+  }, [renameMissionFetcher.state, renameMissionFetcher.data, pendingRenameContext]);
+
+  // --- Add a comment above a given instruction (mission-local, persisted like rename) ---
+  const [commentTarget, setCommentTarget] = useState<
+    | { scope: "main"; instructionId: string }
+    | { scope: "linked"; instructionId: string; parentLinkId: string }
+    | null
+  >(null);
+  const [commentTextInput, setCommentTextInput] = useState("");
+
+  const openCommentDialog = (scope: "main" | "linked", instructionId: string, parentLinkId?: string) => {
+    setCommentTextInput("");
+    setCommentTarget(
+      scope === "main"
+        ? { scope: "main", instructionId }
+        : { scope: "linked", instructionId, parentLinkId: parentLinkId! },
+    );
+  };
+
+  const persistInsertComment = (
+    missionMeta: { id: string; title: string; description: string; status: MissionStatus },
+    rawInstructions: [string, string?][],
+    beforeInstructionId: string,
+    commentText: string,
+  ) => {
+    const commentId = `comment-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const insertIndex = rawInstructions.findIndex(([id]) => id === beforeInstructionId);
+    const updatedInstructions =
+      insertIndex !== -1
+        ? [
+            ...rawInstructions.slice(0, insertIndex),
+            [commentId, commentText] as [string, string?],
+            ...rawInstructions.slice(insertIndex),
+          ]
+        : [...rawInstructions, [commentId, commentText] as [string, string?]];
+    const updatedMission = {
+      id: missionMeta.id,
+      title: missionMeta.title,
+      description: missionMeta.description,
+      instructions: updatedInstructions,
+      status: missionMeta.status,
+    };
+    const fd = new FormData();
+    fd.append("actionType", "saveMission");
+    fd.append("id", missionMeta.id);
+    fd.append("dataEn", JSON.stringify(updatedMission));
+    fd.append("language", "he");
+    fd.append("accessToken", session?.access_token || "");
+    renameMissionFetcher.submit(fd, { method: "post", action: "/admin" });
+  };
+
+  const handleCommentSave = () => {
+    if (!commentTarget) return;
+    const text = commentTextInput.trim();
+    if (!text) {
+      alert("אנא הזן תגובה");
+      return;
+    }
+
+    if (commentTarget.scope === "main") {
+      persistInsertComment(
+        { id: mission.id, title: mission.title, description: mission.description, status: normalizeMissionStatus(mission.status) },
+        mission.instructions,
+        commentTarget.instructionId,
+        text,
+      );
+    } else {
+      const meta = linkedMissionMeta.get(commentTarget.parentLinkId);
+      if (!meta) {
+        setCommentTarget(null);
+        return;
+      }
+      persistInsertComment(
+        { id: meta.missionId, title: meta.missionTitle, description: meta.missionDescription, status: meta.missionStatus },
+        meta.rawInstructions,
+        commentTarget.instructionId,
+        text,
+      );
+    }
+
+    // Reuse the rename-refresh effect — it only cares about scope/parentLinkId
+    setPendingRenameContext(commentTarget);
+    setCommentTarget(null);
   };
 
   const handleLinkedInstructionClick = (parentLinkId: string, linkedInstruction: Instruction, event?: React.MouseEvent) => {
@@ -979,7 +1212,7 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
                       isCompleted={completedInstructions.has(instruction.id)}
                       isInsideIfBlock={insideIfBlock.has(instruction.id)}
                     />
-                    {isPreview && (
+                    {isPreview && selectedInstructionId === instruction.id && (
                       <div className={styles.editInstructionRow}>
                         <span className={styles.instructionIdBadge} title="Instruction ID" style={{ marginRight: "auto" }}>
                           ID: {instruction.id}
@@ -994,6 +1227,26 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
                           disabled={isTemp}
                         >
                           ✏️ ערוך ^
+                        </button>
+                        <button
+                          className={styles.renameInstructionButton}
+                          onClick={() =>
+                            openRenameDialog(
+                              "main",
+                              instruction.id,
+                              mission.instructions.find(([id]) => id === instruction.id)?.[1] || "",
+                            )
+                          }
+                          title={`שנה שם להוראה ${instruction.id} עבור משימה זו`}
+                        >
+                          🏷️ שנה שם
+                        </button>
+                        <button
+                          className={styles.commentInstructionButton}
+                          onClick={() => openCommentDialog("main", instruction.id)}
+                          title={`הוסף תגובה מעל הוראה ${instruction.id}`}
+                        >
+                          💬 תגובה
                         </button>
                         {!isTemp && (
                           <instrStatusFetcher.Form method="post" className={styles.instrStatusForm}>
@@ -1066,6 +1319,73 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
                               isCompleted={completedInstructions.has(`${instruction.id}-${linkedInstruction.id}`)}
                               onClick={(event) => handleLinkedInstructionClick(instruction.id, linkedInstruction, event)}
                             />
+                            {isPreview && linkedSelected && (
+                              <div className={styles.editInstructionRow}>
+                                <span className={styles.instructionIdBadge} title="Instruction ID" style={{ marginRight: "auto" }}>
+                                  ID: {linkedInstruction.id}
+                                </span>
+                                <button
+                                  className={styles.editInstructionButton}
+                                  onClick={() => {
+                                    const editId = linkedInstruction.id.includes("#") ? linkedInstruction.id.split("#")[0] : linkedInstruction.id;
+                                    navigate(`/admin/instructions?instructionId=${editId}`);
+                                  }}
+                                  title={`ערוך הוראה ${linkedInstruction.id}`}
+                                >
+                                  ✏️ ערוך ^
+                                </button>
+                                <button
+                                  className={styles.renameInstructionButton}
+                                  onClick={() =>
+                                    openRenameDialog(
+                                      "linked",
+                                      linkedInstruction.id,
+                                      linkedMissionMeta.get(instruction.id)?.rawInstructions.find(([id]) => id === linkedInstruction.id)?.[1] || "",
+                                      instruction.id,
+                                    )
+                                  }
+                                  title={`שנה שם להוראה ${linkedInstruction.id} עבור משימה זו`}
+                                >
+                                  🏷️ שנה שם
+                                </button>
+                                <button
+                                  className={styles.commentInstructionButton}
+                                  onClick={() => openCommentDialog("linked", linkedInstruction.id, instruction.id)}
+                                  title={`הוסף תגובה מעל הוראה ${linkedInstruction.id}`}
+                                >
+                                  💬 תגובה
+                                </button>
+                                <instrStatusFetcher.Form method="post" className={styles.instrStatusForm}>
+                                  <input type="hidden" name="actionType" value="updateInstructionStatus" />
+                                  <input type="hidden" name="instructionId" value={linkedInstruction.id.includes("#") ? linkedInstruction.id.split("#")[0] : linkedInstruction.id} />
+                                  <label className={styles.instrStatusLabel} htmlFor={`he-instr-status-${instruction.id}-${linkedInstruction.id}`}>
+                                    סטטוס:
+                                  </label>
+                                  <select
+                                    id={`he-instr-status-${instruction.id}-${linkedInstruction.id}`}
+                                    name="status"
+                                    className={styles.instrStatusSelect}
+                                    value={getInstrStatus(linkedInstruction as { id: string; status?: string })}
+                                    onChange={(e) => submitInstrStatus(linkedInstruction.id, e.target.value as InstructionStatus)}
+                                  >
+                                    <option value="only title">only title</option>
+                                    <option value="partial explanation">partial explanation</option>
+                                    <option value="full explanation">full explanation</option>
+                                  </select>
+                                  {instrStatusFetcher.state !== "idle" &&
+                                    instrStatusFetcher.formData?.get("instructionId") ===
+                                      (linkedInstruction.id.includes("#") ? linkedInstruction.id.split("#")[0] : linkedInstruction.id) && (
+                                      <span className={styles.statusSaving}>שומר…</span>
+                                    )}
+                                  {instrStatusFetcher.state === "idle" &&
+                                    instrStatusFetcher.data?.success === true &&
+                                    instrStatusFetcher.data.instructionId ===
+                                      (linkedInstruction.id.includes("#") ? linkedInstruction.id.split("#")[0] : linkedInstruction.id) && (
+                                      <span className={styles.statusSaved}>✓</span>
+                                    )}
+                                </instrStatusFetcher.Form>
+                              </div>
+                            )}
                             {linkedSelected && linkedInstruction.type !== "link" && (
                               <div className={styles.mobileExplanation}>
                                 <ExplanationDisplay instruction={linkedInstruction} captionVisible={true} />
@@ -1090,6 +1410,70 @@ export default function HeMissionPage({ loaderData, params }: Route.ComponentPro
           />
         </section>
       </div>
+
+      {renameTarget && (
+        <div className={styles.dialogOverlay} onClick={() => setRenameTarget(null)}>
+          <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.dialogHeader}>
+              <h2 className={styles.dialogTitle}>שנה שם הוראה עבור משימה זו</h2>
+              <button className={styles.dialogClose} onClick={() => setRenameTarget(null)}>
+                ✕
+              </button>
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>כותרת חלופית (השאר ריק לשימוש בכותרת המקורית)</label>
+              <input
+                type="text"
+                className={styles.input}
+                value={renameTitleInput}
+                onChange={(e) => setRenameTitleInput(e.target.value)}
+                placeholder="הזן כותרת חלופית…"
+                autoFocus
+              />
+            </div>
+            <div className={styles.dialogActions}>
+              <button type="button" onClick={() => setRenameTarget(null)} className={styles.removeButton}>
+                ביטול
+              </button>
+              <button type="button" onClick={handleRenameSave} className={styles.submitButton}>
+                שמור
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {commentTarget && (
+        <div className={styles.dialogOverlay} onClick={() => setCommentTarget(null)}>
+          <div className={styles.dialogContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.dialogHeader}>
+              <h2 className={styles.dialogTitle}>הוסף תגובה מעל ההוראה</h2>
+              <button className={styles.dialogClose} onClick={() => setCommentTarget(null)}>
+                ✕
+              </button>
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>טקסט התגובה</label>
+              <textarea
+                className={styles.textarea}
+                value={commentTextInput}
+                onChange={(e) => setCommentTextInput(e.target.value)}
+                placeholder="הזן תגובה…"
+                rows={4}
+                autoFocus
+              />
+            </div>
+            <div className={styles.dialogActions}>
+              <button type="button" onClick={() => setCommentTarget(null)} className={styles.removeButton}>
+                ביטול
+              </button>
+              <button type="button" onClick={handleCommentSave} className={styles.submitButton}>
+                שמור
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -286,6 +286,7 @@ export default function HeHome({ loaderData }: Route.ComponentProps) {
               <div className={styles.missionHeader}>
                 <BookOpen className={styles.missionIcon} />
                 <div className={styles.missionTitle}>
+                  <span>{mission.id} · </span>
                   <Markdown
                     remarkPlugins={[remarkBreaks]}
                     components={{
@@ -305,7 +306,6 @@ export default function HeHome({ loaderData }: Route.ComponentProps) {
                 </div>
               )}
               <div className={styles.missionFooter}>
-                <span className={styles.instructionCount}>מזהה משימה: {mission.id}</span>
                 <div className={styles.missionFooterStats}>
                   <span className={styles.instructionCount}>
                     {mission.instructions.length} {mission.instructions.length === 1 ? "הוראה" : "הוראות"}
