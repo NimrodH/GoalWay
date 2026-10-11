@@ -286,6 +286,7 @@ export default function HeHome({ loaderData }: Route.ComponentProps) {
               <div className={styles.missionHeader}>
                 <BookOpen className={styles.missionIcon} />
                 <div className={styles.missionTitle}>
+                  <span>{mission.id} · </span>
                   <Markdown
                     remarkPlugins={[remarkBreaks]}
                     components={{
