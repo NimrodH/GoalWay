@@ -264,7 +264,7 @@ export async function action({ request }: Route.ActionArgs) {
       // Update image_keywords entry for the renamed file (non-fatal)
       try {
         const { renameImageKeywords } = await import("~/services/image-keywords.server");
-        await renameImageKeywords(oldStoragePath, newStoragePath);
+        await renameImageKeywords(oldStoragePath, newStoragePath, accessToken);
       } catch {
         // Keywords rename failure is non-fatal
       }
@@ -301,7 +301,7 @@ export async function action({ request }: Route.ActionArgs) {
         module: module || null,
         screen: screen || null,
         item: item || null,
-      });
+      }, accessToken);
       return result.success
         ? { success: true, actionType: "updateKeywords" as const, message: "Keywords and categories saved!" }
         : { success: false, error: result.error ?? "Failed to save keywords" };
@@ -1216,6 +1216,7 @@ export default function InstructionsWithImages({ loaderData }: Route.ComponentPr
     formData.append("module", module);
     formData.append("screen", screen);
     formData.append("item", item);
+    formData.append("accessToken", session.access_token || "");
     keywordsFetcher.submit(formData, { method: "post" });
   };
 

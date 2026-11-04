@@ -1,7 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
-function getAdminClient() {
-  return createClient(process.env.SUPABASE_PROJECT_URL!, process.env.SUPABASE_API_KEY!);
+function getAdminClient(accessToken?: string | null) {
+  // With a token, requests run as the signed-in admin so RLS write policies allow them.
+  return createClient(
+    process.env.SUPABASE_PROJECT_URL!,
+    process.env.SUPABASE_API_KEY!,
+    accessToken ? { global: { headers: { Authorization: `Bearer ${accessToken}` } } } : undefined
+  );
 }
 
 export interface ImageCategories {
@@ -67,9 +72,10 @@ export async function getAllCategoryValues(): Promise<Array<{
  */
 export async function upsertImageKeywords(
   imagePath: string,
-  categories: ImageCategories
+  categories: ImageCategories,
+  accessToken?: string | null
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = getAdminClient();
+  const supabase = getAdminClient(accessToken);
   const { error } = await supabase
     .from("image_keywords")
     .upsert(
@@ -92,9 +98,10 @@ export async function upsertImageKeywords(
  */
 export async function renameImageKeywords(
   oldPath: string,
-  newPath: string
+  newPath: string,
+  accessToken?: string | null
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = getAdminClient();
+  const supabase = getAdminClient(accessToken);
 
   const { data } = await supabase
     .from("image_keywords")
