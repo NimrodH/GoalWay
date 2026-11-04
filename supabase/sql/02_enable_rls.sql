@@ -1,57 +1,27 @@
--- Turns on Row-Level Security for GoalWay's public tables that still have it off,
--- and adds policies that keep the app working the way it does today:
---   * everyone (signed in or not) can still read, as the app's pages do now;
---   * only signed-in admins (profiles.role = 'admin') can add, change or delete rows.
--- Tables that already have RLS on are left exactly as they are, policies included.
--- Safe to run more than once.
+-- Fixes the Supabase "Table publicly accessible" warning.
+-- Checked on 2026-11-04: image_keywords is the only public table with RLS off.
+-- All other tables already have RLS and keep their existing policies.
 
--- Helper: is the signed-in user an admin? SECURITY DEFINER so it can read profiles
--- without being blocked by the profiles policies themselves.
-create or replace function public.goalway_is_admin()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (select 1 from public.profiles where id = auth.uid() and role = 'admin');
-$$;
+-- Step 1: safe to run now, while the live site still saves keywords with the anon key.
+-- Turns RLS on and keeps today's access exactly as it is, so nothing breaks.
+begin;
+alter table public.image_keywords enable row level security;
+drop policy if exists "Allow public read access to image_keywords" on public.image_keywords;
+create policy "Allow public read access to image_keywords" on public.image_keywords
+  for select to public using (true);
+drop policy if exists "Temporary app write access to image_keywords" on public.image_keywords;
+create policy "Temporary app write access to image_keywords" on public.image_keywords
+  for all to anon, authenticated using (true) with check (true);
+commit;
 
-revoke all on function public.goalway_is_admin() from public;
-grant execute on function public.goalway_is_admin() to anon, authenticated;
-
-do $$
-declare
-  t text;
-begin
-  foreach t in array array[
-    'missions', 'instructions', 'organizations', 'mission_organizations', 'image_keywords', 'profiles'
-  ]
-  loop
-    if exists (
-      select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
-      where n.nspname = 'public' and c.relname = t and c.relkind = 'r' and not c.relrowsecurity
-    ) then
-      execute format('alter table public.%I enable row level security', t);
-
-      execute format('drop policy if exists "goalway read" on public.%I', t);
-      execute format('create policy "goalway read" on public.%I for select to anon, authenticated using (true)', t);
-
-      execute format('drop policy if exists "goalway admin insert" on public.%I', t);
-      execute format(
-        'create policy "goalway admin insert" on public.%I for insert to authenticated with check (public.goalway_is_admin())', t);
-
-      execute format('drop policy if exists "goalway admin update" on public.%I', t);
-      execute format(
-        'create policy "goalway admin update" on public.%I for update to authenticated using (public.goalway_is_admin()) with check (public.goalway_is_admin())', t);
-
-      execute format('drop policy if exists "goalway admin delete" on public.%I', t);
-      execute format(
-        'create policy "goalway admin delete" on public.%I for delete to authenticated using (public.goalway_is_admin())', t);
-
-      raise notice 'RLS enabled with GoalWay policies on public.%', t;
-    else
-      raise notice 'public.% already has RLS on (or does not exist), left unchanged', t;
-    end if;
-  end loop;
-end $$;
+-- Step 2: run only after PR #8 is live on main (keyword saves then send the user's login).
+-- Limits writes to signed-in users, the same rule missions and instructions use.
+-- begin;
+-- drop policy if exists "Temporary app write access to image_keywords" on public.image_keywords;
+-- create policy "Allow authenticated insert to image_keywords" on public.image_keywords
+--   for insert to authenticated with check (true);
+-- create policy "Allow authenticated update to image_keywords" on public.image_keywords
+--   for update to authenticated using (true) with check (true);
+-- create policy "Allow authenticated delete to image_keywords" on public.image_keywords
+--   for delete to authenticated using (true);
+-- commit;
