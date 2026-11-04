@@ -47,9 +47,8 @@ export async function createOrganization(name: string, slug: string, accessToken
 }
 
 export async function deleteOrganization(id: string, accessToken: string): Promise<{ success: boolean; error?: string }> {
-  // Use the service-role client for cascade cleanup so RLS doesn't block
-  // reads/updates on profiles or mission_organizations owned by other users.
-  const adminSupabase = getSupabase();
+  // Run the cascade cleanup as the signed-in admin so RLS admin policies allow it.
+  const adminSupabase = getAuthenticatedSupabase(accessToken);
 
   // Step 1: Remove all mission_organizations rows that reference this org.
   // Step 2: Null out profiles.organization_id for every user in this org.
@@ -119,9 +118,10 @@ export async function getAllUsers(): Promise<PendingUser[]> {
 
 export async function assignUserOrganization(
   userId: string,
-  organizationId: string | null
+  organizationId: string | null,
+  accessToken: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = getSupabase();
+  const supabase = getAuthenticatedSupabase(accessToken);
   const { error } = await supabase
     .from("profiles")
     .update({ organization_id: organizationId })

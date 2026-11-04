@@ -1306,7 +1306,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     const organizationId = formData.get("organizationId") as string | null;
     if (!accessToken) return { success: false, error: "Unauthorized" };
     if (!userId) return { success: false, error: "User ID is required" };
-    const result = await assignUserOrganization(userId, organizationId || null);
+    const result = await assignUserOrganization(userId, organizationId || null, accessToken);
     return result;
   }
 
@@ -1428,7 +1428,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
         module: module || null,
         screen: screen || null,
         item: item || null,
-      });
+      }, accessToken);
       return result.success
         ? { success: true, message: "Keywords and categories saved!" }
         : { success: false, error: result.error ?? "Failed to save keywords" };
