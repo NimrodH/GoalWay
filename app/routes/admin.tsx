@@ -52,7 +52,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getAllInstructions(true),
     getAllInstructionsHe(true),
     getOrganizations(),
-    getAllUsers(),
+    getAllUsers(request),
     adminClient.from("instructions").select("id, admin_notes").eq("is_temp", false),
     adminClient.from("missions").select("id, admin_notes").eq("is_temp", false),
     getAllCategoryValues(),

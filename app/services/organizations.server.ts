@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { getSupabase } from "~/lib/supabase";
+import { createServerSupabase, getSupabase } from "~/lib/supabase";
 
 /** Create a Supabase client authenticated as the calling user (for RLS-gated writes) */
 function getAuthenticatedSupabase(accessToken: string) {
@@ -84,8 +84,9 @@ export interface PendingUser {
   created_at: string;
 }
 
-export async function getPendingUsers(): Promise<PendingUser[]> {
-  const supabase = getSupabase();
+export async function getPendingUsers(request: Request): Promise<PendingUser[]> {
+  // Runs as the signed-in user (session cookie); RLS only returns every profile to admins.
+  const { supabase } = createServerSupabase(request);
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
@@ -101,8 +102,9 @@ export async function getPendingUsers(): Promise<PendingUser[]> {
   return (data || []) as PendingUser[];
 }
 
-export async function getAllUsers(): Promise<PendingUser[]> {
-  const supabase = getSupabase();
+export async function getAllUsers(request: Request): Promise<PendingUser[]> {
+  // Runs as the signed-in user (session cookie); RLS only returns every profile to admins.
+  const { supabase } = createServerSupabase(request);
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
