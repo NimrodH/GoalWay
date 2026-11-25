@@ -302,20 +302,6 @@ const ADMIN_FEATURES: FeatureItem[] = [
     ],
   },
   {
-    icon: <Globe size={20} />,
-    title: "Auto-Translation (DeepL)",
-    badge: "Admin",
-    badgeVariant: "admin",
-    description:
-      "Translate instruction or mission text from English to Hebrew (or vice versa) using the DeepL API integration.",
-    usage: [
-      "With an instruction or mission loaded, click Translate to Hebrew / English & Switch.",
-      "All text fields (title, description, text blocks) are translated in one step.",
-      "You are automatically switched to the target language after translation.",
-      "Review and adjust the translation before saving to the database.",
-    ],
-  },
-  {
     icon: <StickyNote size={20} />,
     title: "Admin Notes",
     badge: "Admin",

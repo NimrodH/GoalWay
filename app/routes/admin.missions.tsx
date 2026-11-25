@@ -103,7 +103,6 @@ function EditMissionForm({
     message?: string;
     error?: string;
     imageUrl?: string;
-    translatedText?: string | null;
     newMissionId?: string;
   };
   clearActionData: () => void;
@@ -134,7 +133,6 @@ function EditMissionForm({
   const [isExample, setIsExample] = useState(false);
   const [selectedInstructions, setSelectedInstructions] = useState<Array<[string, string?]>>([]);
   const [selectedAvailableInstructions, setSelectedAvailableInstructions] = useState<string[]>([]);
-  const [isTranslating, setIsTranslating] = useState(false);
   const { session } = useAuth();
   const [originalCode, setOriginalCode] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1077,63 +1075,6 @@ function EditMissionForm({
 
   const hasUnsavedChangesMission = selectedMissionId && originalCode !== "" && generateCode() !== originalCode;
 
-  const handleTranslateAndSwitch = async () => {
-    if (!title || !description) {
-      alert("Please fill in the title and description before translating");
-      return;
-    }
-
-    setIsTranslating(true);
-
-    try {
-      const sourceLang = language === "en" ? "en" : "he";
-      const targetLang = language === "en" ? "he" : "en";
-
-      const titleFormData = new FormData();
-      titleFormData.append("actionType", "translate");
-      titleFormData.append("text", title);
-      titleFormData.append("sourceLang", sourceLang);
-      titleFormData.append("targetLang", targetLang);
-
-      const titleResponse = await fetch("/admin", {
-        method: "POST",
-        body: titleFormData,
-      });
-      const titleResult = await titleResponse.json();
-
-      if (!titleResult.success) {
-        throw new Error(titleResult.error || "Title translation failed");
-      }
-
-      const descFormData = new FormData();
-      descFormData.append("actionType", "translate");
-      descFormData.append("text", description);
-      descFormData.append("sourceLang", sourceLang);
-      descFormData.append("targetLang", targetLang);
-
-      const descResponse = await fetch("/admin", {
-        method: "POST",
-        body: descFormData,
-      });
-      const descResult = await descResponse.json();
-
-      if (!descResult.success) {
-        throw new Error(descResult.error || "Description translation failed");
-      }
-
-      setTitle(titleResult.translatedText);
-      setDescription(descResult.translatedText);
-
-      alert(`Translation successful! Fields updated to ${targetLang === "he" ? "Hebrew" : "English"}`);
-
-      window.location.href = `/admin/missions?lang=${targetLang}`;
-    } catch (error) {
-      console.error("Translation error:", error);
-      alert(`Translation failed: ${error instanceof Error ? error.message : "Unknown error"}`);
-    } finally {
-      setIsTranslating(false);
-    }
-  };
 
   const hasUnsavedChanges = selectedMissionId && originalCode !== "" && generateCode() !== originalCode;
 
@@ -3361,18 +3302,6 @@ function EditMissionForm({
               }}
             />
 
-            <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-4)" }}>
-              <button
-                type="button"
-                onClick={handleTranslateAndSwitch}
-                className={styles.addButton}
-                disabled={isTranslating || !title || !description || isMasterWithActiveTest}
-                style={{ flex: 1 }}
-                data-explanation-id="admin-mission-translate-switch"
-              >
-                {isTranslating ? "Translating..." : `Translate to ${language === "en" ? "Hebrew" : "English"} & Switch`}
-              </button>
-            </div>
 
             <AuthenticatedForm
               actionType="saveMission"

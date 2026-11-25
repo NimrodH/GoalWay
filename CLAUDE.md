@@ -17,7 +17,7 @@ npm run typecheck  # react-router typegen && tsc: the only static check
 
 There is no test suite and no linter. Run `npm run typecheck` after changes. Route types (`./+types/<route>`) are generated into `.react-router/`, so run typecheck (or dev) after adding or renaming a route.
 
-Environment (`.env`, not committed): `SUPABASE_PROJECT_URL`, `SUPABASE_API_KEY` (the anon key), `DEEPL_API_KEY`.
+Environment (`.env`, not committed): `SUPABASE_PROJECT_URL`, `SUPABASE_API_KEY` (the anon key).
 
 ## Git / deploy flow
 
@@ -51,7 +51,7 @@ Feature branches (`claude/*`) merge into `develop` through pull requests, and `d
 - The home loader returns different shapes for admins and for users. Only the admin version includes `missionsWithAccess` and `organizations`, so check for those fields with `"x" in loaderData` before reading them.
 - The `?org=` filter is remembered in the `org_filter` cookie (`org-filter.server.ts`).
 
-**Admin** (`admin.tsx`, `admin.missions.tsx`, `admin.instructions.tsx`, `instructions-with-images.tsx`) is large and action-driven: one `action` dispatches on a form `intent`/action-type field. "Test mode" clones a mission and its instructions into `is_temp` rows (only one temp mission may exist at a time), and the admin later publishes or discards it. EN↔HE translation goes through DeepL (`app/lib/translate.ts`, Free API endpoint by default; see `DEEPL_SETUP.md`).
+**Admin** (`admin.tsx`, `admin.missions.tsx`, `admin.instructions.tsx`, `instructions-with-images.tsx`) is large and action-driven: one `action` dispatches on a form `intent`/action-type field. "Test mode" clones a mission and its instructions into `is_temp` rows (only one temp mission may exist at a time), and the admin later publishes or discards it.
 
 ## Conventions (from `prompts/`)
 

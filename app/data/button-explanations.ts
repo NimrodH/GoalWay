@@ -291,12 +291,6 @@ export const BUTTON_EXPLANATIONS: Record<string, ButtonExplanation> = {
       "Parses the text in the JSON editor and updates the form fields above. This is a local update only — you must still click 'Save to Database' to persist these changes.",
   },
 
-  "admin-mission-translate-switch": {
-    title: "Translate & Switch Language",
-    description:
-      "Uses AI to translate the mission title and description into the target language, then switches the editor view to that language. This allows you to quickly localise your mission content.",
-  },
-
   "admin-mission-status": {
     title: "Mission Status",
     description: "Records the current content status of this mission. It does not currently change mission visibility or access.",
@@ -442,12 +436,6 @@ export const BUTTON_EXPLANATIONS: Record<string, ButtonExplanation> = {
     title: "Save Metadata",
     description:
       "Updates the categorization (Software, Module, Screen) and keywords for this image in the library. This doesn't affect the current instruction but makes the image easier for others to find later.",
-  },
-
-  "admin-instruction-translate": {
-    title: "Translate & Switch",
-    description:
-      "Uses AI to translate the title, description, and all text blocks into the target language, then switches the editor view. Always review AI translations for technical accuracy.",
   },
 
   "admin-instruction-change-image": {
