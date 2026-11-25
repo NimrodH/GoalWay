@@ -118,8 +118,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { missions, missionsWithAccess, organizations, isAnonymous, isPending, isAdmin: adminView, profile, filterOrganization } =
-    loaderData;
+  const { missions, isAnonymous, isPending, isAdmin: adminView, profile, filterOrganization } = loaderData;
+  // Only the admin branch of the loader returns these, so narrow before reading them
+  const missionsWithAccess = "missionsWithAccess" in loaderData ? loaderData.missionsWithAccess : undefined;
+  const organizations = "organizations" in loaderData ? loaderData.organizations : undefined;
   const navigate = useNavigate();
   const [missionFilter, setMissionFilter] = useState("");
   const [organizationFilter, setOrganizationFilter] = useState("");
