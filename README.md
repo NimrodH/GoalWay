@@ -1,3 +1,10 @@
+**Run the app**
+
+- Published (`main`): [goalway.netlify.app](https://goalway.netlify.app/) · [Admin – missions](https://goalway.netlify.app/admin/missions)
+- Development (`develop`): [develop--goalway.netlify.app](https://develop--goalway.netlify.app/) · [Admin – missions](https://develop--goalway.netlify.app/admin/missions)
+
+> **Related project:** `C:\Users\user\OneDrive\develope\AI_local_projects\repolish_goalway` is a Claude Code project that takes a mission bundle exported from GoalWay (**Export** on the mission screen), repolishes the English wording, translates it to Hebrew, and writes a file to **Import** back into GoalWay.
+
 # Welcome to React Router!
 
 A modern, production-ready template for building full-stack React applications using React Router.

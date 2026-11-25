@@ -1378,7 +1378,6 @@ function EditInstructionForm({
     message?: string;
     error?: string;
     imageUrl?: string;
-    translatedText?: string | null;
     newInstructionId?: string;
   };
   clearActionData: () => void;
@@ -1411,7 +1410,6 @@ function EditInstructionForm({
   const [explanation, setExplanation] = useState<InstructionContentWithKey[]>([]);
   const [explanationFiles, setExplanationFiles] = useState<(File | null)[]>([]);
   const [isSavingWithUploads, setIsSavingWithUploads] = useState(false);
-  const [isTranslating, setIsTranslating] = useState(false);
   const { session } = useAuth();
   const [originalCode, setOriginalCode] = useState("");
   const fetcher = useFetcher<typeof action>();
@@ -1878,51 +1876,6 @@ function EditInstructionForm({
     return JSON.stringify(instruction, null, 2);
   };
 
-  const handleTranslateAndSwitch = async () => {
-    if (!title) {
-      alert("Please fill in at least the title before translating");
-      return;
-    }
-    setIsTranslating(true);
-    try {
-      const sourceLang = language === "en" ? "en" : "he";
-      const targetLang = language === "en" ? "he" : "en";
-      const textsToTranslate = [
-        title,
-        description || "",
-        ...explanation.filter((e) => e.type === "text").map((e) => e.content),
-      ].filter(Boolean);
-      const translationPromises = textsToTranslate.map(async (text) => {
-        const formData = new FormData();
-        formData.append("actionType", "translate");
-        formData.append("text", text);
-        formData.append("sourceLang", sourceLang);
-        formData.append("targetLang", targetLang);
-        const response = await fetch("/admin", { method: "POST", body: formData });
-        const result = await response.json();
-        if (!result.success) throw new Error(result.error || "Translation failed");
-        return result.translatedText;
-      });
-      const translations = await Promise.all(translationPromises);
-      let index = 0;
-      const translatedTitle = translations[index++];
-      const translatedDescription = description ? translations[index++] : "";
-      const translatedExplanation = explanation.map((item) => {
-        if (item.type === "text" && item.content) return { ...item, content: translations[index++] };
-        return item;
-      });
-      setTitle(translatedTitle);
-      setDescription(translatedDescription);
-      setExplanation(translatedExplanation);
-      alert(`Translation successful! Fields updated to ${targetLang === "he" ? "Hebrew" : "English"}`);
-      window.location.href = `/admin/instructions?lang=${targetLang}`;
-    } catch (error) {
-      console.error("Translation error:", error);
-      alert(`Translation failed: ${error instanceof Error ? error.message : "Unknown error"}`);
-    } finally {
-      setIsTranslating(false);
-    }
-  };
 
   const hasUnsavedChanges = selectedInstructionId && originalCode !== "" && generateCode() !== originalCode;
 
@@ -2805,18 +2758,6 @@ function EditInstructionForm({
               }}
             />
 
-            <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-4)" }}>
-              <button
-                type="button"
-                onClick={handleTranslateAndSwitch}
-                className={styles.addButton}
-                disabled={isTranslating || !title}
-                style={{ flex: 1 }}
-                data-explanation-id="admin-instruction-translate"
-              >
-                {isTranslating ? "Translating..." : `Translate to ${language === "en" ? "Hebrew" : "English"} & Switch`}
-              </button>
-            </div>
 
             <div style={{ marginTop: "var(--space-4)" }}>
               <button

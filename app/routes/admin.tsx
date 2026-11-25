@@ -105,7 +105,6 @@ export type ActionResult = {
   success: boolean;
   error?: string;
   message?: string;
-  translatedText?: string | null;
   newInstructionId?: string;
   newMissionId?: string;
   deletedInstructionId?: string;
@@ -1325,27 +1324,6 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionResul
     if (!exampleResult.success) return exampleResult;
     if (!orgResult.success) return orgResult;
     return { success: true, message: "Mission access updated" };
-  }
-
-  if (actionType === "translate") {
-    const { translateText } = await import("~/lib/translate");
-    const sourceLang = formData.get("sourceLang") as "en" | "he";
-    const targetLang = formData.get("targetLang") as "en" | "he";
-    const textToTranslate = formData.get("text") as string;
-
-    const result = await translateText(textToTranslate, sourceLang, targetLang);
-
-    if (result.error) {
-      return {
-        success: false,
-        error: result.error,
-      };
-    }
-
-    return {
-      success: true,
-      translatedText: result.translatedText,
-    };
   }
 
   if (!accessToken) {
