@@ -1,0 +1,9 @@
+# Words and names that stay in English inside the Hebrew text.
+# One per line, matched ignoring case. Lines starting with # are comments.
+# Add words here when you want them kept permanently; for a single run,
+# name them in the prompt instead.
+Product
+Aliass
+Power Author
+DocuWercs
+Alias

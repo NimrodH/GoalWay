@@ -1,0 +1,39 @@
+en,he,note
+Product,Product,keep English; with prefix: ה-Product
+Alias,Alias,keep English; with prefix: ה-Alias
+Power Entry (PE),Power Entry,keep English; also written power ENTRY - keep the casing used in the text
+Power Author,Power Author,keep English
+DocuWercs,DocuWercs,keep English
+Web Viewer,Web Viewer,keep English; מה-Web Viewer
+wizard,wizard,keep English; ה-wizard
+SDS,SDS,keep English; ה-SDS
+supplier SDS,ה-SDS של הספק,
+supplier document,מסמך הספק,
+short safety page,עמוד הבטיחות הקצר,also: העמוד הקצר
+data page,עמוד הנתונים,
+mission,משימה,
+tab,לשונית,"On the X tab = בלשונית X"
+button,כפתור,"Click the X button = לחץ על הכפתור X"
+field,שדה,"In the X field = בשדה X"
+menu,תפריט,"From the X menu = מתפריט X"
+phrase,ביטוי,system phrase in a field
+row (in a list),שורה,
+list of published documents,רשימת המסמכים שפורסמו,
+authorization level,רמת ההרשאה,
+status field,שדה הסטטוס,
+click,לחץ על,
+double-click,לחיצה כפולה,
+right-click,לחץ לחיצה ימנית על,
+select,בחר,
+select or verify,בחר או ודא שנבחר,
+verify,ודא,
+open,פתח,
+preview,הצג תצוגה מקדימה של,
+publish,פרסם,
+update,עדכן,
+Notice:,שים לב:,
+Important:,חשוב:,
+LINK:,LINK:,keep the prefix in English
+table,טבלה,"the relevant table = הטבלה הרלוונטית"
+Region,Region,keep English (AWS); ה-Region
+console,קונסולה,"AWS console = קונסולת AWS"

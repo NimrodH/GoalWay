@@ -9,3 +9,7 @@
 .env
 
 .netlify
+
+# /reword skill: exported and reworded mission bundles
+/tools/reword/work/
+__pycache__/

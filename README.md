@@ -3,7 +3,7 @@
 - Published (`main`): [goalway.netlify.app](https://goalway.netlify.app/) · [Admin – missions](https://goalway.netlify.app/admin/missions)
 - Development (`develop`): [develop--goalway.netlify.app](https://develop--goalway.netlify.app/) · [Admin – missions](https://develop--goalway.netlify.app/admin/missions)
 
-> **Related project:** `C:\Users\user\OneDrive\develope\AI_local_projects\repolish_goalway` is a Claude Code project that takes a mission bundle exported from GoalWay (**Export** on the mission screen), repolishes the English wording, translates it to Hebrew, and writes a file to **Import** back into GoalWay.
+> **Rewording missions:** in Claude Code, type `/reword <mission id>` (optionally `, do not translate: word, word`). It exports the mission from Supabase (like **Export** on the mission screen), repolishes the English and rebuilds the Hebrew, then uploads it back (like **Import**). The skill is `.claude/skills/reword/SKILL.md`; rules, glossary and tools are in `tools/reword/settings/`; files go to `tools/reword/work/` (not committed), where the original export is kept as a backup. Uploading needs an admin GoalWay account in `.env`: `GOALWAY_EMAIL=…` and `GOALWAY_PASSWORD=…`. It was moved here from the separate `repolish_goalway` project.
 
 # Welcome to React Router!
 

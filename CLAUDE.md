@@ -17,7 +17,9 @@ npm run typecheck  # react-router typegen && tsc: the only static check
 
 There is no test suite and no linter. Run `npm run typecheck` after changes. Route types (`./+types/<route>`) are generated into `.react-router/`, so run typecheck (or dev) after adding or renaming a route.
 
-Environment (`.env`, not committed): `SUPABASE_PROJECT_URL`, `SUPABASE_API_KEY` (the anon key).
+Environment (`.env`, not committed): `SUPABASE_PROJECT_URL`, `SUPABASE_API_KEY` (the anon key). For the `/reword` skill also `GOALWAY_EMAIL`, `GOALWAY_PASSWORD` (an admin account, filled in by the user only; never read or print `.env`).
+
+`/reword <mission id>` (`.claude/skills/reword/`, tools in `tools/reword/settings/`): exports a mission bundle from Supabase, repolishes and translates it, and imports it back. `goalway_db.py` mirrors the mission screen's Export (`handleExportMission` in `admin.missions.tsx`) and Import (`importMissionBundle` in `admin.tsx`); keep it in step when those change.
 
 ## Git / deploy flow
 
